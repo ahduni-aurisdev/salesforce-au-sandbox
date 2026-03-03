@@ -1,0 +1,92 @@
+<template>
+  <div class="form-container">
+    <div class="header">
+      <img src={logoUrl} alt="AU Logo" class="logo" />
+      <h2 class="form-title">{formTitle}</h2>
+    </div>
+
+    <lightning-record-edit-form object-api-name="Lead" onsuccess={handleSuccess}>
+      <!-- Form Submission Date -->
+      <div class="section">
+        <lightning-input
+          type="date"
+          label="Form Submission Date"
+          value={formDate}
+          onchange={handleChange}
+          data-id="formDate"
+          required>
+        </lightning-input>
+      </div>
+
+      <!-- Programmes of Interest -->
+      <div class="section">
+        <lightning-combobox
+          label="Programme of Interest"
+          options={programOptions}
+          value={programValues}
+          onchange={handleProgramChange}
+          required>
+        </lightning-combobox>
+      </div>     
+
+      <div class="section">
+        <lightning-input label="First Name" value={firstName} onchange={handleChange} data-id="firstName" required></lightning-input>
+        <lightning-input label="Last Name" value={lastName} onchange={handleChange} data-id="lastName" required></lightning-input>
+      </div>
+      <div class="section">
+        <lightning-input type="email" label="Email ID" value={email} onchange={handleChange} data-id="email" required></lightning-input>
+        <lightning-input type="tel" label="Mobile" value={mobile} onchange={handleChange} data-id="mobile" required></lightning-input>
+      </div>
+      <div class="section">
+        <lightning-input label="City" value={city} onchange={handleChange} data-id="city" required></lightning-input>
+        <lightning-input label="State" value={state} onchange={handleChange} data-id="state" required></lightning-input>
+      </div>
+
+      <div class="section">
+        <lightning-input label="Undergraduate Degree" value={ugDegree} onchange={handleChange} data-id="ugDegree" required></lightning-input>
+        <lightning-input label="UG University Name" value={ugUniversity} onchange={handleChange} data-id="ugUniversity" required></lightning-input>
+      </div>
+
+      <div class="section exams-section">
+        <label class="slds-form-element__label">Entrance Exams (Appeared/Appearing)</label>
+        <div class="checkbox-grid">
+          <template for:each={examOptionsWithChecked} for:item="exam">
+            <div key={exam.value} class="checkbox-item">
+              <lightning-input
+                type="checkbox"
+                label={exam.label}
+                value={exam.value}
+                checked={exam.checked}
+                onchange={handleExamsChangeCustom}>
+              </lightning-input>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="section single-column">
+        <label class="slds-form-element__label">
+          How did you come to know about Ahmedabad University?
+        </label>
+        <lightning-combobox
+          options={sourceOptions}
+          value={howDidYouHear}
+          onchange={handleChange}
+          data-id="howDidYouHear"
+          required>
+        </lightning-combobox>
+      </div>
+
+      <div class="actions">
+        <button class="submit-btn" type="button" onclick={handleSubmit}>Submit</button>
+      </div>      
+    </lightning-record-edit-form>
+
+    <template if:true={successMessage}>
+      <div class="success">{successMessage}</div>
+    </template>
+    <template if:true={errorMessage}>
+      <div class="error">{errorMessage}</div>
+    </template>
+  </div>
+</template>

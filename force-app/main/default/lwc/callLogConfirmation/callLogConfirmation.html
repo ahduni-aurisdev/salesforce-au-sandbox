@@ -1,0 +1,153 @@
+<template>
+    <lightning-card>
+        <!-- Spinner Overlay -->
+        <template if:true={isLoading}>
+            <lightning-spinner 
+                alternative-text="Saving..." 
+                size="medium"
+                variant="brand">
+            </lightning-spinner>
+        </template>
+        
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-call">
+                        <lightning-icon icon-name="standard:call" size="small"></lightning-icon>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">
+                        <span class="slds-text-heading_small">Call Confirmation</span>
+                    </h2>
+                </div>
+            </header>
+        </div>
+        
+        <div class="slds-card__body slds-card__body_inner">
+            <div class="slds-text-body_regular slds-m-bottom_large slds-text-color_weak">
+                Did the customer confirm interest in proceeding?
+            </div>
+            
+            <!-- Custom Radio Button Design -->
+            <div class="custom-radio-container">
+                <div class="radio-option-wrapper" onclick={handleYesClick}>
+                    <input 
+                        type="radio" 
+                        id="option-yes" 
+                        name="callConfirmation" 
+                        value="Yes"
+                        checked={isYesSelected}
+                        class="custom-radio-input"
+                    />
+                    <label for="option-yes" class="custom-radio-label success-option">
+                        <div class="radio-icon-wrapper">
+                            <lightning-icon icon-name="utility:success" size="small" class="option-icon"></lightning-icon>
+                        </div>
+                        <div class="radio-content">
+                            <div class="radio-title">Received</div>
+                        </div>
+                        <div class="radio-check">
+                            <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="radio-option-wrapper" onclick={handleNoClick}>
+                    <input 
+                        type="radio" 
+                        id="option-no" 
+                        name="callConfirmation" 
+                        value="No"
+                        checked={isNoSelected}
+                        class="custom-radio-input"
+                    />
+                    <label for="option-no" class="custom-radio-label warning-option">
+                        <div class="radio-icon-wrapper">
+                            <lightning-icon icon-name="utility:warning" size="small" class="option-icon"></lightning-icon>
+                        </div>
+                        <div class="radio-content">
+                            <div class="radio-title">Non-Received</div>
+                        </div>
+                        <div class="radio-check">
+                            <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="radio-option-wrapper" onclick={handleInterestedClick}>
+                    <input 
+                        type="radio" 
+                        id="option-interested" 
+                        name="callConfirmation" 
+                        value="Interested"
+                        checked={isInterestedSelected}
+                        class="custom-radio-input"
+                    />
+                    <label for="option-interested" class="custom-radio-label success-option">
+                        <div class="radio-icon-wrapper">
+                            <lightning-icon icon-name="utility:like" size="small" class="option-icon"></lightning-icon>
+                        </div>
+                        <div class="radio-content">
+                            <div class="radio-title">Interested</div>
+                        </div>
+                        <div class="radio-check">
+                            <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="radio-option-wrapper" onclick={handleNotInterestedClick}>
+                    <input 
+                        type="radio" 
+                        id="option-not-interested" 
+                        name="callConfirmation" 
+                        value="Not Interested"
+                        checked={isNotInterestedSelected}
+                        class="custom-radio-input"
+                    />
+                    <label for="option-not-interested" class="custom-radio-label error-option">
+                        <div class="radio-icon-wrapper">
+                            <lightning-icon icon-name="utility:close" size="small" class="option-icon"></lightning-icon>
+                        </div>
+                        <div class="radio-content">
+                            <div class="radio-title">Not Interested</div>
+                        </div>
+                        <div class="radio-check">
+                            <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Comment Field -->
+            <div class="slds-m-top_large">
+                <lightning-textarea
+                    label="Comments"
+                    placeholder="Enter any additional notes or comments about the call..."
+                    value={commentValue}
+                    onchange={handleCommentChange}
+                    max-length="32000"
+                    class="comment-field">
+                </lightning-textarea>
+            </div>
+        </div>
+        
+        <footer class="slds-card__footer">
+            <div class="slds-grid slds-grid_align-center slds-grid_vertical-align-center">
+                <lightning-button
+                    label="Cancel"
+                    onclick={handleCancel}
+                    class="slds-m-right_x-small">
+                </lightning-button>
+                <lightning-button
+                    variant="brand"
+                    label="Save & Update Lead"
+                    icon-name="utility:check"
+                    onclick={handleSave}
+                    disabled={isSaveDisabled}>
+                </lightning-button>
+            </div>
+        </footer>
+    </lightning-card>
+</template>
