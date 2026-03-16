@@ -393,7 +393,6 @@ global with sharing class LeadConversionService {
                     if(mapping.Object_Name__c =='Account' && mapping.Record_Type_Name__c == 'Undergraduation'){
                         accountUndergraduationRecordType = mapping.Record_Type_Id__c;
                     }
-
                 }
                 
                 // Step 3: Debugging to ensure the recordTypeMapping is correctly populated
@@ -1569,20 +1568,20 @@ global with sharing class LeadConversionService {
     
         // INSERT & POST-PROCESS
         if (!opportunitiesToInsert.isEmpty()) {
-            System.debug('====== OPPORTUNITIES BEFORE INSERT ======');
-            System.debug('Total opportunities to insert: ' + opportunitiesToInsert.size());
+            // System.debug('====== OPPORTUNITIES BEFORE INSERT ======');
+            // System.debug('Total opportunities to insert: ' + opportunitiesToInsert.size());
             
-            // Debug each opportunity before insert
-            for (Opportunity opp : opportunitiesToInsert) {
-                System.debug('Opportunity to insert:');
-                System.debug('  Name: ' + opp.Name);
-                System.debug('  Program_Group_Tag__c: ' + opp.Program_Group_Tag__c);
-                System.debug('  Application_Number__c: ' + opp.Application_Number__c);
-                System.debug('  Registration_Date__c: ' + opp.Registration_Date__c);
-                System.debug('  Application_Initiated_Date__c: ' + opp.Application_Initiated_Date__c);
-                System.debug('  LeadSource: ' + opp.LeadSource);
-                System.debug('  Related_Lead__c: ' + opp.Related_Lead__c);
-            }
+            // // Debug each opportunity before insert
+            // for (Opportunity opp : opportunitiesToInsert) {
+            //     System.debug('Opportunity to insert:');
+            //     System.debug('  Name: ' + opp.Name);
+            //     System.debug('  Program_Group_Tag__c: ' + opp.Program_Group_Tag__c);
+            //     System.debug('  Application_Number__c: ' + opp.Application_Number__c);
+            //     System.debug('  Registration_Date__c: ' + opp.Registration_Date__c);
+            //     System.debug('  Application_Initiated_Date__c: ' + opp.Application_Initiated_Date__c);
+            //     System.debug('  LeadSource: ' + opp.LeadSource);
+            //     System.debug('  Related_Lead__c: ' + opp.Related_Lead__c);
+            // }
     
             try {
                 insert opportunitiesToInsert;
