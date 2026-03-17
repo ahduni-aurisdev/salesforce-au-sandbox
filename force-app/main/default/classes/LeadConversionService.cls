@@ -26,10 +26,6 @@ global with sharing class LeadConversionService {
      *                   names from the custom metadata. It returns a map with record type 
      *                   IDs as keys and their names as values.
     *******************************************************************************************/  
-    // MODIFICATION: Constants for program groups*********************************
-    private static final Integer MAX_GROUPS = 4;
-    private static final Integer MAX_PROGRAMS_PER_GROUP = 3;     
-    
     public static Map<String, String> getRecordTypeWithName() {
         //map of record type id and name
         Map<String, String> recordTypeIdWithName = new Map<String, String>();
@@ -331,7 +327,7 @@ global with sharing class LeadConversionService {
                 String leadId = (String) payloadMap.get('leadId');
                 //System.debug('Lead ID: ' + leadId);
                 //Query lead  wwhere id is getting lead id from payload
-                Lead lead = [SELECT Id, Is_convert__c, IsConverted, Status, Name, Registration_Date__c, Registration_Number__c, OwnerId,
+                Lead lead = [SELECT Id, Is_convert__c, Status, Name, Registration_Date__c, Registration_Number__c, OwnerId,
                                     Application_Number__c, Application_Date__c, LeadSource, Phone, Email, Company, RecordType.DeveloperName,
                                     Preferred_Programme__c, URL__c, Auris_Form_URL__c,
                                     Organisation_Institute_Name__c, Designation__c, My_Highest_Qualification__c,
@@ -393,6 +389,7 @@ global with sharing class LeadConversionService {
                     if(mapping.Object_Name__c =='Account' && mapping.Record_Type_Name__c == 'Undergraduation'){
                         accountUndergraduationRecordType = mapping.Record_Type_Id__c;
                     }
+
                 }
                 
                 // Step 3: Debugging to ensure the recordTypeMapping is correctly populated
@@ -1276,987 +1273,75 @@ global with sharing class LeadConversionService {
     * @param responseMap map of responses
     * @return returns converted message
     */
-    public static String convertLeadToAccountAndOpportunityUndergraduation(
-        Lead lead,
-        Map<String, Object> payloadMap,
-        Map<String, Object> responseMap
-    ) {
-        System.debug('Starting UG lead conversion for Lead ID: ' + lead.Id);
-        System.debug('Payload contains grpprograms: ' + payloadMap.containsKey('grpPrograms'));
-        System.debug('Payload contains grptag: ' + payloadMap.containsKey('grptag'));
-        System.debug('Lead IsConverted: ' + lead.IsConverted);
+    public static String convertLeadToAccountAndOpportunityUndergraduation(Lead lead, Map<String, Object> payloadMap, Map<String, Object> responseMap) {
+        //System.debug('240 Starting lead conversion for Lead ID: ' + lead.Id);
     
-        // Re-query Lead with required fields
-        lead = [
-            SELECT Id, OwnerId, Name, Company, Phone, Email, UTM_Link__c, Group_Tag__c,
-                   Registration_Number__c, Registration_Date__c, Application_Number__c,
-                   Application_Date__c, LeadSource, URL__c, Auris_Form_URL__c,
-                   Multi_Select_Lead_Source__c, Campaign_Name__c,
-                   RecordType.DeveloperName, Department__c,
-                   IsConverted, ConvertedAccountId, ConvertedContactId,
-                   (SELECT Id, Full_Program_Name__c, Major__c, Major__r.Name 
-                    FROM Preferred_Programme__r
-                    ORDER BY CreatedDate ASC)
-            FROM Lead
-            WHERE Id = :lead.Id
-            LIMIT 1
-        ];
+        // Prepare LeadConvert object
+        Database.LeadConvert leadConvert = new Database.LeadConvert();
+        leadConvert.setLeadId(lead.Id);
+        leadConvert.setOwnerId(lead.OwnerId);
+        leadConvert.setDoNotCreateOpportunity(false);
     
-        System.debug('Lead LeadSource value: ' + lead.LeadSource);
-        System.debug('After re-query - Preferred_Programme__r size: ' + lead.Preferred_Programme__r.size());
-        System.debug('After re-query - Group_Tag__c: ' + lead.Group_Tag__c);
-        System.debug('=== CHECKING APPLICATION NUMBER FROM PAYLOAD ===');
-        System.debug('Payload contains applicationNumber: ' + payloadMap.containsKey('applicationNumber'));
-        
-        String appNumberFromPayload = payloadMap.containsKey('applicationNumber') ? 
-                                     (String) payloadMap.get('applicationNumber') : null;
+        //Mihir - 16th Marth 2026
+        String leadStatus = '%' + (String) payloadMap.get('leadStatus') + '%';
+        // Set the converted status based on the lead's record type
+        String convertedStatus = [SELECT MasterLabel FROM LeadStatus WHERE IsConverted = true AND MasterLabel LIKE :leadStatus LIMIT 1].MasterLabel;
+        leadConvert.setConvertedStatus(convertedStatus);
     
-        if (appNumberFromPayload != null) {
-            System.debug('Using applicationNumber from conversion payload: ' + appNumberFromPayload);
-            System.debug('Lead.Application_Number__c before update: ' + lead.Application_Number__c);
-            
-            // Update the lead object's field for later use
-            lead.Application_Number__c = appNumberFromPayload;
-            System.debug('Lead.Application_Number__c after update: ' + lead.Application_Number__c);
-
-            Lead leadToUpdate = new Lead(Id = lead.Id, Application_Number__c = appNumberFromPayload);
-            update leadToUpdate;
-            
-            // Re-query to get the updated value
-            lead = [SELECT Id, Name, Application_Number__c, IsConverted, ConvertedAccountId, ConvertedContactId,
-                           OwnerId, RecordType.DeveloperName, Department__c, Registration_Number__c,
-                           Registration_Date__c, Application_Date__c, LeadSource, URL__c, 
-                           Auris_Form_URL__c, Multi_Select_Lead_Source__c, Campaign_Name__c,
-                           Company, Phone, Email, UTM_Link__c, Group_Tag__c
-                    FROM Lead WHERE Id = :lead.Id LIMIT 1];
-            System.debug('Confirmed Lead.Application_Number__c after update: ' + lead.Application_Number__c);
+        Database.LeadConvertResult result = Database.convertLead(leadConvert);
+    
+        if (result.isSuccess()) {
+            //System.debug('254 Lead conversion successful. Account ID: ' + result.getAccountId() + ', Opportunity ID: ' + result.getOpportunityId());
+    
+            Set<Id> opportunityIdset = new Set<Id>();
+            opportunityIdset.add(result.getOpportunityId());
+            // Update record types for Account and Opportunity
+            updateRecordTypes(lead, result.getAccountId(), opportunityIdset);
+           //Lead lead, Id accountId, Set<Id> opportunityIdSet
+    
+            // Map fields to Account and Opportunity
+            mapFieldsToOpportunityAndAccountUndergraduation(lead, result, responseMap,opportunityIdset,payloadMap);    
+    
+            responseMap.put('leadId', lead.Id);
+            responseMap.put('personAccountId', result.getAccountId());
+            responseMap.put('opportunityId', result.getOpportunityId());
+            responseMap.put('message', 'Lead converted successfully.');
+            responseMap.put('Opportunity', 'Opportunity Created');
+            //System.debug('Lead converted successfully.');
+            return 'Lead converted successfully.';
         } else {
-            System.debug('No applicationNumber found in payload. Using existing value: ' + lead.Application_Number__c);
-        } 
-    
-        Id accountId;
-        Id contactId;
-    
-        // SAFE LEAD CONVERSION LOGIC
-        if (!lead.IsConverted) {
-            Database.LeadConvert lc = new Database.LeadConvert();
-            lc.setLeadId(lead.Id);
-            lc.setOwnerId(lead.OwnerId);
-            lc.setDoNotCreateOpportunity(true); //  creates opportunities manually
-            lc.setConvertedStatus('Application Submitted');
-    
-            Database.LeadConvertResult lcr = Database.convertLead(lc, true); 
-    
-            if (!lcr.isSuccess()) {
-                throw new CustomException('Lead conversion failed.');
-            }
-    
-            accountId = lcr.getAccountId();
-            contactId = lcr.getContactId();
-            System.debug('New conversion - AccountId: ' + accountId + ', ContactId: ' + contactId);
-        } else {
-            accountId = lead.ConvertedAccountId;
-            contactId = lead.ConvertedContactId;
-            
-            System.debug('Lead already converted. Using existing Account: ' + accountId + 
-                 ' and Contact: ' + contactId);
-
-            if (contactId == null) {
-                System.debug('ContactId is null for converted lead. Querying contact...');
-                List<Contact> contacts = [SELECT Id FROM Contact WHERE AccountId = :accountId LIMIT 1];
-                if (!contacts.isEmpty()) {
-                    contactId = contacts[0].Id;
-                    System.debug('Found contact: ' + contactId);
-                }
-            }
-        }
-
-        // CREATE OPPORTUNITIES - FOUR PATH APPROACH
-        List<Opportunity> opportunitiesToInsert = new List<Opportunity>();
-        Map<String, Map<String, String>> opportunityDetails = new Map<String, Map<String, String>>();
-        List<Object> storedGroups = null;
-        Integer storedGroupsCount = 0;
-        boolean convertedAllGroups = false;
+            // Handle "already converted" case
+            Lead freshLead = [
+                SELECT Id, IsConverted, ConvertedAccountId, ConvertedOpportunityId, ConvertedContactId
+                FROM Lead
+                WHERE Id = :lead.Id
+            ];
         
-        // Get existing opportunities count to calculate next group index
-        List<Opportunity> existingOpportunities = [SELECT Id, Name, Program_Group_Tag__c, LeadSource FROM Opportunity WHERE AccountId = :accountId];
-        Integer existingOpportunityCount = existingOpportunities.size();
-        System.debug('Existing opportunities for this account: ' + existingOpportunityCount);  
-        System.debug('Lead LeadSource for new opportunities: ' + lead.LeadSource);
+            if (freshLead.IsConverted) {
+                responseMap.put('statusCode', 208); // Already converted
+                responseMap.put('leadId', freshLead.Id);
+                responseMap.put('personAccountId', freshLead.ConvertedAccountId);
+                responseMap.put('convertedOpportunityId', freshLead.ConvertedOpportunityId);
+                responseMap.put('convertedContactId', freshLead.ConvertedContactId);
         
-        // PATH 1: Check if Lead has stored groups in Group_Tag__c (BULK CONVERSION)
-        if (String.isNotBlank(lead.Group_Tag__c)) {
-            System.debug('=== PATH 1: Checking Lead.Group_Tag__c for bulk conversion ===');
-            
-            try {
-                // Parse the stored groups JSON
-                storedGroups = (List<Object>) JSON.deserializeUntyped(lead.Group_Tag__c);
-                storedGroupsCount = storedGroups.size();
-                System.debug('Found ' + storedGroupsCount + ' groups in Lead.Group_Tag__c');
-                System.debug('Stored groups: ' + JSON.serialize(storedGroups));
-                
-                // Get application number & application date from payload if provided
-                String payloadAppNumber = payloadMap.containsKey('applicationNumber') ? 
-                                         (String) payloadMap.get('applicationNumber') : null;
-                
-                String payloadAppDate = payloadMap.containsKey('applicationDate') ?
-                                        (String) payloadMap.get('applicationDate') : null;
-                
-                for (Integer i = 0; i < storedGroupsCount; i++) {
-                    Map<String, Object> groupMap = (Map<String, Object>) storedGroups[i];
-                    String groupTag = (String) groupMap.get('grptag');
-                    
-                    System.debug('Processing group ' + (i+1) + ': ' + groupTag);
-                    
-                    // Get application number for this group
-                    String groupAppNumber = null;
-                    
-                    // FIX: PRIORITY ORDER FOR APPLICATION NUMBER
-                    // Priority 1: Use applicationNumber from stored groupMap (from lead creation)
-                    if (groupMap.containsKey('applicationNumber') && groupMap.get('applicationNumber') != null) {
-                        groupAppNumber = (String) groupMap.get('applicationNumber');
-                        System.debug('Using stored applicationNumber from Group_Tag__c: ' + groupAppNumber);
-                    }
-                    // Priority 2: For first group ONLY, use payload applicationNumber if provided
-                    else if (i == 0 && payloadAppNumber != null) {
-                        groupAppNumber = payloadAppNumber;
-                        System.debug('Using payload applicationNumber for first group: ' + groupAppNumber);
-                    }
-                    // Priority 3: Generate if none available
-                    else {
-                        groupAppNumber = lead.Registration_Number__c + '-G' + (existingOpportunityCount + i + 1);
-                        System.debug('Generated applicationNumber: ' + groupAppNumber);
-                    }
-                    
-                    // Get application date for this group
-                    String groupAppDate = null;
-                    
-                    // Priority 1: Use applicationDate from stored groupMap (from lead creation)
-                    if (groupMap.containsKey('applicationDate') && groupMap.get('applicationDate') != null) {
-                        groupAppDate = (String) groupMap.get('applicationDate');
-                        System.debug('Using stored applicationDate from Group_Tag__c: ' + groupAppDate);
-                    }
-                    // Priority 2: For first group ONLY, use payload applicationDate if provided
-                    else if (i == 0 && payloadAppDate != null) {
-                        groupAppDate = payloadAppDate;
-                        System.debug('Using payload applicationDate for first group: ' + groupAppDate);
-                    }
-                    // Priority 3: Use lead's Application_Date__c if available
-                    else if (lead.Application_Date__c != null) {
-                        groupAppDate = String.valueOf(lead.Application_Date__c);
-                        System.debug('Using Application_Date__c from lead: ' + groupAppDate);
-                    }
-                    
-                    // Add application number and date to group map for createGroupOpportunity
-                    groupMap.put('applicationNumber', groupAppNumber);
-                    if (groupAppDate != null) {
-                        groupMap.put('applicationDate', groupAppDate);
-                    }
-                    
-                    // Calculate group index: existing opportunities + current index + 1
-                    Integer groupIndex = existingOpportunityCount + i + 1;                    
-                    
-                    // Create opportunity for this group
-                    Opportunity opp = createGroupOpportunity(lead, accountId, contactId, groupMap, existingOpportunityCount + i + 1);
-                    opportunitiesToInsert.add(opp);
-                }
-                convertedAllGroups = true;
-                
-            } catch (Exception e) {
-                System.debug('Error parsing Group_Tag__c JSON: ' + e.getMessage());
-            }
-        }
-    
-        // PATH 2: Check for grpPrograms in payload (NEW GROUPS BEING ADDED)
-        if (!convertedAllGroups && payloadMap.containsKey('grpPrograms') && payloadMap.get('grpPrograms') != null) {
-            System.debug('=== PATH 2: Creating opportunities from payload grpPrograms ===');
-            
-            List<Object> grpPrograms = (List<Object>) payloadMap.get('grpPrograms');
-            System.debug('Found ' + grpPrograms.size() + ' grpPrograms in payload');
-            
-            for (Integer i = 0; i < grpPrograms.size(); i++) {
-                Map<String, Object> groupMap = (Map<String, Object>) grpPrograms[i];
-                String groupTag = (String) groupMap.get('grptag');
-                
-                System.debug('Processing grpProgram ' + (i+1) + ': ' + groupTag);
-                
-                // Check if opportunity already exists for this group tag
-                boolean opportunityExists = false;
-                for (Opportunity existingOpp : existingOpportunities) {
-                    if (existingOpp.Program_Group_Tag__c == groupTag) {
-                        opportunityExists = true;
-                        System.debug('Opportunity already exists for group tag: ' + groupTag);
-                        break;
-                    }
-                }
-                
-                if (!opportunityExists) {
-                    // Calculate group index: existing opportunities + current index + 1
-                    Integer groupIndex = existingOpportunityCount + i + 1;
-                    
-                    // Get or generate application number
-                    String groupAppNumber = null;
-                    
-                    if (groupMap.containsKey('applicationNumber') && groupMap.get('applicationNumber') != null) {
-                        groupAppNumber = (String) groupMap.get('applicationNumber');
-                        System.debug('Using applicationNumber from grpProgram: ' + groupAppNumber);
-                    } else {
-                        groupAppNumber = lead.Registration_Number__c + '-G' + groupIndex;
-                        System.debug('Generated applicationNumber: ' + groupAppNumber);
-                    }
-                    
-                    // Add application number to group map
-                    groupMap.put('applicationNumber', groupAppNumber);
-                    
-                    // Create opportunity for this group
-                    Opportunity opp = createGroupOpportunity(lead, accountId, contactId, groupMap, groupIndex);
-                    opportunitiesToInsert.add(opp);
-                    
-                    System.debug('Created new opportunity from grpPrograms - Group ' + groupIndex + ': ' + groupTag);
-                }
-            }
-        }
-            
-        // PATH 3: If no stored groups or parsing failed, check for single grptag in payload
-        else if (!convertedAllGroups && payloadMap.containsKey('grptag') && payloadMap.get('grptag') != null) {
-            System.debug('=== PATH 3: Creating single opportunity from payload grptag ===');
-            String groupTag = (String) payloadMap.get('grptag');
-            
-            // Check if opportunity already exists for this group tag
-            boolean opportunityExists = false;
-            for (Opportunity existingOpp : existingOpportunities) {
-                if (existingOpp.Program_Group_Tag__c == groupTag) {
-                    opportunityExists = true;
-                    System.debug('Opportunity already exists for group tag: ' + groupTag);
-                    break;
-                }
-            }
-            
-            if (!opportunityExists) {
-                // Calculate group index: existing opportunities + 1
-                Integer groupIndex = existingOpportunityCount + 1;
-                
-                // Create a simple group map from payload
-                Map<String, Object> groupMap = new Map<String, Object>();
-                groupMap.put('grptag', groupTag);
-                
-                String appNumber = payloadMap.containsKey('applicationNumber') ? 
-                                   (String) payloadMap.get('applicationNumber') : 
-                                   lead.Application_Number__c;
-                groupMap.put('applicationNumber', appNumber);
-                
-                // Also check if payload has programs for this single group
-                if (payloadMap.containsKey('programs') && payloadMap.get('programs') != null) {
-                    groupMap.put('programs', payloadMap.get('programs'));
-                } else if (payloadMap.containsKey('programmes') && payloadMap.get('programmes') != null) {
-                    groupMap.put('programmes', payloadMap.get('programmes'));
-                }
-                
-                Opportunity opp = createGroupOpportunity(lead, accountId, contactId, groupMap, groupIndex);
-                opportunitiesToInsert.add(opp);
-                System.debug('Created single opportunity from payload: ' + groupTag + ' (Group ' + groupIndex + ')');
-            }
-        }        
-    
-        // PATH 4: If still no opportunities, create a default one
-        if (opportunitiesToInsert.isEmpty()) {
-            System.debug('=== PATH 4: No groups found, creating default opportunity ===');
-            Opportunity opp = createDefaultOpportunity(lead, accountId, contactId, payloadMap);
-            opportunitiesToInsert.add(opp);
-            System.debug('Created default opportunity');
-        }
-    
-        // INSERT & POST-PROCESS
-        if (!opportunitiesToInsert.isEmpty()) {
-            // System.debug('====== OPPORTUNITIES BEFORE INSERT ======');
-            // System.debug('Total opportunities to insert: ' + opportunitiesToInsert.size());
-            
-            // // Debug each opportunity before insert
-            // for (Opportunity opp : opportunitiesToInsert) {
-            //     System.debug('Opportunity to insert:');
-            //     System.debug('  Name: ' + opp.Name);
-            //     System.debug('  Program_Group_Tag__c: ' + opp.Program_Group_Tag__c);
-            //     System.debug('  Application_Number__c: ' + opp.Application_Number__c);
-            //     System.debug('  Registration_Date__c: ' + opp.Registration_Date__c);
-            //     System.debug('  Application_Initiated_Date__c: ' + opp.Application_Initiated_Date__c);
-            //     System.debug('  LeadSource: ' + opp.LeadSource);
-            //     System.debug('  Related_Lead__c: ' + opp.Related_Lead__c);
-            // }
-    
-            try {
-                insert opportunitiesToInsert;
-                System.debug('Successfully inserted ' + opportunitiesToInsert.size() + ' opportunities');               
-                // Update Account with latest application number AFTER opportunities are inserted
-                Set<Id> newOppIds = new Set<Id>();
-                for (Opportunity opp : opportunitiesToInsert) {
-                    newOppIds.add(opp.Id);
-                }
-                updateAccountWithLatestApplicationNumber(accountId, newOppIds);
-            } catch (Exception e) {
-                System.debug('Error inserting opportunities: ' + e.getMessage());
-                System.debug('Stack trace: ' + e.getStackTraceString());
-                throw new CustomException('Error creating opportunities: ' + e.getMessage());
-            }
-    
-            // Capture details AFTER insert (Id available)
-            for (Opportunity opp : opportunitiesToInsert) {
-                Map<String, String> details = new Map<String, String>();
-                details.put('groupTag', opp.Program_Group_Tag__c);
-                details.put('applicationNumber', opp.Application_Number__c);
-                details.put('registrationNumber', opp.Registration_Number__c);
-                // Include program/major in response
-                details.put('primaryProgram', opp.Primary_Preferred_Program__c);
-                details.put('primaryMajor', opp.Primary_Preferred_Major__c);
-                details.put('secondaryProgram', opp.Secondary_Preferred_Programme__c);
-                details.put('secondaryMajor', opp.Secondary_Preferred_Major__c);
-                details.put('ternaryProgram', opp.Ternary_Preferred_Programme__c);
-                details.put('ternaryMajor', opp.Ternary_Preferred_Major__c);
-                
-                opportunityDetails.put(opp.Id, details);
-                System.debug('Added to response - Opportunity ID: ' + opp.Id + 
-                            ' | Group: ' + opp.Program_Group_Tag__c + ' | LeadSource: ' + opp.LeadSource);
-            }
-    
-            // Create Opportunity Contact Roles
-            if (contactId != null) {
-                try {
-                    createOpportunityContactRolesForAccount(opportunitiesToInsert, contactId);
-                } catch (Exception e) {
-                    System.debug('Error creating contact roles: ' + e.getMessage());
-                }
-            }
-    
-            // Update Opportunity Record Types
-            Set<Id> opportunityIds = new Set<Id>();
-            for (Opportunity opp : opportunitiesToInsert) {
-                opportunityIds.add(opp.Id);
-            }
-            updateRecordTypes(lead, accountId, opportunityIds);
-        } else {
-            System.debug('ERROR: No opportunities were created after all paths!');
-            System.debug('Payload keys: ' + payloadMap.keySet());
-            System.debug('Lead.Group_Tag__c: ' + lead.Group_Tag__c);
-            System.debug('Contains grpPrograms: ' + payloadMap.containsKey('grpPrograms'));
-            System.debug('Contains grptag: ' + payloadMap.containsKey('grptag'));
-        }
-    
-        // UPDATE ACCOUNT
-        updateAccountFromLead(lead, accountId, payloadMap);
-    
-        responseMap.put('leadId', lead.Id);
-        responseMap.put('personAccountId', accountId);
-        responseMap.put('contactId', contactId);
-        responseMap.put('opportunities', opportunityDetails);
+                String errorMessage = 'Lead already converted. ' +
+                                      'ContactId=' + freshLead.ConvertedContactId +
+                                      ', AccountId=' + freshLead.ConvertedAccountId +
+                                      ', OpportunityId=' + freshLead.ConvertedOpportunityId;
         
-        // Customize response message based on which path was used
-        String conversionMessage;
-        if (convertedAllGroups) {
-            conversionMessage = 'Lead converted successfully with ' + opportunitiesToInsert.size() + 
-                              ' opportunities (converted all ' + storedGroupsCount + ' program groups).';
-        } else if (payloadMap.containsKey('grpPrograms')) {
-            conversionMessage = 'Lead converted successfully with ' + opportunitiesToInsert.size() + 
-                              ' new opportunities from grpPrograms.';            
-        } else if (payloadMap.containsKey('grptag')) {
-            conversionMessage = 'Lead converted successfully with 1 opportunity (from payload grptag).';
-        } else {
-            conversionMessage = 'Lead converted successfully with 1 default opportunity.';
-        }
+                System.debug(errorMessage);
+                responseMap.put('message', errorMessage);
         
-        responseMap.put('message', conversionMessage);
-        System.debug('Conversion message: ' + conversionMessage);
-    
-        return 'Lead converted successfully.';
-    }
-
-    private static Opportunity createGroupOpportunity(Lead lead, Id accountId, Id contactId, 
-                                                     Map<String, Object> groupMap, Integer groupIndex) {
-        // Check for both 'uggrouptag', 'grptag', and 'groupTag'
-        String groupTag = groupMap.containsKey('uggrouptag') ? (String) groupMap.get('uggrouptag') : 
-                          groupMap.containsKey('grptag') ? (String) groupMap.get('grptag') :
-                          groupMap.containsKey('groupTag') ? (String) groupMap.get('groupTag') : '';
-        
-        // Get application number from groupMap first, then from payload, then generate
-        String groupAppNumber = null;
-        
-        // Priority 1: Check if applicationNumber is directly in groupMap
-        if (groupMap.containsKey('applicationNumber') && groupMap.get('applicationNumber') != null) {
-            groupAppNumber = (String) groupMap.get('applicationNumber');
-            System.debug('createGroupOpportunity - Using applicationNumber from groupMap: ' + groupAppNumber);
-        } 
-        else {
-            groupAppNumber = lead.Registration_Number__c + '-G' + groupIndex;
-            System.debug('Generated applicationNumber: ' + groupAppNumber);
-        }
-        
-        // Get application date from groupMap
-        Date groupAppDate = null;
-        if (groupMap.containsKey('applicationDate') && groupMap.get('applicationDate') != null) {
-            try {
-                groupAppDate = Date.valueOf((String) groupMap.get('applicationDate'));
-                System.debug('Using applicationDate from groupMap: ' + groupAppDate);
-            } catch (Exception e) {
-                System.debug('Error parsing applicationDate from groupMap: ' + e.getMessage());
-            }
-        }
-        // Fallback to lead's Application_Date__c
-        else if (lead.Application_Date__c != null) {
-            groupAppDate = lead.Application_Date__c;
-            System.debug('Using Application_Date__c from lead: ' + groupAppDate);
-        }
-        
-        System.debug('Final values for group ' + groupTag + ':');
-        System.debug('  Application Number: ' + groupAppNumber);
-        System.debug('  Application Date: ' + groupAppDate);
-        System.debug('  Lead Application_Number__c: ' + lead.Application_Number__c);
-        System.debug('  Lead Application_Date__c: ' + lead.Application_Date__c);
-        System.debug('  Lead Registration_Number__c: ' + lead.Registration_Number__c);
-        
-        Opportunity opp = new Opportunity();
-        String opportunityName = lead.Name + '- Group ' + groupIndex;                                                 
-        if (String.isNotBlank(groupTag)) {
-            opportunityName += ' ' + groupTag;
-        }
-        opp.Name = opportunityName;                                                 
-        opp.Full_Name__c = lead.Name;
-        opp.AccountId = accountId;
-        opp.ContactId = contactId;
-        opp.Related_Lead__c = lead.Id; // to track the lead of this opportunity     
-        opp.Original_Lead_Id__c = lead.Id;
-        opp.StageName = 'Application Submitted';
-        opp.CloseDate = Date.today().addMonths(2);
-        opp.Application_Number__c = groupAppNumber;
-        opp.Registration_Number__c = lead.Registration_Number__c;
-        opp.Registration_Date__c = lead.Registration_Date__c;
-                                                         
-        if (groupAppDate != null) {             
-            opp.Application_Initiated_Date__c = groupAppDate;
-            System.debug('Set Application_Initiated_Date__c from groupMap: ' + groupAppDate);
-        } else {
-            opp.Application_Initiated_Date__c = lead.Application_Date__c;
-            System.debug('Set Application_Initiated_Date__c from lead: ' + lead.Application_Date__c);
-        }                                                         
-                                                         
-        System.debug('Setting LeadSource from lead: ' + lead.LeadSource);
-        System.debug('Lead ID: ' + lead.Id);
-        System.debug('Lead Name: ' + lead.Name); 
-                                                         
-        System.debug('=== CRITICAL FIELD VALUES ===');
-        System.debug('Opportunity.Application_Number__c: ' + opp.Application_Number__c);
-        System.debug('Opportunity.Registration_Number__c: ' + opp.Registration_Number__c);
-        System.debug('Opportunity.Application_Initiated_Date__c: ' + opp.Application_Initiated_Date__c);
-        System.debug('Opportunity.Registration_Date__c: ' + opp.Registration_Date__c);
-        System.debug('Are App# and Reg# different? ' + (opp.Application_Number__c != opp.Registration_Number__c));
-        System.debug('Is AppDate from payload/groupMap? ' + (groupAppDate != lead.Application_Date__c));                                                      
-                                                         
-        opp.LeadSource = lead.LeadSource;
-        opp.Phone__c = lead.Phone;
-        opp.Email__c = lead.Email;
-        opp.URL__c = lead.URL__c;
-        opp.Auris_Form_URL__c = lead.Auris_Form_URL__c;
-        opp.Program_Group_Tag__c = groupTag;
-        opp.OwnerId = lead.OwnerId;
-                                                         
-        // EXECUTIVE EDUCATION FIELD MAPPING
-        // Check if this is Executive Education lead
-        boolean isExecutiveEducation = lead.RecordType.DeveloperName == 'Executive_Education' || 
-                                      lead.RecordType.DeveloperName == 'Executive_Education_Lead' ||
-                                      lead.Department__c == 'Executive Education';
-        
-        if (isExecutiveEducation) {
-            System.debug('This is an Executive Education lead, mapping specific fields...');
-            
-            // Map Executive Education specific fields from Lead to Opportunity
-            // 1. Organisation / Institute Name
-            if (lead.Organisation_Institute_Name__c != null) {
-                opp.Organisation_Institute_Name__c = lead.Organisation_Institute_Name__c;
-                System.debug('Mapped Organisation_Institute_Name__c: ' + lead.Organisation_Institute_Name__c);
-            } else if (lead.Company != null) {
-                opp.Organisation_Institute_Name__c = lead.Company;
-                System.debug('Mapped Organisation_Institute_Name__c (from Company): ' + lead.Company);
-            }
-            
-            // 2. Designation
-            if (lead.Designation__c != null) {
-                opp.Designation__c = lead.Designation__c;
-                System.debug('Mapped Designation__c: ' + lead.Designation__c);
-            }
-            
-            // 3. Highest Qualification
-            if (lead.My_Highest_Qualification__c != null) {
-                opp.Highest_Qualification__c = lead.My_Highest_Qualification__c;
-                System.debug('Mapped My_Highest_Qualification__c: ' + lead.My_Highest_Qualification__c);
-            }
-            
-            // 4. Engagement Score
-            if (lead.Engagement_Score__c != null) {
-                opp.Engagement_Score__c = lead.Engagement_Score__c;
-                System.debug('Mapped Engagement_Score__c: ' + lead.Engagement_Score__c);
-            }
-            
-            // 5. Total Work Experience
-            if (lead.Total_Work_Experience_Year_s__c != null) {
-                opp.Total_Work_Experience_Year_s__c = lead.Total_Work_Experience_Year_s__c;
-                System.debug('Mapped Total_Work_Experience_Year_s__c: ' + lead.Total_Work_Experience_Year_s__c);
-            }
-            
-            // For Executive Education
-            opp.StageName = 'Engaged';
-            System.debug('Set Executive Education specific StageName: ' + opp.StageName);
-        }                                                  
-        
-        // Set timestamp
-        Datetime now = System.now();
-        opp.Auris_Last_Modified_Timestamp__c = now.format('yyyy-MM-dd:HH:mm:ss');
-        
-        // Check for both 'programs' and 'programmes'
-        List<Object> programList = null;
-        if (groupMap.containsKey('programmes') && groupMap.get('programmes') != null) {
-            programList = (List<Object>) groupMap.get('programmes');
-            System.debug('Found programmes key in group');
-        } else if (groupMap.containsKey('programs') && groupMap.get('programs') != null) {
-            programList = (List<Object>) groupMap.get('programs');
-            System.debug('Found programs key in group');
-        }
-            
-        // Set program preferences for this group
-        if (programList != null && !programList.isEmpty()) {
-            System.debug('Processing ' + programList.size() + ' program(s) in group');
-            
-            // Sort programs by preferenceOrder if provided
-            List<Map<String, Object>> sortedPrograms = sortProgramsByPreference(programList);            
-            
-            for (Integer i = 0; i < programList.size() && i < MAX_PROGRAMS_PER_GROUP; i++) {
-                Map<String, Object> program = sortedPrograms[i];
-                
-                // Try all possible key variations
-                String programInterestedIn = null;
-                if (program.containsKey('programInterestedIn')) {
-                    programInterestedIn = (String) program.get('programInterestedIn');
-                } else if (program.containsKey('programinterestedin')) {
-                    programInterestedIn = (String) program.get('programinterestedin');
-                } else if (program.containsKey('ProgramInterestedIn')) {
-                    programInterestedIn = (String) program.get('ProgramInterestedIn');
-                }
-                
-                String major = (String) program.get('major');
-                
-                if (i == 0) {
-                    opp.Primary_Preferred_Program__c = programInterestedIn;
-                    opp.Primary_Preferred_Major__c = major;
-                    System.debug('Set Primary Program: ' + opp.Primary_Preferred_Program__c);
-                    System.debug('Set Primary Major: ' + opp.Primary_Preferred_Major__c);
-                } else if (i == 1) {
-                    opp.Secondary_Preferred_Programme__c = programInterestedIn;
-                    opp.Secondary_Preferred_Major__c = major;
-                    System.debug('Set Secondary Program: ' + opp.Secondary_Preferred_Programme__c);
-                } else if (i == 2) {
-                    opp.Ternary_Preferred_Programme__c = programInterestedIn;
-                    opp.Ternary_Preferred_Major__c = major;
-                    System.debug('Set Ternary Program: ' + opp.Ternary_Preferred_Programme__c);
-                }
-            }
-        }      
-        return opp;
-    }
-
-    public static void createOpportunityContactRolesForAccount(List<Opportunity> opportunities, Id personAccountId) {
-        // Get contact ID from person account
-        List<Contact> contacts = [SELECT Id FROM Contact WHERE AccountId = :personAccountId LIMIT 1];
-        if (contacts.isEmpty()) return;
-        
-        Id contactId = contacts[0].Id;
-        
-        List<OpportunityContactRole> rolesToInsert = new List<OpportunityContactRole>();
-        
-        for (Opportunity opp : opportunities) {
-            OpportunityContactRole role = new OpportunityContactRole();
-            role.ContactId = contactId;
-            role.OpportunityId = opp.Id;
-            role.IsPrimary = true;
-            rolesToInsert.add(role);
-        }
-        
-        if (!rolesToInsert.isEmpty()) {
-            insert rolesToInsert;
-        }
-    }
-
-    private static Opportunity createDefaultOpportunity(Lead lead, Id accountId, Id contactId, 
-                                                       Map<String, Object> payloadMap) {
-                                                           
-        //Get application number from payload first
-        String appNumber = null;
-        
-        // Priority 1: Use applicationNumber from payload
-        if (payloadMap.containsKey('applicationNumber') && payloadMap.get('applicationNumber') != null) {
-            appNumber = (String) payloadMap.get('applicationNumber');
-            System.debug('Default opp - Using applicationNumber from payload: ' + appNumber);
-        }
-        // Priority 2: Use lead's Application_Number__c
-        else if (lead.Application_Number__c != null) {
-            appNumber = lead.Application_Number__c;
-            System.debug('Default opp - Using lead.Application_Number__c: ' + appNumber);
-        }
-        // Priority 3: Use registration number as fallback
-        else {
-            appNumber = lead.Registration_Number__c;
-            System.debug('Default opp - Using registration number as app number: ' + appNumber);
-        }
-                                                           
-        Opportunity opp = new Opportunity();
-        opp.Name = lead.Name;
-        opp.Full_Name__c = lead.Name;
-        opp.AccountId = accountId;
-        opp.ContactId = contactId;
-        opp.StageName = 'Application Submitted';
-        opp.CloseDate = Date.today().addMonths(2);
-        opp.LeadSource = lead.LeadSource;
-        opp.Phone__c = lead.Phone;
-        opp.Email__c = lead.Email;
-        opp.URL__c = lead.URL__c;
-        opp.Auris_Form_URL__c = lead.Auris_Form_URL__c;
-        opp.Registration_Number__c = lead.Registration_Number__c;
-        opp.Registration_Date__c = lead.Registration_Date__c;
-        opp.Application_Number__c = appNumber;                                                    
-        opp.Application_Initiated_Date__c = lead.Application_Date__c;
-        opp.OwnerId = lead.OwnerId;
-        opp.Related_Lead__c = lead.Id; //to track which Lead the Opportunity came from  
-        opp.Original_Lead_Id__c = lead.Id;
-        
-        // Set timestamp
-        Datetime now = System.now();
-        opp.Auris_Last_Modified_Timestamp__c = now.format('yyyy-MM-dd:HH:mm:ss');
-        
-        // FIXED: Extract program preferences from programs array
-        if (payloadMap.containsKey('programs') && payloadMap.get('programs') != null) {
-            List<Object> programs = (List<Object>) payloadMap.get('programs');
-            if (!programs.isEmpty()) {
-                // Sort programs by preferenceOrder if provided
-                List<Map<String, Object>> sortedPrograms = sortProgramsByPreference(programs);
-                
-                for (Integer i = 0; i < sortedPrograms.size() && i < MAX_PROGRAMS_PER_GROUP; i++) {
-                    Map<String, Object> program = sortedPrograms[i];
-                    
-                    String programInterestedIn = null;
-                    if (program.containsKey('programInterestedIn')) {
-                        programInterestedIn = (String) program.get('programInterestedIn');
-                    } else if (program.containsKey('programinterestedin')) {
-                        programInterestedIn = (String) program.get('programinterestedin');
-                    }
-                    
-                    String major = (String) program.get('major');
-                    
-                    if (i == 0) {
-                        opp.Primary_Preferred_Program__c = programInterestedIn;
-                        opp.Primary_Preferred_Major__c = major;
-                    } else if (i == 1) {
-                        opp.Secondary_Preferred_Programme__c = programInterestedIn;
-                        opp.Secondary_Preferred_Major__c = major;
-                    } else if (i == 2) {
-                        opp.Ternary_Preferred_Programme__c = programInterestedIn;
-                        opp.Ternary_Preferred_Major__c = major;
-                    }
-                }
-            }
-        }
-
-        else if (payloadMap.containsKey('programmes') && payloadMap.get('programmes') != null) {
-            List<Object> programmes = (List<Object>) payloadMap.get('programmes');
-            if (!programmes.isEmpty()) {
-                // Sort programmes by preferenceOrder if provided
-                List<Map<String, Object>> sortedProgrammes = sortProgramsByPreference(programmes);
-                
-                for (Integer i = 0; i < sortedProgrammes.size() && i < MAX_PROGRAMS_PER_GROUP; i++) {
-                    Map<String, Object> programme = sortedProgrammes[i];
-                    
-                    String programInterestedIn = null;
-                    if (programme.containsKey('programInterestedIn')) {
-                        programInterestedIn = (String) programme.get('programInterestedIn');
-                    } else if (programme.containsKey('programinterestedin')) {
-                        programInterestedIn = (String) programme.get('programinterestedin');
-                    }
-                    
-                    String major = (String) programme.get('major');
-                    
-                    if (i == 0) {
-                        opp.Primary_Preferred_Program__c = programInterestedIn;
-                        opp.Primary_Preferred_Major__c = major;
-                    } else if (i == 1) {
-                        opp.Secondary_Preferred_Programme__c = programInterestedIn;
-                        opp.Secondary_Preferred_Major__c = major;
-                    } else if (i == 2) {
-                        opp.Ternary_Preferred_Programme__c = programInterestedIn;
-                        opp.Ternary_Preferred_Major__c = major;
-                    }
-                }
-            }
-        }
-        
-        // Set program preferences from individual payload fields
-        if (payloadMap.containsKey('primaryPreferredProgram')) {
-            opp.Primary_Preferred_Program__c = (String) payloadMap.get('primaryPreferredProgram');
-        }
-        if (payloadMap.containsKey('secondaryPreferredProgramme')) {
-            opp.Secondary_Preferred_Programme__c = (String) payloadMap.get('secondaryPreferredProgramme');
-        }
-        if (payloadMap.containsKey('ternaryPreferredProgramme')) {
-            opp.Ternary_Preferred_Programme__c = (String) payloadMap.get('ternaryPreferredProgramme');
-        }
-        if (payloadMap.containsKey('primaryPreferredMajor')) {
-            opp.Primary_Preferred_Major__c = (String) payloadMap.get('primaryPreferredMajor');
-        }
-        if (payloadMap.containsKey('secondaryPreferredMajor')) {
-            opp.Secondary_Preferred_Major__c = (String) payloadMap.get('secondaryPreferredMajor');
-        }
-        if (payloadMap.containsKey('ternaryPreferredMajor')) {
-            opp.Ternary_Preferred_Major__c = (String) payloadMap.get('ternaryPreferredMajor');
-        }
-        
-        return opp;
-    }
-
-    public static void updateAccountWithLatestApplicationNumber(Id accountId, Set<Id> newOpportunityIds) {
-        try {
-            System.debug('=== UPDATE ACCOUNT WITH LATEST APPLICATION NUMBER START ===');
-            System.debug('Account ID: ' + accountId);
-            System.debug('New Opportunity IDs: ' + newOpportunityIds);
-            
-            // Query account
-            Account acc = [SELECT Id, Application__c, Application_Date__c FROM Account WHERE Id = :accountId LIMIT 1];
-            String oldApplicationNumber = acc.Application__c;
-            Date oldApplicationDate = acc.Application_Date__c;
-            boolean needsUpdate = false;
-            
-            // Query ALL opportunities for this account, sorted by CreatedDate DESC (newest first)
-            // If newOpportunityIds provided, include them in the query
-            String soql = 'SELECT Id, Application_Number__c, Application_Initiated_Date__c, CreatedDate ' +
-                         'FROM Opportunity ' +
-                         'WHERE AccountId = :accountId ' +
-                         'AND Application_Number__c != null ';
-            
-            if (newOpportunityIds != null && !newOpportunityIds.isEmpty()) {
-                soql += 'AND (Id IN :newOpportunityIds OR CreatedDate = TODAY) ';
-            }
-            
-            soql += 'ORDER BY Application_Initiated_Date__c DESC NULLS LAST, CreatedDate DESC ' +
-                    'LIMIT 1';
-            
-            List<Opportunity> opportunities = Database.query(soql);
-            
-            if (!opportunities.isEmpty()) {
-                Opportunity latestOpp = opportunities[0];
-                String latestAppNumber = latestOpp.Application_Number__c;
-                Date latestAppDate = latestOpp.Application_Initiated_Date__c;
-                
-                System.debug('Latest Opportunity Found:');
-                System.debug('  ID: ' + latestOpp.Id);
-                System.debug('  Application Number: ' + latestAppNumber);
-                System.debug('  Application Date: ' + latestAppDate);
-                System.debug('  Created Date: ' + latestOpp.CreatedDate);                
-                
-                // Only update if different
-                if (acc.Application__c != latestAppNumber) {
-                    acc.Application__c = latestAppNumber;
-                    needsUpdate = true;
-                    System.debug('Will update Account.Application__c:');
-                    System.debug('   From: ' + oldApplicationNumber);
-                    System.debug('   To: ' + latestAppNumber);                    
-                } else {
-                    System.debug('Account.Application__c already up to date: ' + latestAppNumber);
-                }    
-                // Update Application Date if different AND not null
-                if (latestAppDate != null && acc.Application_Date__c != latestAppDate) {
-                    acc.Application_Date__c = latestAppDate;
-                    needsUpdate = true;
-                    System.debug('Will update Account.Application_Date__c:');
-                    System.debug('   From: ' + oldApplicationDate);
-                    System.debug('   To: ' + latestAppDate);
-                    System.debug('   Source Opportunity ID: ' + latestOpp.Id);
-                } else if (latestAppDate != null) {
-                    System.debug('Account.Application_Date__c already up to date: ' + latestAppDate);
-                } else {
-                    System.debug('Latest opportunity has no Application_Initiated_Date__c');
-                }
-                
-                // Update account if any field changed
-                if (needsUpdate) {
-                    update acc;
-                    System.debug('Account updated successfully');
-                } else {
-                    System.debug('No update needed for account');
-                }                  
-
+                return errorMessage;
             } else {
-                System.debug('No opportunities found for account: ' + accountId);
+                String errorMessage = 'Lead conversion failed. Error: ' + result.getErrors()[0].getMessage();
+                System.debug(errorMessage);
+                responseMap.put('statusCode', 400);
+                responseMap.put('message', errorMessage);
+                return errorMessage;
             }
-            
-            System.debug('=== UPDATE ACCOUNT WITH LATEST APPLICATION NUMBER END ===');
-            
-        } catch (Exception e) {
-            System.debug('Error in updateAccountWithLatestApplicationNumber: ' + 
-                        e.getMessage() + ' | Line: ' + e.getLineNumber());
         }
-    }   
-
-    private static void updateAccountFromLead(Lead lead, Id accountId, Map<String, Object> payloadMap) {
-        Account account = [SELECT Id, IsPersonAccount, FirstName, LastName, Phone, PersonEmail,
-                                  Email__c, Programme_Interested_in__c, PersonMobilePhone,
-                                  Date_of_Birth__c, Application_Date__c, Registration_Date__c,
-                                  Auris_URL__c, Multi_Select_Lead_Source__c, BillingPostalCode,
-                                  BillingCity, BillingCountry, BillingState, BillingStreet,
-                                  Application__c, Registration_Number__c, UTM_Link__c,
-                                  Campaign_Name__c, OwnerId
-                           FROM Account WHERE Id = :accountId LIMIT 1];
-        
-        // Query ALL opportunities for this account to get latest application number
-        List<Opportunity> accountOpportunities = [
-            SELECT Id, Application_Number__c, CreatedDate 
-            FROM Opportunity 
-            WHERE AccountId = :accountId 
-            ORDER BY CreatedDate DESC, Application_Number__c DESC
-            LIMIT 1
-        ];        
-        
-        // Update from lead
-        if (account.IsPersonAccount) {
-            String[] nameParts = lead.Name.split(' ', 2);
-            account.FirstName = (nameParts.size() > 0) ? nameParts[0] : '';
-            account.LastName = (nameParts.size() > 1) ? nameParts[1] : '';
-        }
-        
-        Datetime now = System.now();
-        account.Auris_Last_Modified_Timestamp__c = now.format('yyyy-MM-dd:HH:mm:ss');
-        account.Phone = lead.Phone;
-        account.PersonEmail = lead.Email;
-        account.Auris_URL__c = lead.Auris_Form_URL__c;
-        account.Multi_Select_Lead_Source__c = lead.Multi_Select_Lead_Source__c;
-        account.Registration_Number__c = lead.Registration_Number__c;
-        account.Registration_Date__c = lead.Registration_Date__c;
-        
-        // Set Application__c from LATEST opportunity, NOT from lead
-        if (!accountOpportunities.isEmpty()) {
-            account.Application__c = accountOpportunities[0].Application_Number__c;
-            System.debug('Updated Account.Application__c from latest opportunity: ' + accountOpportunities[0].Application_Number__c);
-        } else {
-            // Fallback to lead's application number if no opportunities exist yet
-            account.Application__c = lead.Application_Number__c;
-            System.debug('No opportunities found, using lead.Application_Number__c: ' + lead.Application_Number__c);
-        }        
-        
-        account.OwnerId = lead.OwnerId;
-        account.UTM_Link__c = lead.UTM_Link__c;
-        account.Campaign_Name__c = lead.Campaign_Name__c;
-        
-        // Update from payload
-        updateAccountFromPayload(account, payloadMap);
-        
-        update account;
     }
-
-    // Helper method to sort programs by preferenceOrder
-    private static List<Map<String, Object>> sortProgramsByPreference(List<Object> programList) {
-        List<Map<String, Object>> programs = new List<Map<String, Object>>();
-        
-        for (Object obj : programList) {
-            programs.add((Map<String, Object>) obj);
-        }
-        
-        // Sort by preferenceOrder if available
-        programs.sort(new ProgramComparator());
-        
-        return programs;
-    }
-
-    private static void updateAccountFromPayload(Account account, Map<String, Object> payloadMap) {
-        if (payloadMap.containsKey('email') && payloadMap.get('email') != null) {
-            account.Email__c = (String) payloadMap.get('email');
-        }
-        if (payloadMap.containsKey('phone') && payloadMap.get('phone') != null) {
-            account.Phone = (String) payloadMap.get('phone');
-        }
-        if (payloadMap.containsKey('programmeInterestedIn') && payloadMap.get('programmeInterestedIn') != null) {
-            account.Programme_Interested_in__c = (String) payloadMap.get('programmeInterestedIn');
-        }
-        if (payloadMap.containsKey('mobile') && payloadMap.get('mobile') != null) {
-            account.PersonMobilePhone = (String) payloadMap.get('mobile');
-        }
-        if (payloadMap.containsKey('dateOfBirth') && payloadMap.get('dateOfBirth') != null) {
-            account.Date_of_Birth__c = Date.valueOf((String) payloadMap.get('dateOfBirth'));
-        }
-        if (payloadMap.containsKey('applicationDate') && payloadMap.get('applicationDate') != null) {
-            account.Application_Date__c = Date.valueOf((String) payloadMap.get('applicationDate'));
-        }
-        if (payloadMap.containsKey('registrationDate') && payloadMap.get('registrationDate') != null) {
-            account.Registration_Date__c = Date.valueOf((String) payloadMap.get('registrationDate'));
-        }
-        if (payloadMap.containsKey('aurisFormURL') && payloadMap.get('aurisFormURL') != null) {
-            account.Auris_URL__c = (String) payloadMap.get('aurisFormURL');
-        }
-        if (payloadMap.containsKey('residentialAddress') && payloadMap.get('residentialAddress') != null) {
-            account.BillingStreet = (String) payloadMap.get('residentialAddress');
-        }
-        if (payloadMap.containsKey('cityTownVillage') && payloadMap.get('cityTownVillage') != null) {
-            account.BillingCity = (String) payloadMap.get('cityTownVillage');
-        }
-        if (payloadMap.containsKey('stateUnionTerritoryProvince') && payloadMap.get('stateUnionTerritoryProvince') != null) {
-            account.BillingState = (String) payloadMap.get('stateUnionTerritoryProvince');
-        }
-        if (payloadMap.containsKey('district') && payloadMap.get('district') != null) {
-            account.BillingCity = (String) payloadMap.get('district');
-        }
-        if (payloadMap.containsKey('country') && payloadMap.get('country') != null) {
-            account.BillingCountry = (String) payloadMap.get('country');
-        }
-        if (payloadMap.containsKey('pinPostalCode') && payloadMap.get('pinPostalCode') != null) {
-            account.BillingPostalCode = (String) payloadMap.get('pinPostalCode');
-        }
-        if (payloadMap.containsKey('applicationNumber') && payloadMap.get('applicationNumber') != null) {
-            account.Application__c = String.valueOf(payloadMap.get('applicationNumber'));
-        }
-        if (payloadMap.containsKey('registrationNumber') && payloadMap.get('registrationNumber') != null) {
-            account.Registration_Number__c = String.valueOf(payloadMap.get('registrationNumber'));
-        }
-        if (payloadMap.containsKey('utmLink') && payloadMap.get('utmLink') != null) {
-            account.UTM_Link__c = String.valueOf(payloadMap.get('utmLink'));
-        }
-        if (payloadMap.containsKey('firstName') && payloadMap.get('firstName') != null) {
-            account.FirstName = String.valueOf(payloadMap.get('firstName'));
-        }
-        if (payloadMap.containsKey('lastName') && payloadMap.get('lastName') != null) {
-            account.LastName = String.valueOf(payloadMap.get('lastName'));
-        }
-    } 
-
-    // Comparator class for sorting programs
-    public class ProgramComparator implements System.Comparator<Map<String, Object>> {
-        public Integer compare(Map<String, Object> p1, Map<String, Object> p2) {
-            Integer order1 = getPreferenceOrder(p1);
-            Integer order2 = getPreferenceOrder(p2);
-            
-            if (order1 == null && order2 == null) return 0;
-            if (order1 == null) return 1; // null goes last
-            if (order2 == null) return -1;
-            
-            return order1 - order2;
-        }
-        
-        private Integer getPreferenceOrder(Map<String, Object> program) {
-            if (program.containsKey('preferenceOrder')) {
-                Object order = program.get('preferenceOrder');
-                if (order instanceof Integer) return (Integer) order;
-                if (order instanceof String) {
-                    try {
-                        return Integer.valueOf((String) order);
-                    } catch (Exception e) {
-                        return null;
-                    }
-                }
-            }
-            return null;
-        }
-    }      
-
-    public class CustomException extends Exception {}    
 
     /**
     * @description - This method updates the record types of the Account and Opportunity records
@@ -2471,9 +1556,49 @@ global with sharing class LeadConversionService {
                     FROM Lead WHERE Id = :lead.Id LIMIT 1];
             */
 
+        //Mihir Ramoliya- 16th Marth 2026 - this is giving error when Lead converting to opportunity for the first time as result is null, so added null check for result and then fetching accountId from lead object if result is null
+        // ✅ FIX: Null-safe accountId resolution
+        Id accountId;
+        if (result != null) {
+            // Fresh conversion — result is available
+            accountId = result.getAccountId();
+        } else {
+            // Already-converted lead — result is null, derive accountId from opportunities
+            if (!opportunityIds.isEmpty()) {
+                List<Opportunity> oppCheck = [
+                    SELECT AccountId 
+                    FROM Opportunity 
+                    WHERE Id IN :opportunityIds 
+                    AND AccountId != null 
+                    LIMIT 1
+                ];
+                if (!oppCheck.isEmpty()) {
+                    accountId = oppCheck[0].AccountId;
+                }
+            }
+            
+            // Final fallback: use ConvertedAccountId from the lead itself
+            if (accountId == null && lead.ConvertedContactId != null) {
+                List<Lead> convertedLead = [
+                    SELECT ConvertedAccountId 
+                    FROM Lead 
+                    WHERE Id = :lead.Id 
+                    LIMIT 1
+                ];
+                if (!convertedLead.isEmpty()) {
+                    accountId = convertedLead[0].ConvertedAccountId;
+                }
+            }
+        }
 
+        // Guard: if we still can't resolve an accountId, exit gracefully
+        if (accountId == null) {
+            System.debug('ERROR: Could not resolve accountId in mapFieldsToOpportunityAndAccountMasters');
+            responseMap.put('message', 'Field mapping failed: Could not resolve Account ID');
+            return;
+        }
         
-        Id accountId = result.getAccountId();
+        // Id accountId = result.getAccountId();
         //Id opportunityId = result.getOpportunityId();
         Id leadOwnerId = lead.OwnerId; // Get the Lead Owner ID
         String firstname;
@@ -2889,216 +2014,6 @@ global with sharing class LeadConversionService {
                 update opportunityToBeUpdated;
                 //System.debug('opportunityToBeUpdated updated: ' + opportunityToBeUpdated);
             }
-        }
-    }
-
-    private static void createPreferredProgramsFromGroupTag(Id leadId, String groupTagJson) {
-        try {
-            System.debug('====== createPreferredProgramsFromGroupTag START ======');
-            System.debug('Lead ID: ' + leadId);
-            System.debug('Group_Tag__c JSON: ' + groupTagJson);
-            
-            if (String.isBlank(groupTagJson)) {
-                System.debug('Group_Tag__c is empty');
-                return;
-            }
-            
-            // Parse the JSON
-            List<Object> programGroups = (List<Object>) JSON.deserializeUntyped(groupTagJson);
-            System.debug('Parsed ' + programGroups.size() + ' groups from Group_Tag__c');
-            
-            // Get registration number from lead
-            Lead lead = [SELECT Registration_Number__c FROM Lead WHERE Id = :leadId LIMIT 1];
-            String registrationNumber = lead.Registration_Number__c;
-            
-            // Create a payload-like map to reuse existing logic
-            Map<String, Object> payloadMap = new Map<String, Object>();
-            payloadMap.put('grpPrograms', programGroups);
-            
-            // Call the existing method with our constructed payload
-            createPreferredProgramRecordsFromPayload(leadId, payloadMap);
-            
-            System.debug('====== createPreferredProgramsFromGroupTag END ======');
-            
-        } catch (Exception e) {
-            System.debug('Error in createPreferredProgramsFromGroupTag: ' + e.getMessage());
-            System.debug('Stack trace: ' + e.getStackTraceString());
-        }
-    }
-
-    private static void createPreferredProgramRecordsFromPayload(
-        Id leadId,
-        Map<String, Object> payloadMap
-    ) {
-        try {
-            System.debug('createPreferredProgramRecordsFromPayload | LeadId = ' + leadId);
-
-            // 1. Normalize payload keys to lowercase (case-insensitive)
-            Map<String, Object> normalizedPayload = new Map<String, Object>();
-            for (String key : payloadMap.keySet()) {
-                normalizedPayload.put(key.toLowerCase(), payloadMap.get(key));
-            }
-            
-            // 2. Check if payload contains ANY program data
-            Boolean hasProgramData =
-                normalizedPayload.containsKey('grpprograms') ||
-                normalizedPayload.containsKey('programs') ||
-                normalizedPayload.containsKey('programmes');
-    
-            if (!hasProgramData) {
-                System.debug('No program data found in payload. Skipping Preferred Program creation.');
-                return;
-            }
-    
-            List<Preferred_Program__c> programsToInsert = new List<Preferred_Program__c>();
-            Set<String> majorNames = new Set<String>();
-    
-            // 3. FIRST PASS: Collect all Major names
-            // grpPrograms → programmes / programs
-            if (normalizedPayload.containsKey('grpprograms')) {
-                List<Object> grpPrograms = (List<Object>) normalizedPayload.get('grpprograms');
-    
-                for (Object groupObj : grpPrograms) {
-                    Map<String, Object> groupMapRaw = (Map<String, Object>) groupObj;
-    
-                    Map<String, Object> groupMap = new Map<String, Object>();
-                    for (String key : groupMapRaw.keySet()) {
-                        groupMap.put(key.toLowerCase(), groupMapRaw.get(key));
-                    }
-    
-                    List<Object> programmeList = new List<Object>();
-    
-                    if (groupMap.containsKey('programmes')) {
-                        programmeList = (List<Object>) groupMap.get('programmes');
-                    } else if (groupMap.containsKey('programs')) {
-                        programmeList = (List<Object>) groupMap.get('programs');
-                    }
-    
-                    for (Object programObj : programmeList) {
-                        Map<String, Object> program = (Map<String, Object>) programObj;
-                        String major = (String) program.get('major');
-    
-                        if (String.isNotBlank(major)) {
-                            majorNames.add(major);
-                        }
-                    }
-                }
-            }
-    
-            // 4. Query Major__c records
-            Map<String, Id> majorNameToId = new Map<String, Id>();
-    
-            if (!majorNames.isEmpty()) {
-                for (Major__c m : [
-                    SELECT Id, Name
-                    FROM Major__c
-                    WHERE Name IN :majorNames
-                ]) {
-                    majorNameToId.put(m.Name, m.Id);
-                }
-            }
-    
-            // 5. SECOND PASS: Create Preferred_Program__c records
-            // Case A: grpPrograms
-            if (normalizedPayload.containsKey('grpprograms')) {
-                List<Object> grpPrograms = (List<Object>) normalizedPayload.get('grpprograms');
-    
-                for (Object groupObj : grpPrograms) {
-                    Map<String, Object> groupMapRaw = (Map<String, Object>) groupObj;
-    
-                    Map<String, Object> groupMap = new Map<String, Object>();
-                    for (String key : groupMapRaw.keySet()) {
-                        groupMap.put(key.toLowerCase(), groupMapRaw.get(key));
-                    }
-    
-                    String groupTag = (String) groupMap.get('grptag');
-    
-                    List<Object> programmeList = new List<Object>();
-                    if (groupMap.containsKey('programmes')) {
-                        programmeList = (List<Object>) groupMap.get('programmes');
-                    } else if (groupMap.containsKey('programs')) {
-                        programmeList = (List<Object>) groupMap.get('programs');
-                    }
-    
-                    for (Object programObj : programmeList) {
-                        Map<String, Object> program = (Map<String, Object>) programObj;
-    
-                        String programInterestedIn =
-                            (String) (
-                                program.containsKey('programInterestedIn') ? program.get('programInterestedIn') :
-                                program.containsKey('programinterestedin') ? program.get('programinterestedin') :
-                                program.containsKey('ProgramInterestedIn') ? program.get('ProgramInterestedIn') :
-                                null
-                            );
-    
-                        String majorName = (String) program.get('major');
-    
-                        if (String.isNotBlank(programInterestedIn)) {
-                            Preferred_Program__c pref = new Preferred_Program__c();
-                            pref.Lead__c = leadId;
-                            pref.Full_Program_Name__c = programInterestedIn;
-                            pref.Program_Group_Tag__c = groupTag;
-    
-                            if (String.isNotBlank(majorName) && majorNameToId.containsKey(majorName)) {
-                                pref.Major__c = majorNameToId.get(majorName);
-                            }
-    
-                            programsToInsert.add(pref);
-                        }
-                    }
-                }
-            }
-    
-            // Case B: root-level programs
-            else if (normalizedPayload.containsKey('programs') || normalizedPayload.containsKey('programmes')) {
-    
-                List<Object> programs =
-                    normalizedPayload.containsKey('programs')
-                    ? (List<Object>) normalizedPayload.get('programs')
-                    : (List<Object>) normalizedPayload.get('programmes');
-    
-                for (Object programObj : programs) {
-                    Map<String, Object> program = (Map<String, Object>) programObj;
-    
-                    String programInterestedIn = (String) program.get('programInterestedIn');
-                    String majorName = (String) program.get('major');
-    
-                    if (String.isNotBlank(programInterestedIn)) {
-                        Preferred_Program__c pref = new Preferred_Program__c();
-                        pref.Lead__c = leadId;
-                        pref.Full_Program_Name__c = programInterestedIn;
-    
-                        if (String.isNotBlank(majorName) && majorNameToId.containsKey(majorName)) {
-                            pref.Major__c = majorNameToId.get(majorName);
-                        }
-    
-                        programsToInsert.add(pref);
-                    }
-                }
-            }
-    
-            // 6. Delete existing & insert new records
-            if (!programsToInsert.isEmpty()) {
-    
-                List<Preferred_Program__c> existing =
-                    [SELECT Id FROM Preferred_Program__c WHERE Lead__c = :leadId];
-    
-                if (!existing.isEmpty()) {
-                    delete existing;
-                    System.debug('Deleted existing Preferred Programs: ' + existing.size());
-                }
-    
-                insert programsToInsert;
-                System.debug('Inserted Preferred Programs: ' + programsToInsert.size());
-            } else {
-                System.debug('No Preferred Program records created.');
-            }
-    
-        } catch (Exception e) {
-            System.debug(
-                'Error in createPreferredProgramRecordsFromPayload: ' +
-                e.getMessage() + ' | Line ' + e.getLineNumber()
-            );
         }
     }
 
@@ -3641,31 +2556,31 @@ global with sharing class LeadConversionService {
 
 
 
-            //Map<Id, String> opportunityToBeUpdated = new Map<Id, String>();
+            Map<Id, String> opportunityToBeUpdated = new Map<Id, String>();
 
             // JSON string
             //String requestBody = req.requestBody.toString();
-            //String requestBody = payload.toString();
+            String requestBody = payload.toString();
 
             // Deserialize the JSON into a List of Maps
-            //List<Object> jsonList = (List<Object>) JSON.deserializeUntyped(requestBody);
+            List<Object> jsonList = (List<Object>) JSON.deserializeUntyped(requestBody);
             Id opportunityId ;
             // Iterate through the list and get opportunityId
-            //for (Object Obj : jsonList) {
-                //Map<String, Object> opportunityMap = (Map<String, Object>) Obj;
-                //opportunityId = (Id) opportunityMap.get('opportunityId');
-                //String opportunityStatus = (String) opportunityMap.get('oppotunityStatus');
-                //opportunityToBeUpdated.put(opportunityId, opportunityStatus);
+            for (Object Obj : jsonList) {
+                Map<String, Object> opportunityMap = (Map<String, Object>) Obj;
+                opportunityId = (Id) opportunityMap.get('opportunityId');
+                String opportunityStatus = (String) opportunityMap.get('oppotunityStatus');
+                opportunityToBeUpdated.put(opportunityId, opportunityStatus);
             }
 
             // Query Opportunities by IDs 
-            //List<Opportunity> opportunitiesToUpdateList = [
-                //SELECT Id, StageName FROM Opportunity WHERE Id IN :opportunityToBeUpdated.keySet()];
+            List<Opportunity> opportunitiesToUpdateList = [
+                SELECT Id, StageName FROM Opportunity WHERE Id IN :opportunityToBeUpdated.keySet()];
 
-            //Map<String, Object> messageResponse = new Map<String, Object>();
+            Map<String, Object> messageResponse = new Map<String, Object>();
             // Update Opportunities with new statuses
-            //if(opportunitiesToUpdateList!=null && !opportunitiesToUpdateList.isEmpty()){
-                //for(Opportunity opp : opportunitiesToUpdateList){
+            if(opportunitiesToUpdateList!=null && !opportunitiesToUpdateList.isEmpty()){
+                for(Opportunity opp : opportunitiesToUpdateList){
                     String oldStageName = opp.StageName;
                     opp.StageName = opportunityToBeUpdated.get(opp.Id); // Assuming StageName is the status field
                     // Create a map to hold the response message
