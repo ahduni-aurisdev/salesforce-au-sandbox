@@ -17,7 +17,7 @@
                     objectApiName="{!v.objectName}"
                     layoutType="Compact"
                     columns="2"
-                    mode="edit" onsuccess="{!c.onsuccess}" />    
+                    mode="edit" onsuccess="{!c.navigateToRecord}" />    
     
     </div>
    

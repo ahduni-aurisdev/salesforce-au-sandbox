@@ -1,0 +1,226 @@
+/* ── Modal Header ─────────────────────────────────────────────────────── */
+.modal-header {
+    background: linear-gradient(135deg, #0176d3 0%, #014486 100%);
+    border-radius: 4px 4px 0 0;
+    padding: 1.25rem 1.5rem;
+}
+
+.header-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.header-icon {
+    --slds-c-icon-color-foreground-default: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.slds-modal__title {
+    color: #ffffff !important;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.header-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+/* ── Loading ──────────────────────────────────────────────────────────── */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    gap: 1rem;
+}
+
+.loading-text {
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+
+/* ── Lead Summary Card ────────────────────────────────────────────────── */
+.summary-card {
+    background: #f3f2f2;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.summary-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #e8e8e8;
+    border-bottom: 1px solid #d8d8d8;
+}
+
+.section-title {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: #3e3e3c;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.summary-grid {
+    padding: 0.75rem 1rem;
+    gap: 0;
+}
+
+.summary-item {
+    padding: 0.4rem 0.5rem;
+}
+
+.summary-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #706e6b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.1rem;
+}
+
+.summary-value {
+    display: block;
+    font-size: 0.875rem;
+    color: #181818;
+    font-weight: 500;
+}
+
+/* ── Conversion Cards ─────────────────────────────────────────────────── */
+.conversion-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.conv-card {
+    background: #ffffff;
+    border: 1px solid #dddbda;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s ease;
+}
+
+.conv-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.conv-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: #fafaf9;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.conv-card-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #3e3e3c;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: 1;
+}
+
+/* ── Badge ────────────────────────────────────────────────────────────── */
+.badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.badge-org {
+    background: #e8f4e8;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+/* ── Selected Badge ───────────────────────────────────────────────────── */
+.selected-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: #e8f4ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: #014486;
+    font-weight: 500;
+}
+
+.check-icon {
+    --slds-c-icon-color-foreground-default: #2e7d32;
+}
+
+/* ── Toggle ───────────────────────────────────────────────────────────── */
+.opp-toggle {
+    margin-left: auto;
+}
+
+/* ── Opportunity Name Input ───────────────────────────────────────────── */
+.opp-name-input {
+    --slds-c-input-color-border: #0176d3;
+}
+
+.field-help {
+    font-size: 0.75rem;
+    color: #706e6b;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* ── No Opportunity Message ───────────────────────────────────────────── */
+.no-opp-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem;
+    color: #706e6b;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* ── Error Toast ──────────────────────────────────────────────────────── */
+.error-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #fce8e6;
+    border: 1px solid #f5a9a2;
+    border-radius: 6px;
+    color: #c23934;
+    font-size: 0.875rem;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid #e5e5e5;
+    background: #fafaf9;
+}
+
+.convert-btn {
+    min-width: 140px;
+}

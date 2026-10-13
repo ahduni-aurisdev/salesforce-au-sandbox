@@ -80,7 +80,7 @@ public class LeadPhoneUpdaterTest {
     static void testNoCountryCode() {
         // Test leads without country code or phone
         List<Lead> leads = new List<Lead>{
-            new Lead(FirstName = 'Test', LastName = 'Lead5', Company = 'Test Company 5'),
+            new Lead(FirstName = 'Test', LastName = 'Lead5', Company = 'Test Company 5', Phone = '9876543213'),
             new Lead(FirstName = 'Test', LastName = 'Lead6', CountryCode = 'BD', Phone = '9876543210', Company = 'Test Company 6')
         };
         insert leads;

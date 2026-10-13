@@ -21,8 +21,8 @@
 
 /* Custom Radio Container */
 .custom-radio-container {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
 }
 
@@ -133,67 +133,67 @@
 }
 
 /* Selected State */
-.custom-radio-input:checked + .custom-radio-label {
+.custom-radio-input:checked+.custom-radio-label {
     border-width: 2px;
 }
 
-.custom-radio-input:checked + .custom-radio-label.success-option {
+.custom-radio-input:checked+.custom-radio-label.success-option {
     border-color: #2e844a;
     background-color: #f8fdf8;
 }
 
-.custom-radio-input:checked + .custom-radio-label.warning-option {
+.custom-radio-input:checked+.custom-radio-label.warning-option {
     border-color: #fe9339;
     background-color: #fffcf8;
 }
 
-.custom-radio-input:checked + .custom-radio-label.error-option {
+.custom-radio-input:checked+.custom-radio-label.error-option {
     border-color: #c23934;
     background-color: #fffafa;
 }
 
-.custom-radio-input:checked + .custom-radio-label .radio-icon-wrapper {
+.custom-radio-input:checked+.custom-radio-label .radio-icon-wrapper {
     transform: scale(1.1);
 }
 
-.custom-radio-input:checked + .custom-radio-label.success-option .radio-icon-wrapper {
+.custom-radio-input:checked+.custom-radio-label.success-option .radio-icon-wrapper {
     background-color: #2e844a;
 }
 
-.custom-radio-input:checked + .custom-radio-label.warning-option .radio-icon-wrapper {
+.custom-radio-input:checked+.custom-radio-label.warning-option .radio-icon-wrapper {
     background-color: #fe9339;
 }
 
-.custom-radio-input:checked + .custom-radio-label.error-option .radio-icon-wrapper {
+.custom-radio-input:checked+.custom-radio-label.error-option .radio-icon-wrapper {
     background-color: #c23934;
 }
 
-.custom-radio-input:checked + .custom-radio-label .option-icon {
+.custom-radio-input:checked+.custom-radio-label .option-icon {
     color: #ffffff;
 }
 
-.custom-radio-input:checked + .custom-radio-label .radio-check {
+.custom-radio-input:checked+.custom-radio-label .radio-check {
     opacity: 1;
     border-color: currentColor;
 }
 
-.custom-radio-input:checked + .custom-radio-label.success-option .radio-check {
+.custom-radio-input:checked+.custom-radio-label.success-option .radio-check {
     background-color: #2e844a;
     border-color: #2e844a;
 }
 
-.custom-radio-input:checked + .custom-radio-label.warning-option .radio-check {
+.custom-radio-input:checked+.custom-radio-label.warning-option .radio-check {
     background-color: #fe9339;
     border-color: #fe9339;
 }
 
-.custom-radio-input:checked + .custom-radio-label.error-option .radio-check {
+.custom-radio-input:checked+.custom-radio-label.error-option .radio-check {
     background-color: #c23934;
     border-color: #c23934;
 }
 
 /* Focus State */
-.custom-radio-input:focus + .custom-radio-label {
+.custom-radio-input:focus+.custom-radio-label {
     outline: 2px solid #0176d3;
     outline-offset: 2px;
 }
@@ -214,20 +214,24 @@ lightning-spinner {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .custom-radio-container {
+        grid-template-columns: 1fr;
+    }
+
     .custom-radio-label {
         padding: 0.875rem 1rem;
     }
-    
+
     .radio-icon-wrapper {
         width: 40px;
         height: 40px;
         margin-right: 0.75rem;
     }
-    
+
     .radio-title {
         font-size: 0.9375rem;
     }
-    
+
     .radio-description {
         font-size: 0.8125rem;
     }

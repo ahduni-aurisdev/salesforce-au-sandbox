@@ -1,6 +1,4 @@
-/**
-* @description
-******************************************************************************************
+/******************************************************************************************
 * Created By       : Preksha Chauhan
 * Company          : GetonCRM Solutions
 * Class Name       : LeadAssignmentHelperTest
@@ -13,137 +11,7 @@
 * Cover CodeCoverage: 100%
 **********************************************************************************************/
 
-@IsTest
-public class LeadAssignmentHelperTest {
-
-    // /**
-    // * @description set up data with custom metadata for LeadAssignmentHelper 
-    // */
-    // @TestSetup
-    // static void setupTestData() {
-    //     // Insert LeadAssignmentTrackerMasters__c record for tracking the last assigned index
-    //     LeadAssignmentTrackerMasters__c tracker = new LeadAssignmentTrackerMasters__c();
-    //     tracker.Last_Assigned_Index__c = 0;
-    //     insert tracker;
-
-    //     // Insert some custom metadata for PhD user
-    //     LeadAssignmentPhDUsers__mdt phdUser = new LeadAssignmentPhDUsers__mdt();
-    //     phdUser.User_Id__c = '005xx000001Sv6p';
-    //     phdUser.User_Name__c = 'Doctoral Admissions';
-    //    // insert phdUser;
-
-    //     // Insert some custom metadata for Department_Record_Type_Mapping__mdt
-    //     Department_Record_Type_Mapping__mdt mastersMapping = new Department_Record_Type_Mapping__mdt();
-    //     mastersMapping.Record_Type_Id__c = Schema.SObjectType.Lead.getRecordTypeInfosByDeveloperName().get('Masters').getRecordTypeId();
-    //     mastersMapping.Department__c = 'Masters';
-    //    // insert mastersMapping;
-
-    //     // Insert some lead assignment rules metadata for Masters round-robin logic
-    //     LeadAssignmentRule__mdt rule1 = new LeadAssignmentRule__mdt();
-    //     rule1.User__c = '005xx000001Sv6q'; // Assuming valid user ID
-    //     //rule1.Round_Robin_Index__c = 1;
-    //     //insert rule1;
-
-    //     LeadAssignmentRule__mdt rule2 = new LeadAssignmentRule__mdt();
-    //     rule2.User__c = '005xx000001Sv6r'; // Assuming valid user ID
-    //     //rule2.Round_Robin_Index__c = 2;
-    //    // insert rule2;
-    // }
-
-    // /**
-    // * @description test method for assigning leads to users based on custom metadata rules
-    // */
-    // @IsTest
-    // static void testAssignMastersLeads() {
-    //     // Create test leads with Masters record type
-    //     List<Lead> testLeads = new List<Lead>();
-    //     for (Integer i = 0; i < 5; i++) {
-    //         Lead lead = new Lead();
-    //         lead.FirstName = 'TestFirst' + i;
-    //         lead.LastName = 'TestLast' + i;
-    //         lead.Company = 'Test Company';
-    //         lead.RecordTypeId = Schema.SObjectType.Lead.getRecordTypeInfosByDeveloperName().get('Masters').getRecordTypeId();
-    //         testLeads.add(lead);
-    //     }
-    //     insert testLeads;
-
-    //     // Call the method to assign Masters leads
-    //     Test.startTest();
-    //     LeadAssignmentHelper.assignMastersLeads(testLeads);
-    //     Test.stopTest();
-
-    //     // Assert that leads were assigned correctly in a round-robin fashion
-    //     for (Lead lead : [SELECT OwnerId, Last_Lead_Assigned_User__c, Last_Index__c FROM Lead WHERE Id IN :testLeads]) {
-    //         System.assertNotEquals(null, lead.OwnerId, 'Lead should have an owner assigned');
-    //     }
-
-    //     // Assert that the tracker was updated correctly
-    //     LeadAssignmentTrackerMasters__c tracker = LeadAssignmentTrackerMasters__c.getOrgDefaults();
-    //     System.assertNotEquals(null, tracker.Last_Assigned_Index__c, 'Tracker should have been updated');
-    // }
-
-    // /**
-    // * @description test method for assigning leads to PhD user based on custom metadata rules
-    // */
-    // @IsTest
-    // static void testAssignPhdLeads() {
-    //     // Create test leads with PhD record type
-    //     List<Lead> phdLeads = new List<Lead>();
-    //     for (Integer i = 0; i < 3; i++) {
-    //         Lead lead = new Lead();
-    //         lead.FirstName = 'PhDTestFirst' + i;
-    //         lead.LastName = 'PhDTestLast' + i;
-    //         lead.Company = 'PhD Test Company';
-    //        // lead.RecordTypeId = Schema.SObjectType.Lead.getRecordTypeInfosByDeveloperName().get('PhD').getRecordTypeId();
-    //         phdLeads.add(lead);
-    //     }
-    //     insert phdLeads;
-
-    //     // Call the method to assign PhD leads
-    //     Test.startTest();
-    //     //LeadAssignmentHelper.assignPhdLeads(phdLeads);
-    //     Test.stopTest();
-
-    //     // Assert that all PhD leads were assigned to the Doctoral Admissions user
-    //     // String doctoralUserId = [SELECT User_Id__c FROM LeadAssignmentPhDUsers__mdt WHERE User_Name__c = 'Doctoral Admissions' LIMIT 1].User_Id__c;
-    //     // for (Lead lead : [SELECT OwnerId FROM Lead WHERE Id IN :phdLeads]) {
-    //     //   //  System.assertEquals(doctoralUserId, lead.OwnerId, 'Lead should be assigned to Doctoral Admissions user');
-    //     // }
-    // }
-
-    // /**
-    // * @description test method for identifying leads with Masters record type
-    // */
-    // @IsTest
-    // static void testIsMastersRecordType() {
-    //     // Create a lead with Masters record type
-    //     Lead lead = new Lead();
-    //     lead.FirstName = 'Test';
-    //     lead.LastName = 'MastersLead';
-    //     lead.Company = 'Masters Test Company';
-    //     lead.RecordTypeId = Schema.SObjectType.Lead.getRecordTypeInfosByDeveloperName().get('Masters').getRecordTypeId();
-    //     insert lead;
-
-    //     // Test the helper method
-    //     Boolean isMasters = LeadAssignmentHelper.isMastersRecordType(lead.RecordTypeId);
-    //     System.assertEquals(true, isMasters, 'Lead should be identified as Masters record type');
-    // }
-
-    
-
-    // /**
-    // * @description test method for retrieving record type with name
-    // */
-    // @IsTest
-    // static void testGetRecordTypeWithName() {
-    //     // Test the getRecordTypeWithName method
-    //     Map<String, String> recordTypeMap = LeadAssignmentHelper.getRecordTypeWithName();
-    //     System.assertNotEquals(0, recordTypeMap.size(), 'Record type map should not be empty');
-    // }
-}
-
-
-/*@isTest
+@isTest
 public class LeadAssignmentHelperTest {
     
     @isTest
@@ -185,7 +53,7 @@ public class LeadAssignmentHelperTest {
         insert phdUser;
         
         // Step 4: Create a custom setting record
-        LeadAssignmentTrackerMasters__c tracker = new LeadAssignmentTrackerMasters__c(Last_Assigned_Index__c = 0);
+        LeadAssignmentTrackers__c tracker = new LeadAssignmentTrackers__c(Last_Assigned_Index__c = 0);
         insert tracker;
 
         // Step 5: Create Leads with "Masters" and "PhD" record types
@@ -218,10 +86,10 @@ public class LeadAssignmentHelperTest {
        // System.assertEquals(phdUser.Id, insertedLeads[3].OwnerId); // PhD lead 2
         
         // Step 9: Check the updated index in custom setting
-        LeadAssignmentTrackerMasters__c updatedTracker = [SELECT Last_Assigned_Index__c FROM LeadAssignmentTrackerMasters__c LIMIT 1];
+        LeadAssignmentTrackers__c updatedTracker = [SELECT Last_Assigned_Index__c FROM LeadAssignmentTrackers__c LIMIT 1];
        // System.assertEquals(1, updatedTracker.Last_Assigned_Index__c); // Confirm the index reflects the last assignment
     }
-}*/
+}
 
 //round robin
 /*@isTest
@@ -248,7 +116,7 @@ public class LeadAssignmentHelperTest {
         insert testUser;
 
         // Step 3: Create a custom setting record
-        LeadAssignmentTrackerMasters__c tracker = new LeadAssignmentTrackerMasters__c(Last_Assigned_Index__c = 0);
+        LeadAssignmentTrackers__c tracker = new LeadAssignmentTrackers__c(Last_Assigned_Index__c = 0);
         insert tracker;
 
         // Step 4: Create Leads with "Masters" record type
@@ -275,7 +143,7 @@ public class LeadAssignmentHelperTest {
         // System.assertEquals(1, insertedLeads[1].Last_Index__c);  // Should match with round-robin logic
 
         // Step 7: Check the updated index in custom setting
-        LeadAssignmentTrackerMasters__c updatedTracker = [SELECT Last_Assigned_Index__c FROM LeadAssignmentTrackerMasters__c LIMIT 1];
+        LeadAssignmentTrackers__c updatedTracker = [SELECT Last_Assigned_Index__c FROM LeadAssignmentTrackers__c LIMIT 1];
         // System.assertEquals(1, updatedTracker.Last_Assigned_Index__c); // Confirm the index reflects the last assignment
     }
 }*/

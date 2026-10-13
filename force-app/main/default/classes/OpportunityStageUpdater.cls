@@ -2,8 +2,11 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 02-03-2025
- * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
+ * @last modified on  : 04-13-2026
+ * @last modified by  : Mihir Ramoliya
+ * Modifications Log 
+ * Ver   Date         Author           Modification
+ * 1.0   04-13-2026   Mihir Ramoliya   Added logic to check inactive account owner and assign System Running User. Commented out full name assignment logic.
 **/
 @RestResource(urlMapping='/updateOpportunityStage')
 global with sharing class OpportunityStageUpdater {
@@ -14,39 +17,6 @@ global with sharing class OpportunityStageUpdater {
     * @param accountId ID of account
     * @return map of responses
     */
-        
-    @HttpPost
-    global static String updateOpportunityStage() {
-        RestRequest request = RestContext.request;
-        Map<String, Object> response = new Map<String, Object>();
-    
-        try {
-            String payload = request.requestBody.toString();
-            Map<String, Object> payloadMap =
-                (Map<String, Object>) JSON.deserializeUntyped(payload);
-    
-            Id accountId = (Id) payloadMap.get('personAccountId');
-            List<Object> opportunityList =
-                (List<Object>) payloadMap.get('opportunities');
-    
-            if (accountId == null || opportunityList == null) {
-                response.put('error', 'Missing required fields: personAccountId or opportunities');
-                return JSON.serialize(response);
-            }
-    
-            Map<String, Object> result =
-                updateOpportunityStage(opportunityList, accountId);
-    
-            return JSON.serialize(result);
-    
-        } catch (Exception e) {
-            response.put('error', 'An error occurred: ' + e.getMessage());
-            return JSON.serialize(response);
-        }
-    }
-  
-    
-    /*
     global static Map<String, Object> updateOpportunityStage(List<Object> opportunityList, Id accountId) {
         Map<String, Object> response = new Map<String, Object>();
         
@@ -70,7 +40,8 @@ global with sharing class OpportunityStageUpdater {
             Map<String, Object> messageResponse = new Map<String, Object>();
     
             Account accObj = [
-                SELECT Id, OwnerId, FirstName, LastName, Programme_Interested_in__c 
+                // Mihir Ramoliya - 04-13-2026: Added Owner.IsActive to check if account owner is active or not
+                SELECT Id, OwnerId, Owner.IsActive, FirstName, LastName, Programme_Interested_in__c 
                 FROM Account 
                 WHERE Id =: accountId 
                 LIMIT 1
@@ -154,15 +125,27 @@ global with sharing class OpportunityStageUpdater {
     
                     if (opp.RecordType.DeveloperName == 'Undergraduation') {
                         if (accObj != null) {
-                            opp.OwnerId = accObj.OwnerId;
-                            System.debug('→ Updated OwnerId to Account Owner: ' + opp.OwnerId);
+                            // Mihir Ramoliya - 04-13-2026: Check if account owner is active, if not update to System Running user
+                            if (accObj.OwnerId != null && accObj.Owner != null && !accObj.Owner.IsActive) {
+                                accObj.OwnerId = UserInfo.getUserId();
+                                opp.OwnerId = accObj.OwnerId;
+                                System.debug('→ Updated OwnerId to Running User because Account Owner was inactive: ' + opp.OwnerId);
+                            } else {
+                                // Update opportunity owner with account owner
+                                opp.OwnerId = accObj.OwnerId;
+                                System.debug('→ Updated OwnerId to Account Owner: ' + opp.OwnerId);
+                            }
                         }
+                        
+                        // Mihir Ramoliya - 04-13-2026: Commented below code as requested
+                        /*
                         String fullName = accObj.FirstName != null && accObj.LastName != null ? accObj.FirstName + ' ' + accObj.LastName : null;
                         if (String.isNotBlank(fullName)) {
                             opp.Name = fullName;
                             opp.Full_Name__c = fullName;
                             System.debug('→ Updated Opportunity Name & Full_Name__c: ' + fullName);
                         }
+                        */
                     }
     
                     String message = 'Application Stage successfully updated from ' + oldStageName + ' to ' + opp.StageName + ' for Application ID ' + opp.Id;
@@ -192,134 +175,7 @@ global with sharing class OpportunityStageUpdater {
             return response;
         }
     }
-    */
-
-    // MODIFICATION: Updated to handle multiple opportunities with group support
-    global static Map<String, Object> updateOpportunityStage(List<Object> opportunityList, Id accountId) {
-        Map<String, Object> response = new Map<String, Object>();
-        
-        try {
-            // Get account with Registration Number
-            Account account = [SELECT Id, Registration_Number__c, Auris_Last_Modified_Timestamp__c,
-                                      FirstName, LastName, OwnerId
-                               FROM Account WHERE Id = :accountId LIMIT 1];
-            
-            Datetime now = System.now();
-            String formattedDate = now.format('yyyy-MM-dd:HH:mm:ss');
-            
-            // Update Account timestamp
-            account.Auris_Last_Modified_Timestamp__c = formattedDate;
-            update account;
-            
-            // Process opportunities by group
-            Map<String, Map<String, Object>> updatesByGroup = new Map<String, Map<String, Object>>();
-            
-            for (Object obj : opportunityList) {
-                Map<String, Object> oppMap = (Map<String, Object>) obj;
-                String groupTag = (String) oppMap.get('programGroupTag');
-                String appNumber = (String) oppMap.get('applicationNumber');
-                
-                if (groupTag != null && appNumber != null) {
-                    String key = groupTag + '-' + appNumber;
-                    updatesByGroup.put(key, oppMap);
-                } else if (oppMap.containsKey('opportunityId')) {
-                    // For backward compatibility
-                    String key = 'default-' + oppMap.get('opportunityId');
-                    updatesByGroup.put(key, oppMap);
-                }
-            }
-            
-            // Query opportunities by Registration Number
-            List<Opportunity> opportunities = [
-                SELECT Id, StageName, Program_Group_Tag__c, Application_Number__c,
-                       Registration_Number__c, Auris_Last_Modified_Timestamp__c,
-                       Primary_Preferred_Program__c, Secondary_Preferred_Programme__c,
-                       Ternary_Preferred_Programme__c, Primary_Preferred_Major__c,
-                       Secondary_Preferred_Major__c, Ternary_Preferred_Major__c,
-                       RecordType.DeveloperName, OwnerId, Name, Full_Name__c
-                FROM Opportunity 
-                WHERE AccountId = :accountId
-                AND Registration_Number__c = :account.Registration_Number__c
-            ];
-            
-            List<Opportunity> opportunitiesToUpdate = new List<Opportunity>();
-            List<String> messages = new List<String>();
-            
-            for (Opportunity opp : opportunities) {
-                String key;
-                if (opp.Program_Group_Tag__c != null && opp.Application_Number__c != null) {
-                    key = opp.Program_Group_Tag__c + '-' + opp.Application_Number__c;
-                } else {
-                    key = 'default-' + opp.Id;
-                }
-                
-                if (updatesByGroup.containsKey(key)) {
-                    Map<String, Object> oppMap = updatesByGroup.get(key);
-                    String oldStage = opp.StageName;
-                                      
-                    // Update stage
-                    if (oppMap.containsKey('opportunityStatus') && oppMap.get('opportunityStatus') != null) {
-                        opp.StageName = (String) oppMap.get('opportunityStatus');
-                    }
-                    
-                    // Update timestamp
-                    opp.Auris_Last_Modified_Timestamp__c = formattedDate;
-                    
-                    // Update program preferences for this specific group
-                    updateOpportunityPrograms(opp, oppMap);
-                    
-                    // Update UG specific fields
-                    if (opp.RecordType.DeveloperName == 'Undergraduation') {
-                        opp.OwnerId = account.OwnerId;
-                        String fullName = account.FirstName + ' ' + account.LastName;
-                        opp.Name = fullName;
-                        opp.Full_Name__c = fullName;
-                    }
-                    
-                    opportunitiesToUpdate.add(opp);
-                    messages.add('Opportunity ' + opp.Id + 
-                                (opp.Program_Group_Tag__c != null ? ' (Group: ' + opp.Program_Group_Tag__c + ')' : '') +
-                                ' updated from ' + oldStage + ' to ' + opp.StageName);
-                }
-            }
-            
-            if (!opportunitiesToUpdate.isEmpty()) {
-                update opportunitiesToUpdate;
-            }
-            
-            response.put('messageDetails', messages);
-            return response;
-            
-        } catch (QueryException qe) {
-            response.put('error', 'Opportunity not found: ' + qe.getMessage());
-            return response;
-        } catch (Exception e) {
-            response.put('error', 'An error occurred: ' + e.getMessage());
-            return response;
-        }
-    }
     
-    // MODIFICATION: Helper to update opportunity programs
-    private static void updateOpportunityPrograms(Opportunity opp, Map<String, Object> oppMap) {
-        if (oppMap.containsKey('primaryPreferredProgram')) {
-            opp.Primary_Preferred_Program__c = (String) oppMap.get('primaryPreferredProgram');
-        }
-        if (oppMap.containsKey('secondaryPreferredProgramme')) {
-            opp.Secondary_Preferred_Programme__c = (String) oppMap.get('secondaryPreferredProgramme');
-        }
-        if (oppMap.containsKey('ternaryPreferredProgramme')) {
-            opp.Ternary_Preferred_Programme__c = (String) oppMap.get('ternaryPreferredProgramme');
-        }
-        if (oppMap.containsKey('primaryPreferredMajor')) {
-            opp.Primary_Preferred_Major__c = (String) oppMap.get('primaryPreferredMajor');
-        }
-        if (oppMap.containsKey('secondaryPreferredMajor')) {
-            opp.Secondary_Preferred_Major__c = (String) oppMap.get('secondaryPreferredMajor');
-        }
-        if (oppMap.containsKey('ternaryPreferredMajor')) {
-            opp.Ternary_Preferred_Major__c = (String) oppMap.get('ternaryPreferredMajor');
-        }
-    }    
 
     /**
     * @description  custom exception method
@@ -333,157 +189,6 @@ global with sharing class OpportunityStageUpdater {
     * @param registrationNumber Registration number of Auris
     * @return map of responses
     */
-    
-    // MODIFICATION: Updated test scores with Registration Number focus********************************
-    public static Map<String, Object> insertStandardisedTestScores(List<Object> testScores, Id accountId, String registrationNumber) {
-        Map<String, Object> messageResponse = new Map<String, Object>();
-        
-        try {
-            // Get account with Registration Number
-            Account account = [SELECT Id, Registration_Number__c FROM Account WHERE Id = :accountId LIMIT 1];
-            
-            Datetime now = System.now();
-            String formattedDate = now.format('yyyy-MM-dd:HH:mm:ss');
-            
-            // Update Account timestamp
-            account.Auris_Last_Modified_Timestamp__c = formattedDate;
-            update account;
-            
-            if (!Schema.sObjectType.Standardised_Test_Score_s__c.isCreateable()) {
-                throw new CustomException('User does not have create access to Standardised_Test_Score_s__c');
-            }
-            
-            List<Standardised_Test_Score_s__c> testScoreRecords = new List<Standardised_Test_Score_s__c>();
-            Set<String> testNames = new Set<String>();
-            List<String> messages = new List<String>();
-            
-            // Collect test names
-            for (Object testScoreObj : testScores) {
-                Map<String, Object> testScoreMap = (Map<String, Object>) testScoreObj;
-                if (testScoreMap.containsKey('testName') && testScoreMap.get('testName') != null) {
-                    testNames.add((String) testScoreMap.get('testName'));
-                }
-            }
-            
-            // Query test records
-            Map<String, Standardised_Test__c> testNameToRecordMap = new Map<String, Standardised_Test__c>();
-            if (!testNames.isEmpty()) {
-                for (Standardised_Test__c testRec : [SELECT Id, Name FROM Standardised_Test__c WHERE Name IN :testNames]) {
-                    testNameToRecordMap.put(testRec.Name, testRec);
-                }
-            }
-            
-            // Query existing test scores
-            Map<String, Standardised_Test_Score_s__c> existingTestScoreMap = new Map<String, Standardised_Test_Score_s__c>();
-            if (!testNames.isEmpty()) {
-                for (Standardised_Test_Score_s__c existingTestScore : [
-                    SELECT Id, Test__r.Name 
-                    FROM Standardised_Test_Score_s__c 
-                    WHERE Account__c = :accountId 
-                    AND Test__r.Name IN :testNames
-                ]) {
-                    existingTestScoreMap.put(existingTestScore.Test__r.Name, existingTestScore);
-                }
-            }
-            
-            // Process test scores
-            Map<Id, Object> matchedStandardisedTests = new Map<Id, Object>();
-            List<Standardised_Test_Score_s__c> testScoreRecordsToBeUpdated = new List<Standardised_Test_Score_s__c>();
-            
-            for (Object testScoreObj : testScores) {
-                Map<String, Object> testScoreMap = (Map<String, Object>) testScoreObj;
-                
-                if (testScoreMap.containsKey('testName') && testScoreMap.get('testName') != null) {
-                    String testName = (String) testScoreMap.get('testName');
-                    
-                    if (!testNameToRecordMap.containsKey(testName)) {
-                        continue;
-                    }
-                    
-                    if (existingTestScoreMap.containsKey(testName)) {
-                        if(existingTestScoreMap.get(testName).Id != null) {
-                            matchedStandardisedTests.put(existingTestScoreMap.get(testName).Id, testScoreObj);
-                        }
-                        continue;
-                    }
-                    
-                    // Create new test score
-                    Standardised_Test_Score_s__c scoreRec = new Standardised_Test_Score_s__c();
-                    scoreRec.Account__c = accountId;
-                    scoreRec.Test__c = testNameToRecordMap.get(testName).Id;
-                    
-                    if (testScoreMap.containsKey('testDate') && testScoreMap.get('testDate') != null) {
-                        scoreRec.Test_Date__c = (String) testScoreMap.get('testDate');
-                    }
-                    if (testScoreMap.containsKey('percentile') && testScoreMap.get('percentile') != null) {
-                        scoreRec.Test_Percentile__c = (String) testScoreMap.get('percentile');
-                    }
-                    if (testScoreMap.containsKey('testScore') && testScoreMap.get('testScore') != null) {
-                        scoreRec.Test_Score__c = (String) testScoreMap.get('testScore');
-                    }
-                    
-                    testScoreRecords.add(scoreRec);
-                }
-            }
-            
-            // Update existing test scores
-            testScoreRecordsToBeUpdated = [
-                SELECT Id, Test_Score__c, Test_Date__c, Test_Percentile__c, Test__r.Name
-                FROM Standardised_Test_Score_s__c 
-                WHERE Account__c = :accountId 
-                AND ID IN :matchedStandardisedTests.keySet()
-            ];
-            
-            List<Standardised_Test_Score_s__c> testScoreRecordsList = new List<Standardised_Test_Score_s__c>();
-            
-            for(Standardised_Test_Score_s__c existingTestScore : testScoreRecordsToBeUpdated) {
-                if(matchedStandardisedTests.get(existingTestScore.Id) != null) {
-                    Object testScoreObj = matchedStandardisedTests.get(existingTestScore.Id);
-                    Map<String, Object> testScoreMap = (Map<String, Object>) testScoreObj;
-                    
-                    if(testScoreMap.containsKey('testScore')) {
-                        existingTestScore.Test_Score__c = (String)testScoreMap.get('testScore');
-                    }
-                    if(testScoreMap.containsKey('testDate')) {
-                        existingTestScore.Test_Date__c = (String)testScoreMap.get('testDate');
-                    }
-                    if(testScoreMap.containsKey('percentile')) {
-                        existingTestScore.Test_Percentile__c = (String) testScoreMap.get('percentile');
-                    }
-                    
-                    testScoreRecordsList.add(existingTestScore);
-                }
-            }
-            
-            if(testScoreRecordsList.size() > 0) {
-                update testScoreRecordsList;
-                Set<Id> updatedTestScoreRecords = new Set<Id>();
-                for(Standardised_Test_Score_s__c stdScore : testScoreRecordsList) {
-                    updatedTestScoreRecords.add(stdScore.Id);
-                }
-                messages.add('TestScore records updated for student: ' + updatedTestScoreRecords);
-            }
-            
-            if (!testScoreRecords.isEmpty()) {
-                insert testScoreRecords;
-                Set<Id> insertedTestScoreRecords = new Set<Id>();
-                for(Standardised_Test_Score_s__c stdScore : testScoreRecords) {
-                    insertedTestScoreRecords.add(stdScore.Id);
-                }
-                messages.add('TestScore records created for student: ' + insertedTestScoreRecords);
-            }
-            
-            messageResponse.put('messageDetails', messages);
-            return messageResponse;
-            
-        } catch (Exception e) {
-            saveWebTo_YourProfileData.logFailedLead(JSON.serialize(testScores), e, registrationNumber);
-            throw new CustomException('Error insertStandardisedTestScores method: ' + e.getMessage());
-        }
-    }    
-    
-    
-    /*
     public static Map<String,Object> insertStandardisedTestScores(List<Object> testScores, Id accountId,String registrationNumber) {
         try {
             //System.debug('Called insertStandardisedTestScores method ====================');
@@ -651,7 +356,6 @@ global with sharing class OpportunityStageUpdater {
             throw new CustomException('Error insertStandardisedTestScores method: ' + e.getMessage());
         }
     } 
-    */
 
     /**
     * @description  update parent information
@@ -660,112 +364,6 @@ global with sharing class OpportunityStageUpdater {
     * @param registrationNumber Registration number of Auris
     * @return map of responses
     */
-    
-    // MODIFICATION: Updated parent insertion with Registration Number
-    public static Map<String, Object> insertParentInformation(List<Object> parents, Id accountId, String registrationNumber) {
-        Map<String, Object> messageResponse = new Map<String, Object>();
-        
-        try {
-            // Get account
-            Account account = [SELECT Id, Registration_Number__c FROM Account WHERE Id = :accountId LIMIT 1];
-            
-            Datetime now = System.now();
-            String formattedDate = now.format('yyyy-MM-dd:HH:mm:ss');
-            
-            // Update Account timestamp
-            account.Auris_Last_Modified_Timestamp__c = formattedDate;
-            update account;
-            
-            // Query existing parents
-            Map<String, Parent_Information__c> existingParentMap = new Map<String, Parent_Information__c>();
-            for (Parent_Information__c existingParent : [
-                SELECT Id, Name, Relationship__c 
-                FROM Parent_Information__c 
-                WHERE Account__c = :accountId
-            ]) {
-                String uniqueKey = existingParent.Name + '-' + existingParent.Relationship__c;
-                existingParentMap.put(uniqueKey, existingParent);
-            }
-            
-            List<String> messages = new List<String>();
-            List<Parent_Information__c> parentList = new List<Parent_Information__c>();
-            List<Parent_Information__c> parentListToUpdate = new List<Parent_Information__c>();
-            
-            for (Object parent : (List<Object>) parents) {
-                Map<String, Object> parentMap = (Map<String, Object>) parent;
-                Parent_Information__c parentRec = new Parent_Information__c();
-                parentRec.Account__c = accountId;
-                
-                // Map fields
-                if (parentMap.containsKey('parentFullName')) {
-                    parentRec.Name = (String) parentMap.get('parentFullName');
-                }
-                if (parentMap.containsKey('relationship')) {
-                    parentRec.Relationship__c = (String) parentMap.get('relationship');
-                }
-                if (parentMap.containsKey('parentGuardianPhone')) {
-                    parentRec.Mobile__c = (String) parentMap.get('parentGuardianPhone');
-                }
-                if (parentMap.containsKey('parentGuardianEmail')) {
-                    parentRec.Email__c = (String) parentMap.get('parentGuardianEmail');
-                }
-                if (parentMap.containsKey('parentGuardianHighestEducationalQualification')) {
-                    parentRec.Highest_educational_qualification__c = (String) parentMap.get('parentGuardianHighestEducationalQualification');
-                }
-                if (parentMap.containsKey('parentGuardianOccupation')) {
-                    parentRec.Occupation__c = (String) parentMap.get('parentGuardianOccupation');
-                }
-                if (parentMap.containsKey('parentGuardianDesignation')) {
-                    parentRec.Designation__c = (String) parentMap.get('parentGuardianDesignation');
-                }
-                if (parentMap.containsKey('parentGuardianOrganisationName')) {
-                    parentRec.Organisation_Name__c = (String) parentMap.get('parentGuardianOrganisationName');
-                }
-                if (parentMap.containsKey('annualFamilyIncome')) {
-                    parentRec.Annual_family_income__c = (String) parentMap.get('annualFamilyIncome');
-                }
-                
-                String uniqueKey = parentRec.Name + '-' + parentRec.Relationship__c;
-                
-                if (!existingParentMap.containsKey(uniqueKey)) {
-                    parentList.add(parentRec);
-                } else {
-                    Parent_Information__c existingParent = existingParentMap.get(uniqueKey);
-                    parentRec.Id = existingParent.Id;
-                    parentListToUpdate.add(parentRec);
-                }
-            }
-            
-            if (!parentList.isEmpty()) {
-                insert parentList;
-                Set<Id> insertedParentsIdSet = new Set<Id>();
-                for(Parent_Information__c parentRec : parentList) {
-                    insertedParentsIdSet.add(parentRec.Id);
-                }
-                messages.add('Parent records created: ' + insertedParentsIdSet);
-            }
-            
-            if(!parentListToUpdate.isEmpty()) {
-                update parentListToUpdate;
-                Set<Id> updatedParentsIdSet = new Set<Id>();
-                for(Parent_Information__c parentRec : parentListToUpdate) {
-                    updatedParentsIdSet.add(parentRec.Id);
-                }
-                messages.add('Parent records updated: ' + updatedParentsIdSet);
-            }
-            
-            messageResponse.put('messageDetails', messages);
-            return messageResponse;
-            
-        } catch (Exception e) {
-            saveWebTo_YourProfileData.logFailedLead(JSON.serialize(parents), e, registrationNumber);
-            throw new CustomException('Error insertParentInformation method: ' + e.getMessage());
-        }
-    } 
-    
-    
-    
-    /*
     public static Map<String,Object> insertParentInformation(List<Object> parents, Id accountId,String registrationNumber) {
 
         // Get the current datetime
@@ -880,8 +478,6 @@ global with sharing class OpportunityStageUpdater {
         messageResponse.put('messageDetails', messages);
         return messageResponse;   
     }
-    */ 
-    
 
     /**
     * @description  assign owners to UG account and Opportunities

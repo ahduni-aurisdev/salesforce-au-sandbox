@@ -1,0 +1,2166 @@
+<!--
+================================================================================
+  VISUALFORCE PAGE  :  AU_EnquiryForm
+  API VERSION       :  59.0
+  CONTROLLER        :  AU_EnquiryFormController
+  SITE              :  Force.com Public Site (Guest User)
+
+  CHANGES IN THIS VERSION
+  ────────────────────────
+  1. IFRAME MODE  → ?embed=1  hides header + hero banner
+  2. RESPONSIVE   → full fluid grid for 320px–1400px, tablets, mobile
+  3. THANK YOU    → reference number box removed
+  4. PHONE        → 10-digit only (digits only, max 10), no +91 prefix
+
+  URL PATTERNS
+  ────────────
+  Default            /enquiry
+  Iframe embed       /enquiry?embed=1
+  Dept preselect     /enquiry?dept=masters
+  UTM + dept         /enquiry?dept=ug&utm_source=instagram&utm_medium=social
+  Iframe + dept      /enquiry?embed=1&dept=masters&utm_source=qr_campus
+================================================================================
+-->
+<apex:page controller="AU_EnquiryFormController"
+    showHeader="false"
+    sidebar="false"
+    standardStylesheets="false"
+    applyBodyTag="false"
+    applyHtmlTag="false"
+    docType="html-5.0"
+    title="Programme Enquiry – Ahmedabad University"
+    cache="false"
+    showQuickActionVfHeader="false"
+    contentType="text/html">
+
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex,nofollow"/>
+<!--
+  IFRAME EMBEDDING — frame-ancestors CSP must be set as an HTTP response
+  header, NOT via a meta tag (browsers ignore frame-ancestors in meta tags
+  by the CSP specification — that is what the console warning means).
+
+  The correct way to allow iframe embedding in Salesforce Force.com Sites:
+  Setup → Sites → [your site] → Edit → Clickjack Protection Level
+  → "Allow framing by any page (no protection)"
+
+  This Salesforce setting sends the correct HTTP header server-side.
+  The meta tag below has been removed because it caused console noise
+  and had no actual effect on iframe permissions.
+-->
+
+<title>Programme Enquiry – Ahmedabad University</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&amp;family=Source+Sans+3:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>
+/* ============================================================
+   AU ENQUIRY FORM  |  Visualforce / Force.com Site
+   Brand: #801214   |  API 59.0
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --maroon:#801214; --maroon-dk:#5E0D0F; --maroon-tint:#F9ECEC;
+  --charcoal:#2C2C2C; --text:#3A3A3A; --muted:#7A7A7A;
+  --border:#D8D0C8; --border-lt:#EDE8E2;
+  --bg:#F7F5F2; --white:#FFFFFF;
+  --success:#1A6B3C; --error:#B91C1C;
+  --r:6px; --rlg:10px;
+  --fd:'Cormorant Garamond',Georgia,serif;
+  --fb:'Source Sans 3','Segoe UI',sans-serif;
+  --tr:0.18s ease;
+}
+html,body{
+  font-family:var(--fb);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.hdr{
+  background:var(--white);
+  border-bottom:3px solid var(--maroon);
+  padding:0 clamp(16px,4vw,40px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:72px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+/* CHANGE 1: embed mode hides header + hero */
+body.embed-mode .hdr{ display:none !important; }
+body.embed-mode .hero{ display:none !important; }
+body.embed-mode .page{ padding-top:20px; }
+
+.logo-wrap{display:flex;align-items:center;gap:12px;text-decoration:none;flex-shrink:0}
+.logo-svg{width:48px;height:48px;flex-shrink:0}
+.logo-name{
+  display:block;font-family:var(--fd);
+  font-size:clamp(16px,3vw,22px);
+  font-weight:600;color:var(--charcoal);letter-spacing:.01em;
+}
+.logo-sub{
+  display:block;font-size:10px;color:var(--muted);
+  letter-spacing:.12em;text-transform:uppercase;margin-top:1px;
+}
+.hdr-right{text-align:right;flex-shrink:0}
+.hdr-right p{font-size:11px;color:var(--muted);line-height:1.7}
+.hdr-right a{color:var(--maroon);text-decoration:none;font-weight:500}
+
+/* ── HERO ────────────────────────────────────────────────────── */
+.hero{
+  background:var(--maroon);
+  padding:clamp(20px,4vw,36px) clamp(20px,5vw,48px) clamp(18px,3vw,30px);
+  position:relative;overflow:hidden;
+  margin-bottom:clamp(20px,4vw,36px);
+}
+.hero::before{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:280px;height:280px;
+  border:60px solid rgba(255,255,255,.04);border-radius:50%;
+}
+.hero::after{
+  content:'';position:absolute;right:40px;bottom:-80px;
+  width:180px;height:180px;
+  border:40px solid rgba(255,255,255,.04);border-radius:50%;
+}
+.hero h1{
+  font-family:var(--fd);
+  font-size:clamp(22px,5vw,34px);
+  font-weight:500;color:#fff;
+  letter-spacing:.01em;position:relative;z-index:1;
+}
+.hero p{
+  font-size:clamp(13px,2vw,14px);color:rgba(255,255,255,.72);
+  margin-top:6px;position:relative;z-index:1;max-width:520px;
+}
+.hero-meta{
+  display:flex;gap:clamp(12px,3vw,28px);
+  margin-top:clamp(12px,2vw,20px);
+  position:relative;z-index:1;flex-wrap:wrap;
+}
+.hero-meta span{
+  font-size:12px;color:rgba(255,255,255,.60);
+  display:flex;align-items:center;gap:6px;
+}
+.hero-meta span strong{color:rgba(255,255,255,.90);font-weight:500}
+
+/* ── PAGE WRAPPER ────────────────────────────────────────────── */
+.page{
+  max-width:840px;
+  margin:0 auto;
+  padding:0 clamp(12px,3vw,24px) 64px;
+  width:100%;
+}
+
+.phone-row{display:flex;gap:8px}
+.phone-row select{flex:0 0 42%;max-width:190px}
+.phone-row input{flex:1;min-width:0}
+
+/* ── UTM STRIP ───────────────────────────────────────────────── */
+.utm{
+  display:none;
+  background:var(--maroon-tint);
+  border:1px solid rgba(128,18,20,.18);
+  border-radius:var(--r);
+  padding:10px 16px;margin-bottom:20px;
+  font-size:12px;color:var(--muted);
+  align-items:center;gap:10px;flex-wrap:wrap;
+}
+.utm.show{display:flex}
+.utm-tag{
+  background:rgba(128,18,20,.10);color:var(--maroon-dk);
+  border-radius:3px;padding:2px 8px;font-size:11px;font-weight:500;
+}
+
+/* ── PROGRESS STEPS ──────────────────────────────────────────── */
+.steps{
+  display:flex;align-items:center;
+  margin-bottom:clamp(16px,3vw,28px);
+  padding:0 4px;
+  overflow:hidden;
+}
+.step{
+  display:flex;align-items:center;gap:6px;
+  font-size:clamp(10px,1.5vw,12px);
+  font-weight:500;color:var(--border);
+  letter-spacing:.02em;text-transform:uppercase;
+  transition:color var(--tr);white-space:nowrap;
+}
+/* hide step text on very small screens, keep numbers */
+.step span.step-txt{display:inline}
+.step-n{
+  width:26px;height:26px;border-radius:50%;
+  border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;
+  background:var(--white);
+  transition:all var(--tr);flex-shrink:0;
+}
+.step.active{color:var(--maroon)}
+.step.active .step-n{background:var(--maroon);border-color:var(--maroon);color:#fff}
+.step.done{color:var(--muted)}
+.step.done .step-n{background:var(--maroon-tint);border-color:var(--maroon);color:var(--maroon)}
+.step-line{flex:1;height:1px;background:var(--border-lt);margin:0 8px;min-width:12px}
+.step-line.done{background:var(--maroon)}
+
+/* ── CARD ────────────────────────────────────────────────────── */
+.card{
+  background:var(--white);
+  border-radius:var(--rlg);
+  border:1px solid var(--border);
+  box-shadow:0 2px 8px rgba(0,0,0,.10);
+  overflow:hidden;
+  animation:cardIn .3s ease;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card-hdr{
+  padding:clamp(14px,2.5vw,20px) clamp(16px,3vw,32px);
+  border-bottom:1px solid var(--border-lt);
+  display:flex;align-items:center;
+  justify-content:space-between;
+  background:#FAFAF9;gap:12px;flex-wrap:wrap;
+}
+.card-hdr h2{
+  font-family:var(--fd);
+  font-size:clamp(16px,3vw,20px);
+  font-weight:500;color:var(--charcoal);
+}
+.dept-pill{
+  display:none;font-size:11px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;
+  background:var(--maroon);color:#fff;
+  padding:4px 14px;border-radius:20px;white-space:nowrap;
+}
+.dept-pill.show{display:inline-block}
+.card-body{padding:clamp(16px,3vw,28px) clamp(16px,3vw,32px) clamp(20px,3vw,32px)}
+
+/* ── LOADING ─────────────────────────────────────────────────── */
+.meta-loading{text-align:center;padding:48px 20px;color:var(--muted);font-size:14px}
+.meta-loading .spinner-lg{
+  width:32px;height:32px;
+  border:3px solid var(--border-lt);
+  border-top-color:var(--maroon);
+  border-radius:50%;animation:spin .7s linear infinite;
+  margin:0 auto 12px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.meta-error{
+  text-align:center;padding:32px 20px;
+  color:var(--error);font-size:14px;
+  background:#FEF2F2;border-radius:var(--r);
+}
+
+/* ── DEPT TILES ──────────────────────────────────────────────── */
+.dept-intro{
+  font-size:13.5px;color:var(--muted);margin-bottom:20px;line-height:1.6;
+  padding:14px 18px;background:var(--maroon-tint);
+  border-left:3px solid var(--maroon);
+  border-radius:0 var(--r) var(--r) 0;
+}
+/* CHANGE 2: responsive tile grid — 4 col → 2 col → 2 col on tiny */
+.dept-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:8px;
+}
+.dept-tile{
+  border:1.5px solid var(--border);border-radius:var(--rlg);
+  background:var(--white);padding:18px 10px 14px;
+  cursor:pointer;text-align:center;transition:all var(--tr);
+  font-family:var(--fb);position:relative;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+.dept-tile::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:var(--maroon);transform:scaleX(0);transition:transform var(--tr);
+}
+.dept-tile:hover{
+  border-color:var(--maroon);
+  box-shadow:0 4px 16px rgba(128,18,20,.12);
+  transform:translateY(-2px);
+}
+.dept-tile:hover::before{transform:scaleX(1)}
+.dept-tile.sel{
+  border-color:var(--maroon);background:var(--maroon);
+  box-shadow:0 4px 20px rgba(128,18,20,.25);transform:translateY(-2px);
+}
+.dept-tile.sel::before{transform:scaleX(1);background:rgba(255,255,255,.3)}
+.d-icon{font-size:24px;display:block;margin-bottom:8px}
+.d-name{
+  font-size:clamp(11px,2vw,12.5px);
+  font-weight:600;color:var(--charcoal);
+  display:block;line-height:1.3;
+}
+.dept-tile.sel .d-name{color:#fff}
+.d-sub{font-size:10px;color:var(--muted);display:block;margin-top:3px}
+.dept-tile.sel .d-sub{color:rgba(255,255,255,.7)}
+
+/* ── SECTION LABEL ───────────────────────────────────────────── */
+.sec-lbl{
+  font-size:10px;font-weight:600;letter-spacing:.10em;
+  text-transform:uppercase;color:var(--maroon);
+  margin-bottom:14px;padding-bottom:8px;
+  border-bottom:1px solid var(--maroon-tint);
+  display:flex;align-items:center;gap:8px;
+}
+.sec-lbl::before{
+  content:'';width:18px;height:2px;
+  background:var(--maroon);border-radius:2px;flex-shrink:0;
+}
+
+/* ── FORM GRID — CHANGE 2: fluid columns ─────────────────────── */
+.fg{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:clamp(12px,2vw,16px) clamp(14px,2.5vw,20px);
+}
+.sp2{grid-column:span 2}
+.fgrp{display:flex;flex-direction:column;gap:5px}
+.fgrp label{
+  font-size:12px;font-weight:600;
+  color:var(--charcoal);letter-spacing:.02em;
+}
+.fgrp label .req{color:var(--maroon);margin-left:2px}
+.fgrp input,
+.fgrp select,
+.fgrp textarea{
+  font-family:var(--fb);font-size:14px;color:var(--text);
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--r);
+  padding:clamp(8px,1.5vw,10px) clamp(10px,2vw,13px);
+  width:100%;outline:none;
+  transition:border-color var(--tr),box-shadow var(--tr),background var(--tr);
+  appearance:none;-webkit-appearance:none;
+  /* CHANGE 2: prevent iOS zoom on focus (font-size ≥ 16px trigger) */
+  font-size:max(14px,1rem);
+}
+.fgrp select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%237A7A7A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 5 7 9 11 5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 11px center;
+  padding-right:32px;cursor:pointer;
+}
+.fgrp input:focus,
+.fgrp select:focus,
+.fgrp textarea:focus{
+  border-color:var(--maroon);
+  box-shadow:0 0 0 3px rgba(128,18,20,.10);
+  background:var(--white);
+}
+.fgrp input.err,
+.fgrp select.err{
+  border-color:var(--error);
+  box-shadow:0 0 0 3px rgba(185,28,28,.09);
+}
+.fgrp textarea{resize:vertical;line-height:1.5}
+.f-hint{font-size:11px;color:var(--muted)}
+.f-err{font-size:11px;color:var(--error);display:none}
+.f-err.show{display:block}
+
+/* ── DYNAMIC SECTION ─────────────────────────────────────────── */
+#dynWrap{display:none;margin-top:24px;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── CONSENT ─────────────────────────────────────────────────── */
+.consent{display:flex;align-items:flex-start;gap:10px;margin-top:8px}
+.consent input[type=checkbox]{
+  width:16px;height:16px;margin-top:2px;
+  accent-color:var(--maroon);cursor:pointer;flex-shrink:0;
+}
+.consent label{font-size:12px;color:var(--muted);line-height:1.5;cursor:pointer}
+.consent label a{color:var(--maroon);text-decoration:none}
+
+/* ── ERROR BANNER ────────────────────────────────────────────── */
+.err-banner{
+  display:none;background:#FEF2F2;border:1px solid #FECACA;
+  border-radius:var(--r);padding:12px 16px;margin-bottom:16px;
+  font-size:13px;color:var(--error);
+}
+.err-banner.show{display:block}
+
+/* ── SUBMIT AREA ─────────────────────────────────────────────── */
+.submit-area{
+  margin-top:28px;padding-top:24px;
+  border-top:1px solid var(--border-lt);
+  display:flex;align-items:center;
+  justify-content:space-between;
+  gap:16px;flex-wrap:wrap;
+}
+.btn-pri{
+  background:var(--maroon);color:#fff;border:none;
+  border-radius:var(--r);
+  padding:clamp(10px,2vw,12px) clamp(24px,4vw,36px);
+  font-family:var(--fb);font-size:14px;font-weight:600;
+  letter-spacing:.04em;cursor:pointer;
+  display:inline-flex;align-items:center;gap:9px;
+  transition:background var(--tr),transform var(--tr),box-shadow var(--tr);
+  box-shadow:0 2px 8px rgba(128,18,20,.25);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.btn-pri:hover{
+  background:var(--maroon-dk);
+  transform:translateY(-1px);
+  box-shadow:0 4px 16px rgba(128,18,20,.30);
+}
+.btn-pri:active{transform:translateY(0)}
+.btn-pri:disabled{opacity:.65;pointer-events:none}
+.btn-pri svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;flex-shrink:0}
+.btn-spinner{
+  width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .65s linear infinite;display:none;
+}
+.btn-pri.loading .btn-spinner{display:block}
+.btn-pri.loading .btn-arr{display:none}
+.sub-note{font-size:11.5px;color:var(--muted);line-height:1.55;max-width:340px}
+
+/* ── SUCCESS PANEL — CHANGE 3: ref number hidden ─────────────── */
+.success{
+  display:none;text-align:center;
+  padding:clamp(32px,6vw,52px) clamp(16px,4vw,40px) clamp(28px,5vw,48px);
+  animation:fadeUp .4s ease;
+}
+.success.show{display:block}
+.s-ring{
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(26,107,60,.08);border:2px solid rgba(26,107,60,.20);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;
+}
+.s-ring svg{width:30px;height:30px;stroke:var(--success);fill:none;stroke-width:2.5}
+.success h3{
+  font-family:var(--fd);font-size:clamp(20px,4vw,26px);
+  font-weight:500;color:var(--charcoal);margin-bottom:10px;
+}
+.success p{font-size:14px;color:var(--muted);line-height:1.65;max-width:400px;margin:0 auto}
+
+/* ── SUCCESS CONTACT BOX ─────────────────────────────────────── */
+.success-contact-box{
+  margin:28px auto 0;
+  max-width:480px;
+  background:#FAF9F6;
+  border:1px solid var(--border-lt);
+  border-radius:var(--r);
+  padding:20px 24px;
+  text-align:center;
+  animation:fadeUp .35s ease;
+}
+.scb-heading{
+  font-size:12.5px;
+  color:var(--muted);
+  margin-bottom:6px;
+  font-weight:500;
+}
+.scb-office{
+  font-family:var(--fd);
+  font-size:19px;
+  font-weight:600;
+  color:var(--charcoal);
+  margin-bottom:16px;
+}
+.scb-actions{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.scb-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:9px 18px;
+  font-size:13px;
+  font-weight:500;
+  color:var(--charcoal);
+  text-decoration:none;
+  transition:all var(--tr);
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.scb-btn:hover{
+  border-color:var(--maroon);
+  color:var(--maroon);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(128,18,20,.12);
+}
+.scb-btn svg{
+  stroke:var(--maroon);
+  flex-shrink:0;
+}
+.btn-sec{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:9px 22px;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all var(--tr);
+  font-family:var(--fb);
+}
+.btn-sec:hover{
+  border-color:var(--charcoal);
+  color:var(--charcoal);
+  background:#fff;
+}
+body.embed-mode .success-contact-box{
+  background:var(--cb-bg-subtle,#F8FAFC);
+  border-color:var(--cb-border);
+}
+body.embed-mode .scb-office{
+  color:var(--cb-text,#0F172A);
+}
+body.embed-mode .scb-btn:hover{
+  border-color:var(--cb-accent);
+  color:var(--cb-accent);
+}
+body.embed-mode .btn-sec{
+  border-color:var(--cb-border);
+  color:var(--cb-muted);
+}
+body.embed-mode .btn-sec:hover{
+  border-color:var(--cb-accent);
+  color:var(--cb-accent);
+  background:#fff;
+}
+
+/* ── FOOTER ──────────────────────────────────────────────────── */
+.ftr{
+  text-align:center;margin-top:32px;
+  font-size:11.5px;color:var(--muted);line-height:1.8;
+  padding:0 12px;
+}
+.ftr a{color:var(--maroon);text-decoration:none}
+.ftr .d{margin:0 6px;color:var(--border)}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS — CHANGE 2
+   ══════════════════════════════════════════════════════════════ */
+
+/* Tablet landscape / small desktop: 641px – 900px */
+@media(max-width:900px){
+  .dept-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Tablet portrait / large phone: 481px – 640px */
+@media(max-width:640px){
+  .hdr-right{display:none}
+  .dept-grid{grid-template-columns:repeat(2,1fr)}
+  .fg{grid-template-columns:1fr}
+  .sp2{grid-column:span 1}
+  .submit-area{flex-direction:column;align-items:stretch}
+  .btn-pri{justify-content:center;width:100%}
+  .sub-note{max-width:100%}
+  .ftr .d:nth-child(5),
+  .ftr span:nth-child(6){display:none} /* hide address on small */
+}
+
+/* Small phone: ≤ 380px */
+@media(max-width:380px){
+  .step span.step-txt{display:none}   /* show numbers only in steps */
+  .step-line{margin:0 4px}
+  .dept-tile{padding:14px 8px 12px}
+  .d-icon{font-size:20px}
+}
+
+/* Touch devices — larger tap targets */
+@media(hover:none) and (pointer:coarse){
+  .dept-tile{min-height:90px}
+  .fgrp input,
+  .fgrp select,
+  .fgrp textarea{
+    padding:11px 13px;
+    font-size:16px; /* prevents iOS auto-zoom on focus */
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHATBOT / EMBED THEME
+   Activated ONLY when ?embed=1 → body.embed-mode
+   Matches Wonderchat widget palette: background #E2E8F0,
+   white cards, #3B4F6E text, blue send button #4A6CF7
+   ══════════════════════════════════════════════════════════════
+
+   Override strategy:
+     body.embed-mode overrides every visual token via scoped
+     CSS variables re-declared on body.embed-mode, so all
+     existing classes pick up the new palette automatically.
+     No HTML or JS changes needed.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Chatbot colour tokens ───────────────────────────────────── */
+body.embed-mode {
+  --cb-bg:        #E2E8F0;   /* widget panel background */
+  --cb-card:      #FFFFFF;   /* card / input background */
+  --cb-text:      #2D3748;   /* primary text */
+  --cb-muted:     #718096;   /* muted / hint text */
+  --cb-border:    #CBD5E0;   /* input borders */
+  --cb-border-lt: #E8EDF3;   /* light dividers */
+  --cb-accent:    #4A6CF7;   /* send button / active state */
+  --cb-accent-dk: #3A55D4;   /* button hover */
+  --cb-accent-tint:#EEF2FF;  /* light accent bg */
+  --cb-error:     #E53E3E;
+  --cb-success:   #38A169;
+  --cb-label:     #4A5568;   /* form labels */
+  --cb-r:         8px;       /* softer radius to match widget */
+}
+
+/* ── Reset body + page wrapper ───────────────────────────────── */
+body.embed-mode {
+  background: var(--cb-bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+body.embed-mode .page {
+  max-width: 100%;
+  padding: 12px 12px 24px;
+}
+/* hide UTM strip, steps bar and footer in embed — keep form clean */
+body.embed-mode .utm    { display: none !important; }
+body.embed-mode .steps  { display: none !important; }
+body.embed-mode .ftr    { display: none !important; }
+
+/* ── Card ────────────────────────────────────────────────────── */
+body.embed-mode .card {
+  background: var(--cb-card);
+  border: 1px solid var(--cb-border);
+  border-radius: var(--cb-r);
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+body.embed-mode .card-hdr {
+  background: var(--cb-card);
+  border-bottom: 1px solid var(--cb-border-lt);
+  padding: 14px 16px;
+}
+body.embed-mode .card-hdr h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cb-text);
+  font-family: inherit;
+}
+body.embed-mode .dept-pill {
+  background: var(--cb-accent);
+  font-size: 10px;
+  padding: 3px 10px;
+}
+body.embed-mode .card-body {
+  padding: 14px 16px 20px;
+}
+
+/* ── Dept intro banner ───────────────────────────────────────── */
+body.embed-mode .dept-intro {
+  background: var(--cb-accent-tint);
+  border-left-color: var(--cb-accent);
+  color: var(--cb-muted);
+  font-size: 13px;
+  padding: 10px 14px;
+}
+
+/* ── Dept tiles — 2 columns in narrow chatbot pane ──────────── */
+body.embed-mode .dept-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+body.embed-mode .dept-tile {
+  background: var(--cb-card);
+  border-color: var(--cb-border);
+  border-radius: var(--cb-r);
+  padding: 14px 8px 12px;
+}
+body.embed-mode .dept-tile::before {
+  background: var(--cb-accent);
+}
+body.embed-mode .dept-tile:hover {
+  border-color: var(--cb-accent);
+  box-shadow: 0 2px 8px rgba(74,108,247,.15);
+  transform: translateY(-1px);
+}
+body.embed-mode .dept-tile.sel {
+  background: var(--cb-accent);
+  border-color: var(--cb-accent);
+  box-shadow: 0 2px 12px rgba(74,108,247,.30);
+}
+body.embed-mode .d-icon  { font-size: 20px; margin-bottom: 6px; }
+body.embed-mode .d-name  { font-size: 11.5px; color: var(--cb-text); }
+body.embed-mode .d-sub   { font-size: 10px;   color: var(--cb-muted); }
+body.embed-mode .dept-tile.sel .d-name { color: #fff; }
+body.embed-mode .dept-tile.sel .d-sub  { color: rgba(255,255,255,.75); }
+
+/* ── Section labels ──────────────────────────────────────────── */
+body.embed-mode .sec-lbl {
+  color: var(--cb-label);
+  border-bottom-color: var(--cb-border-lt);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+body.embed-mode .sec-lbl::before {
+  background: var(--cb-accent);
+}
+
+/* ── Form grid — single column inside narrow chatbot ─────────── */
+body.embed-mode .fg {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+body.embed-mode .sp2 { grid-column: span 1; }
+
+/* ── Labels ──────────────────────────────────────────────────── */
+body.embed-mode .fgrp label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cb-text);
+  letter-spacing: 0;
+}
+body.embed-mode .fgrp label .req { color: var(--cb-error); }
+
+/* ── Inputs / selects / textarea ─────────────────────────────── */
+body.embed-mode .fgrp input,
+body.embed-mode .fgrp select,
+body.embed-mode .fgrp textarea {
+  background: var(--cb-card);
+  border: 1px solid var(--cb-border);
+  border-radius: var(--cb-r);
+  color: var(--cb-text);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 10px 12px;
+  box-shadow: none;
+}
+body.embed-mode .fgrp input::placeholder,
+body.embed-mode .fgrp textarea::placeholder {
+  color: #A0AEC0;
+}
+body.embed-mode .fgrp input:focus,
+body.embed-mode .fgrp select:focus,
+body.embed-mode .fgrp textarea:focus {
+  border-color: var(--cb-accent);
+  box-shadow: 0 0 0 2px rgba(74,108,247,.15);
+  background: var(--cb-card);
+}
+body.embed-mode .fgrp input.err,
+body.embed-mode .fgrp select.err {
+  border-color: var(--cb-error);
+  box-shadow: 0 0 0 2px rgba(229,62,62,.12);
+}
+
+/* ── Hint + inline error ─────────────────────────────────────── */
+body.embed-mode .f-hint { color: var(--cb-muted); font-size: 11px; }
+body.embed-mode .f-err  { color: var(--cb-error); font-size: 11px; }
+
+/* ── Error banner ────────────────────────────────────────────── */
+body.embed-mode .err-banner {
+  background: #FFF5F5;
+  border-color: #FED7D7;
+  color: var(--cb-error);
+}
+
+/* ── Loading spinner ─────────────────────────────────────────── */
+body.embed-mode .meta-loading .spinner-lg {
+  border-color: var(--cb-border-lt);
+  border-top-color: var(--cb-accent);
+}
+body.embed-mode .meta-error {
+  background: #FFF5F5;
+  color: var(--cb-error);
+}
+
+/* ── Consent ─────────────────────────────────────────────────── */
+body.embed-mode .consent input[type=checkbox] {
+  accent-color: var(--cb-accent);
+}
+body.embed-mode .consent label { color: var(--cb-muted); font-size: 12px; }
+body.embed-mode .consent label a { color: var(--cb-accent); }
+
+/* ── Submit area ─────────────────────────────────────────────── */
+body.embed-mode .submit-area {
+  border-top-color: var(--cb-border-lt);
+  margin-top: 20px;
+  padding-top: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+/* Send button — matches Wonderchat blue */
+body.embed-mode .btn-pri {
+  background: var(--cb-accent);
+  border-radius: var(--cb-r);
+  padding: 11px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  box-shadow: none;
+  justify-content: center;
+  width: 100%;
+}
+body.embed-mode .btn-pri:hover {
+  background: var(--cb-accent-dk);
+  transform: none;
+  box-shadow: 0 2px 8px rgba(74,108,247,.30);
+}
+body.embed-mode .sub-note { display: none; } /* hide lock note — keeps it compact */
+
+/* ── Success panel ───────────────────────────────────────────── */
+body.embed-mode .success {
+  padding: 32px 16px 28px;
+}
+body.embed-mode .s-ring {
+  background: rgba(56,161,105,.10);
+  border-color: rgba(56,161,105,.25);
+  width: 56px; height: 56px;
+}
+body.embed-mode .s-ring svg { stroke: var(--cb-success); }
+body.embed-mode .success h3 {
+  font-size: 18px;
+  font-family: inherit;
+  color: var(--cb-text);
+}
+body.embed-mode .success p { color: var(--cb-muted); font-size: 13px; }
+
+/* ── BACK BUTTON ─────────────────────────────────────────────── */
+.btn-back{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;border:1.5px solid var(--border);
+  border-radius:var(--r);
+  padding:7px 16px;
+  font-family:var(--fb);font-size:13px;font-weight:500;
+  color:var(--muted);cursor:pointer;
+  transition:all var(--tr);
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-back svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;flex-shrink:0}
+.btn-back:hover{border-color:var(--maroon);color:var(--maroon);background:var(--maroon-tint)}
+/* chatbot theme override */
+body.embed-mode .btn-back{
+  border-color:var(--cb-border);color:var(--cb-muted);font-family:inherit;
+}
+body.embed-mode .btn-back:hover{border-color:var(--cb-accent);color:var(--cb-accent);background:var(--cb-accent-tint)}
+/* back-bar row above the form */
+.back-bar{
+  display:flex;align-items:center;
+  margin-bottom:14px;
+}
+
+/* ── DEPARTMENT CONTACT BANNER (STEP 2) ───────────────────────── */
+.dept-contact-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#FAF9F6;border:1px solid var(--border-lt);
+  border-left:3.5px solid var(--maroon);
+  border-radius:var(--r);padding:11px 16px;margin-bottom:20px;
+  gap:12px;flex-wrap:wrap;animation:fadeUp .25s ease;
+}
+.dcb-info{display:flex;align-items:center;gap:10px}
+.dcb-icon{font-size:16px;line-height:1;display:flex;align-items:center}
+.dcb-title{font-family:var(--fb);font-weight:600;font-size:13px;color:var(--charcoal)}
+.dcb-sub{font-size:12px;color:var(--muted);margin-left:2px}
+.dcb-contacts{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dcb-link{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12.5px;font-weight:600;color:var(--maroon);
+  text-decoration:none;transition:all var(--tr);
+}
+.dcb-link:hover{text-decoration:underline;opacity:.85}
+.dcb-link svg{stroke:var(--maroon);flex-shrink:0}
+.dcb-sep{color:var(--border);font-size:11px}
+
+/* embed theme override for dept-contact-bar */
+body.embed-mode .dept-contact-bar{
+  background:var(--cb-accent-tint);
+  border-color:var(--cb-border-lt);
+  border-left-color:var(--cb-accent);
+}
+body.embed-mode .dcb-title{color:var(--cb-text)}
+body.embed-mode .dcb-sub{color:var(--cb-muted)}
+body.embed-mode .dcb-link{color:var(--cb-accent)}
+body.embed-mode .dcb-link svg{stroke:var(--cb-accent)}
+
+
+/* ── CAPTCHA ─────────────────────────────────────────────────── */
+/* Hide default reCAPTCHA badge — we show our own disclosure text */
+.grecaptcha-badge { visibility: hidden !important; }
+.captcha-note {
+  font-size:11px;color:var(--muted);
+  margin-top:8px;line-height:1.5;
+}
+.captcha-note a { color:var(--maroon);text-decoration:none }
+/* Error state when captcha verification fails */
+.captcha-err {
+  display:none;font-size:11px;color:var(--error);
+  margin-top:6px;padding:8px 12px;
+  background:#FEF2F2;border-radius:var(--r);
+  border:1px solid #FECACA;
+}
+.captcha-err.show { display:block }
+/* embed theme override */
+body.embed-mode .captcha-note { color:var(--cb-muted) }
+body.embed-mode .captcha-note a { color:var(--cb-accent) }
+</style>
+<!--
+  ════════════════════════════════════════════════════════════════
+  GOOGLE reCAPTCHA v3
+  ════════════════════════════════════════════════════════════════
+  reCAPTCHA v3 runs invisibly in the background — no checkbox or
+  puzzle is shown to the student. It returns a score (0.0–1.0)
+  before the form is submitted.
+
+  SETUP STEPS:
+  1. Go to https://www.google.com/recaptcha/admin/create
+  2. Select reCAPTCHA v3
+  3. Add your Force.com site domain (e.g. yourorg.my.salesforce-sites.com)
+  4. Copy the SITE KEY (public) below
+  5. Copy the SECRET KEY (private) — store in Salesforce Named Credential
+     or Custom Setting, NEVER in client-side code
+  ════════════════════════════════════════════════════════════════
+-->
+<!-- Replace YOUR_RECAPTCHA_SITE_KEY with your actual v3 site key -->
+<script src="https://www.google.com/recaptcha/api.js?render=6LdLGQItAAAAAKOHD6cPRYWVCGJV5iB3LOfxMDEG"></script>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════
+     CHANGE 1: hidden via body.embed-mode CSS when ?embed=1
+════════════════════════════════════════════════════════════════ -->
+<header class="hdr">
+  <a href="https://ahduni.edu.in" class="logo-wrap">
+    <svg class="logo-svg" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3"  y="3"  width="46" height="46" rx="1" stroke="#801214" stroke-width="2.8" fill="none"/>
+      <rect x="9"  y="9"  width="34" height="34" rx="1" stroke="#801214" stroke-width="2.2" fill="none"/>
+      <rect x="15" y="15" width="22" height="22" rx="1" stroke="#801214" stroke-width="1.8" fill="none"/>
+      <rect x="21" y="21" width="10" height="10" rx="0.5" stroke="#801214" stroke-width="1.5" fill="#801214" fill-opacity="0.12"/>
+      <line x1="3"  y1="22" x2="3"  y2="30" stroke="white" stroke-width="3.5"/>
+      <line x1="49" y1="22" x2="49" y2="30" stroke="white" stroke-width="3.5"/>
+      <line x1="22" y1="3"  x2="30" y2="3"  stroke="white" stroke-width="3.5"/>
+      <line x1="22" y1="49" x2="30" y2="49" stroke="white" stroke-width="3.5"/>
+      <line x1="9"  y1="22" x2="9"  y2="30" stroke="white" stroke-width="3"/>
+      <line x1="43" y1="22" x2="43" y2="30" stroke="white" stroke-width="3"/>
+      <line x1="22" y1="9"  x2="30" y2="9"  stroke="white" stroke-width="3"/>
+      <line x1="22" y1="43" x2="30" y2="43" stroke="white" stroke-width="3"/>
+    </svg>
+    <div>
+      <span class="logo-name">Ahmedabad University</span>
+      <span class="logo-sub">Navrangpura · Ahmedabad</span>
+    </div>
+  </a>
+  <div class="hdr-right">
+    <p><span id="hdrContactTitle">Admissions Office</span><br/>
+       <a id="hdrContactPhone" href="tel:+917961911000">+91 79 6191 1000</a> &nbsp;·&nbsp;
+       <a id="hdrContactEmail" href="mailto:admissions@ahduni.edu.in">admissions@ahduni.edu.in</a></p>
+  </div>
+</header>
+
+<!-- ═══ PAGE ═══════════════════════════════════════════════════ -->
+<div class="page">
+
+  <!-- Hero — CHANGE 1: hidden in embed mode -->
+  <div class="hero">
+    <h1>Programme Enquiry</h1>
+    <p>Fill in your details and our admissions team will get in touch shortly.</p>
+    <div class="hero-meta">
+      <span>&#127979; <strong>Commerce Circle, Gate no.-2, Ahmedabad - 380009</strong></span>
+      <span>&#128222; <strong id="heroContactPhone">+91 79 6191 1000</strong></span>
+      <span>&#127760; <strong>ahduni.edu.in</strong></span>
+    </div>
+  </div>
+
+  <!-- UTM strip -->
+  <!-- <div class="utm" id="utmStrip">
+    <span style="color:var(--maroon);font-size:14px">&#128279;</span>
+    <span id="utmContent"></span>
+  </div> -->
+
+  <!-- Progress Steps — 3 steps only -->
+  <div class="steps">
+    <div class="step active" id="s1">
+      <div class="step-n">1</div>
+      <span class="step-txt">Department</span>
+    </div>
+    <div class="step-line" id="ln1"></div>
+    <div class="step" id="s2">
+      <div class="step-n">2</div>
+      <span class="step-txt">Your Details</span>
+    </div>
+    <div class="step-line" id="ln2"></div>
+    <div class="step" id="s3">
+      <div class="step-n">3</div>
+      <span class="step-txt">Confirmation</span>
+    </div>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <div class="card-hdr">
+      <h2 id="cardTitle">Select Your Programme</h2>
+      <span class="dept-pill" id="deptPill"></span>
+    </div>
+    <div class="card-body">
+
+      <!-- ── STEP 1: Department tiles ─────────────────────────── -->
+      <div id="step1">
+        <div class="meta-loading" id="metaLoading">
+          <div class="spinner-lg"></div>
+          Loading departments…
+        </div>
+        <div id="metaError" class="meta-error" style="display:none">
+          Unable to load form. Please refresh the page and retry.
+        </div>
+
+        <div class="dept-grid" id="deptGrid"></div>
+      </div>
+
+      <!-- ── STEP 2: Enquiry form ──────────────────────────────── -->
+      <div id="step2" style="display:none">
+        <!-- Back button — returns to department selection -->
+        <div class="back-bar">
+          <button type="button" class="btn-back" id="backBtn" onclick="goBackToDept()">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Change Department
+          </button>
+        </div>
+
+        <!-- Department Direct Contact Banner -->
+        <div class="dept-contact-bar" id="deptContactBar">
+          <div class="dcb-info">
+            <span class="dcb-icon">&#128222;</span>
+            <div>
+              <span class="dcb-title" id="formContactTitle">Admissions Office</span>
+              <span class="dcb-sub">&mdash; Direct Enquiry Contacts:</span>
+            </div>
+          </div>
+          <div class="dcb-contacts">
+            <a id="formContactPhone" href="tel:+917961911000" class="dcb-link">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span id="formContactPhoneText">+91 79 6191 1000</span>
+            </a>
+            <span class="dcb-sep">&bull;</span>
+            <a id="formContactEmail" href="mailto:admissions@ahduni.edu.in" class="dcb-link">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <span id="formContactEmailText">admissions@ahduni.edu.in</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="err-banner" id="errBanner"></div>
+
+        <form id="eForm" autocomplete="off" onsubmit="return false;">
+
+          <!-- Personal Information -->
+          <div class="sec-lbl">Personal Information</div>
+          <div class="fg">
+            <div class="fgrp">
+              <label>First Name <span class="req">*</span></label>
+              <input type="text" id="fFirst" name="FirstName"
+                     placeholder="e.g. Arjun" required="true"
+                     autocomplete="given-name"/>
+              <span class="f-err" id="e_FirstName">Please enter your first name</span>
+            </div>
+            <div class="fgrp">
+              <label>Last Name <span class="req">*</span></label>
+              <input type="text" id="fLast" name="LastName"
+                     placeholder="e.g. Shah" required="true"
+                     autocomplete="family-name"/>
+              <span class="f-err" id="e_LastName">Please enter your last name</span>
+            </div>
+            <div class="fgrp">
+              <label>Email Address <span class="req">*</span></label>
+              <input type="email" id="fEmail" name="Email"
+                     placeholder="your@email.com" required="true"
+                     autocomplete="email" inputmode="email"/>
+              <span class="f-err" id="e_Email">Please enter a valid email address</span>
+            </div>
+
+            <!-- Phone with country code: country select + national number -->
+            <div class="fgrp">
+              <label>Mobile Number <span class="req">*</span></label>
+              <div class="phone-row">
+                <select id="fPhoneCountry" name="Phone_Country" aria-label="Country code">
+                  <option value="IN" data-dial="+91">India (+91)</option>
+                  <option value="AE" data-dial="+971">UAE (+971)</option>
+                  <option value="US" data-dial="+1">United States (+1)</option>
+                  <option value="CA" data-dial="+1">Canada (+1)</option>
+                  <option value="GB" data-dial="+44">United Kingdom (+44)</option>
+                  <option value="AU" data-dial="+61">Australia (+61)</option>
+                  <option value="SG" data-dial="+65">Singapore (+65)</option>
+                  <option value="NP" data-dial="+977">Nepal (+977)</option>
+                  <option value="BD" data-dial="+880">Bangladesh (+880)</option>
+                  <option value="LK" data-dial="+94">Sri Lanka (+94)</option>
+                  <option value="SA" data-dial="+966">Saudi Arabia (+966)</option>
+                  <option value="QA" data-dial="+974">Qatar (+974)</option>
+                  <option value="KW" data-dial="+965">Kuwait (+965)</option>
+                  <option value="OM" data-dial="+968">Oman (+968)</option>
+                  <option value="BH" data-dial="+973">Bahrain (+973)</option>
+                  <option value="NZ" data-dial="+64">New Zealand (+64)</option>
+                  <option value="DE" data-dial="+49">Germany (+49)</option>
+                  <option value="FR" data-dial="+33">France (+33)</option>
+                  <option value="KE" data-dial="+254">Kenya (+254)</option>
+                  <option value="NG" data-dial="+234">Nigeria (+234)</option>
+                  <option value="ZA" data-dial="+27">South Africa (+27)</option>
+                </select>
+                <input type="tel" id="fMobile" name="Phone"
+                       placeholder="98765 43210"
+                       required="true"
+                       maxlength="15"
+                       inputmode="numeric"
+                       autocomplete="tel-national"/>
+              </div>
+              <span class="f-hint" id="phoneHint">Select your country code and enter your number</span>
+              <span class="f-err" id="e_Phone">Please enter a valid mobile number</span>
+            </div>
+
+            <div class="fgrp">
+              <label>City <span class="req">*</span></label>
+              <input type="text" id="fCity" name="City"
+                     placeholder="e.g. Ahmedabad" required="true"
+                     autocomplete="address-level2"/>
+              <span class="f-err" id="e_City">Please enter your city</span>
+            </div>
+            <div class="fgrp">
+              <label>State</label>
+              <select id="fState" name="State" autocomplete="address-level1">
+                <option value="">Select State</option>
+                <option>Gujarat</option>
+                <option>Rajasthan</option>
+                <option>Maharashtra</option>
+                <option>Madhya Pradesh</option>
+                <option>Uttar Pradesh</option>
+                <option>Delhi</option>
+                <option>Haryana</option>
+                <option>Punjab</option>
+                <option>Karnataka</option>
+                <option>Tamil Nadu</option>
+                <option>Telangana</option>
+                <option>West Bengal</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic dept fields -->
+          <div id="dynWrap">
+            <div style="margin-top:24px">
+              <div class="sec-lbl" id="dynLabel">Programme Details</div>
+              <div class="fg" id="dynFields"></div>
+            </div>
+          </div>
+
+          <!-- Enquiry details -->
+          <div style="margin-top:24px">
+            <div class="sec-lbl">Enquiry Details</div>
+            <div class="fg">
+              <!-- LeadSource resolved server-side: form field > utm_source > 'Admission Form' -->
+              <div class="fgrp sp2">
+                <label>Your Query / Message</label>
+                <textarea id="fDesc" name="Description" rows="3"
+                  placeholder="Tell us about your background, interests, or any questions…"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Consent -->
+          <div style="margin-top:18px">
+            <div class="consent">
+              <input type="checkbox" id="consentChk"/>
+              <label for="consentChk">
+                I consent to Ahmedabad University collecting and using my information to process
+                this enquiry and contact me regarding admissions. View our
+                <a href="https://ahduni.edu.in/privacy-policy" target="_blank">Privacy Policy</a>.
+              </label>
+            </div>
+            <span class="f-err" id="e_consent" style="margin-top:4px">
+              Please accept the consent to proceed
+            </span>
+          </div>
+
+          <!-- Hidden tracking fields -->
+          <input type="hidden" id="hUtmSrc"   name="UTM_Source__c"/>
+          <input type="hidden" id="hUtmMed"   name="UTM_Medium__c"/>
+          <input type="hidden" id="hUtmCmp"   name="UTM_Campaign__c"/>
+          <input type="hidden" id="hUtmCnt"   name="UTM_Content__c"/>
+          <input type="hidden" id="hUtmTrm"   name="UTM_Term__c"/>
+          <input type="hidden" id="hDept"     name="Department__c"/>
+          <input type="hidden" id="hDeptCode" name="Department_Code__c"/>
+          <input type="hidden" id="hServerDept" value="{!deptParam}"/>
+          <input type="hidden" id="hServerForm" value="{!formParam}"/>
+          <input type="hidden" id="hFormCode"   name="Form_Code__c"/>
+
+          <!-- reCAPTCHA v3 disclosure (required by Google policy) -->
+          <p class="captcha-note">
+            This form is protected by Google reCAPTCHA.
+            By submitting, you agree to Google&#39;s
+            <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a>
+            and <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a>.
+          </p>
+          <span class="captcha-err" id="captchaErr">
+            Security verification failed. Please try again.
+          </span>
+
+          <!-- Submit -->
+          <div class="submit-area">
+            <button type="button" class="btn-pri" id="submitBtn" onclick="handleSubmit()">
+              <svg class="btn-arr" viewBox="0 0 24 24">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+              <span class="btn-spinner" id="btnSpinner"></span>
+              <span id="btnText">Submit Enquiry</span>
+            </button>
+            <p class="sub-note" id="formSubNote">
+              &#128274; Your information is encrypted and used only by the
+              <span id="formSubNoteDept">Ahmedabad University Admissions</span> team. For help: <a id="subNotePhone" href="tel:+917961911000" style="color:var(--maroon);font-weight:600;text-decoration:none">+91 79 6191 1000</a> &middot; <a id="subNoteEmail" href="mailto:admissions@ahduni.edu.in" style="color:var(--maroon);font-weight:600;text-decoration:none">admissions@ahduni.edu.in</a>
+            </p>
+          </div>
+
+        </form>
+      </div><!-- /step2 -->
+
+      <!-- ── STEP 3: Success ──────────────────────────────────── -->
+      <div class="success" id="successPanel">
+        <div class="s-ring">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Enquiry Received!</h3>
+        <p>
+          Thank you for your interest in Ahmedabad University.<br/>
+          Our admissions team will contact you shortly.
+        </p>
+
+        <div class="success-contact-box" id="successContactBox">
+          <div class="scb-heading">Have immediate questions? Contact our team directly:</div>
+          <div class="scb-office" id="successContactTitle">Admissions Office</div>
+          <div class="scb-actions">
+            <a id="successPhoneLink" href="tel:+917961911000" class="scb-btn">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span id="successPhoneText">+91 79 6191 1000</span>
+            </a>
+            <a id="successEmailLink" href="mailto:admissions@ahduni.edu.in" class="scb-btn">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <span id="successEmailText">admissions@ahduni.edu.in</span>
+            </a>
+          </div>
+        </div>
+
+        <div id="brochureBox" style="display:none;margin-top:24px">
+          <a id="brochureLink" class="btn-pri" href="#" target="_blank" rel="noopener"
+             style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download Brochure</span>
+          </a>
+        </div>
+
+        <div style="margin-top:28px">
+          <button type="button" class="btn-sec" onclick="resetForm()">Submit Another Enquiry</button>
+        </div>
+      </div>
+
+    </div><!-- /card-body -->
+  </div><!-- /card -->
+
+  <div class="ftr">
+    &copy; 2026 Ahmedabad University
+    <span class="d">|</span><a href="https://ahduni.edu.in">ahduni.edu.in</a>
+    <span class="d">|</span><a href="https://ahduni.edu.in/privacy-policy">Privacy Policy</a>
+    <span class="d">|</span><span>Navrangpura, Ahmedabad – 380 009</span>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── reCAPTCHA v3 ────────────────────────────────────────────── */
+// Replace with your actual reCAPTCHA v3 SITE KEY from:
+// https://www.google.com/recaptcha/admin/create
+var RECAPTCHA_SITE_KEY = '6LdLGQItAAAAAKOHD6cPRYWVCGJV5iB3LOfxMDEG';
+
+// Minimum score threshold (0.0 = bot, 1.0 = human)
+// Google recommends 0.5 as a balanced starting point.
+// Raise to 0.7 if you see bot submissions; lower to 0.3 if real users fail.
+var RECAPTCHA_MIN_SCORE = 0.5;
+
+/* ── Runtime state ───────────────────────────────────────────── */
+var META        = [];          // full metadata from getMetadata()
+var DEPT_SLUGS  = {};          // dept slug -> dept code
+var FORM_SLUGS  = {};          // form slug -> form code
+var activeDept  = null;        // selected dept object from META
+var activeForm  = null;        // selected form object from activeDept.forms
+
+/* ── Dynamic Contact Info updater ────────────────────────────── */
+var DEFAULT_CONTACT = {
+  title: 'Admissions Office',
+  phone: '+91 79 6191 1000',
+  email: 'admissions@ahduni.edu.in'
+};
+
+var DEPT_FALLBACK_CONTACTS = {
+  'UG': {
+    title: 'Undergraduate Admissions',
+    phone: '+91 81288 18876',
+    email: 'ugadmissions@ahduni.edu.in'
+  },
+  'MASTERS': {
+    title: 'Masters Admissions',
+    phone: '+91 79 6191 1126',
+    email: 'masters.admissions@ahduni.edu.in'
+  },
+  'PHD': {
+    title: 'Doctoral Admissions',
+    phone: '+91 79 6191 1125',
+    email: 'doctoral.admissions@ahduni.edu.in'
+  },
+  'EXEC_ED': {
+    title: 'Executive Education Admissions',
+    phone: '+91 79 6191 1197',
+    email: 'execed@ahduni.edu.in'
+  }
+};
+
+function updateContactInfo(dept) {
+  var dCode = dept ? (dept.code || '') : '';
+  var fallback = DEPT_FALLBACK_CONTACTS[dCode] || DEFAULT_CONTACT;
+
+  var title = (dept && dept.contactTitle)
+    ? dept.contactTitle
+    : (dept && dept.name ? (dept.name === 'PhD' ? 'Doctoral' : dept.name) + ' Admissions' : fallback.title);
+  var phone = (dept && dept.contactPhone) ? dept.contactPhone : fallback.phone;
+  var email = (dept && dept.contactEmail) ? dept.contactEmail : fallback.email;
+
+  // 1. Header contact info (top of page)
+  var hdrTitle = document.getElementById('hdrContactTitle');
+  if (hdrTitle) hdrTitle.textContent = title;
+
+  var hdrPhone = document.getElementById('hdrContactPhone');
+  if (hdrPhone) {
+    hdrPhone.textContent = phone;
+    hdrPhone.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
+  }
+
+  var hdrEmail = document.getElementById('hdrContactEmail');
+  if (hdrEmail) {
+    hdrEmail.textContent = email;
+    hdrEmail.href = 'mailto:' + email;
+  }
+
+  // 2. Hero phone
+  var heroPhone = document.getElementById('heroContactPhone');
+  if (heroPhone) heroPhone.textContent = phone;
+
+  // 3. Step 2 (Form card) Department Contact Bar
+  var formTitle = document.getElementById('formContactTitle');
+  if (formTitle) formTitle.textContent = title;
+
+  var formPhone = document.getElementById('formContactPhone');
+  var formPhoneText = document.getElementById('formContactPhoneText');
+  if (formPhone) {
+    formPhone.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
+    if (formPhoneText) formPhoneText.textContent = phone;
+    else formPhone.textContent = phone;
+  }
+
+  var formEmail = document.getElementById('formContactEmail');
+  var formEmailText = document.getElementById('formContactEmailText');
+  if (formEmail) {
+    formEmail.href = 'mailto:' + email;
+    if (formEmailText) formEmailText.textContent = email;
+    else formEmail.textContent = email;
+  }
+
+  // 4. Step 2 Sub-note (under submit button)
+  var subDept = document.getElementById('formSubNoteDept');
+  if (subDept) subDept.textContent = title;
+  var subPhone = document.getElementById('subNotePhone');
+  if (subPhone) {
+    subPhone.textContent = phone;
+    subPhone.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
+  }
+  var subEmail = document.getElementById('subNoteEmail');
+  if (subEmail) {
+    subEmail.textContent = email;
+    subEmail.href = 'mailto:' + email;
+  }
+
+  // 5. Success panel contact card (Step 3)
+  var scTitle = document.getElementById('successContactTitle');
+  if (scTitle) scTitle.textContent = title;
+
+  var scPhoneLink = document.getElementById('successPhoneLink');
+  var scPhoneText = document.getElementById('successPhoneText');
+  if (scPhoneLink && scPhoneText) {
+    scPhoneText.textContent = phone;
+    scPhoneLink.href = 'tel:' + phone.replace(/[^0-9+]/g, '');
+  }
+
+  var scEmailLink = document.getElementById('successEmailLink');
+  var scEmailText = document.getElementById('successEmailText');
+  if (scEmailLink && scEmailText) {
+    scEmailText.textContent = email;
+    scEmailLink.href = 'mailto:' + email;
+  }
+}
+
+/* ── VF Remote Actions ───────────────────────────────────────── */
+function remoteGetMetadata(cb) {
+  Visualforce.remoting.Manager.invokeAction(
+    '{!$RemoteAction.AU_EnquiryFormController.getMetadata}',
+    function(result, event) { cb(result, event); },
+    { escape: false }
+  );
+}
+
+function remoteGetStatePicklistValues(cb) {
+  Visualforce.remoting.Manager.invokeAction(
+    '{!$RemoteAction.AU_EnquiryFormController.getStatePicklistValues}',
+    function(result, event) { cb(result, event); },
+    { escape: false }
+  );
+}
+
+function remoteCreateLead(payload, cb) {
+  Visualforce.remoting.Manager.invokeAction(
+    '{!$RemoteAction.AU_EnquiryFormController.createLead}',
+    JSON.stringify(payload),
+    function(result, event) { cb(result, event); },
+    { escape: false }
+  );
+}
+
+/* ── URL param reader ────────────────────────────────────────── */
+function getURLParams() {
+  var raw = new URLSearchParams(window.location.search);
+  /* case-insensitive param lookup: utm_source, UTM_Source, Utm_Source all work */
+  var p = { get: function(name) {
+    var want = name.toLowerCase(), found = null;
+    raw.forEach(function(v, k) { if (found === null && k.toLowerCase() === want) found = v; });
+    return found;
+  }};
+  return {
+    dept:     (p.get('dept') || p.get('department') || '').trim(),
+    embed:    p.get('embed') === '1',          // CHANGE 1
+    source:   p.get('UTM_Source')   || '',
+    medium:   p.get('UTM_Medium')   || '',
+    campaign: p.get('UTM_Campaign') || '',
+    content:  p.get('UTM_Content')  || '',
+    term:     p.get('UTM_Term')     || ''
+  };
+}
+
+/* ── CHANGE 1: embed mode — add class to body ────────────────── */
+function applyEmbedMode(isEmbed) {
+  if (isEmbed) {
+    document.body.classList.add('embed-mode');
+  }
+}
+
+/* ── UTM init ────────────────────────────────────────────────── */
+function initUTM(u) {
+  document.getElementById('hUtmSrc').value = u.source;
+  document.getElementById('hUtmMed').value = u.medium;
+  document.getElementById('hUtmCmp').value = u.campaign;
+  document.getElementById('hUtmCnt').value = u.content;
+  document.getElementById('hUtmTrm').value = u.term;
+  // LeadSource resolved after dept selected (resolveLeadSource())
+
+  var tags = [];
+  if (u.source)   tags.push('<span class="utm-tag">Source: '   + esc(u.source)   + '</span>');
+  if (u.medium)   tags.push('<span class="utm-tag">Medium: '   + esc(u.medium)   + '</span>');
+  if (u.campaign) tags.push('<span class="utm-tag">Campaign: ' + esc(u.campaign) + '</span>');
+  if (u.content)  tags.push('<span class="utm-tag">Content: '  + esc(u.content)  + '</span>');
+  if (u.term)     tags.push('<span class="utm-tag">Term: '     + esc(u.term)     + '</span>');
+  //if (tags.length) {
+    //document.getElementById('utmStrip').classList.add('show');
+    //document.getElementById('utmContent').innerHTML =
+      //'<strong style="color:var(--charcoal)">Tracked via:</strong> ' + tags.join(' ');
+  //}
+}
+
+/* ── XSS helper ──────────────────────────────────────────────── */
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Slug maps from metadata ────────────────────────────────────
+   FORM_SLUGS  maps slug → canonical slug (e.g. 'wonderchat' → 'wonderchat')
+   A form slug is shared across multiple Form_Config records (one per dept).
+   e.g. wonderchat_masters, wonderchat_ug, wonderchat_phd, wonderchat_exec_ed
+   all share the same Form_Slug__c = 'wonderchat'.
+   We match by slug, not by DeveloperName/code.
+────────────────────────────────────────────────────────────── */
+function buildSlugMaps(metaArray) {
+  var dSlugs = {};
+  var fSlugs = {};  // formSlug → formSlug (normalise casing only)
+  metaArray.forEach(function(d) {
+    (d.slugs || []).forEach(function(s) { dSlugs[s.toLowerCase()] = d.code; });
+    (d.forms || []).forEach(function(f) {
+      var slug = (f.slug || f.code).toLowerCase();
+      fSlugs[slug] = slug;  // maps slug to itself (lowercased)
+      fSlugs[f.code.toLowerCase()] = f.code.toLowerCase();
+    });
+  });
+  return { dept: dSlugs, form: fSlugs };
+}
+function resolveDeptSlug(raw) {
+  if (!raw) return '';
+  var lower = raw.toLowerCase().trim();
+  return DEPT_SLUGS[lower] || raw.toUpperCase();
+}
+/* Returns the raw form slug (lowercased) — e.g. 'wonderchat' */
+function resolveFormSlug(raw) {
+  if (!raw) return '';
+  var lower = raw.toLowerCase().trim();
+  return FORM_SLUGS[lower] || lower;
+}
+/* Find all form objects across all depts that match a given slug.
+   Returns array of { form, dept } pairs. */
+function findFormsBySlug(formSlug) {
+  var results = [];
+  var slug = (formSlug || '').toLowerCase().trim();
+  META.forEach(function(d) {
+    (d.forms || []).forEach(function(f) {
+      var fslug = (f.slug || f.code).toLowerCase();
+      if (fslug === slug) {
+        results.push({ form: f, dept: d });
+      }
+    });
+  });
+  return results;
+}
+/* Find a single form by exact code (DeveloperName) — used for specific lookup */
+function findFormByCode(formCode) {
+  var found = null;
+  META.forEach(function(d) {
+    (d.forms || []).forEach(function(f) {
+      if (f.code === formCode) { found = f; activeDept = d; }
+    });
+  });
+  return found;
+}
+
+/* ── Render dept tiles ───────────────────────────────────────── */
+/* Render all dept tiles (no filter) */
+function renderDeptTiles() { renderFilteredDeptTiles(null); }
+function renderTiles()     { renderFilteredDeptTiles(null); }
+
+/* Render dept tiles filtered to a subset of codes.
+   filteredCodes = null → show all depts
+   filteredCodes = ['MASTERS','UG'] → only those depts (?form= mode) */
+function renderFilteredDeptTiles(filteredCodes) {
+  var grid = document.getElementById('deptGrid');
+  grid.innerHTML = '';
+  if (!META.length) {
+    document.getElementById('metaLoading').style.display = 'none';
+    document.getElementById('metaError').style.display  = 'block';
+    return;
+  }
+  document.getElementById('metaLoading').style.display = 'none';
+
+  var show = filteredCodes
+    ? META.filter(function(d) { return filteredCodes.indexOf(d.code) !== -1; })
+    : META;
+
+  if (!show.length) {
+    document.getElementById('metaError').style.display = 'block';
+    document.getElementById('metaError').innerHTML =
+      'No departments available. Please check Form_Department_Config records.';
+    return;
+  }
+
+  show.forEach(function(d) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dept-tile';
+    btn.setAttribute('data-code', d.code);
+    btn.innerHTML =
+      '<span class="d-icon">' + d.icon + '</span>' +
+      '<span class="d-name">' + esc(d.name) + '</span>' +
+      '<span class="d-sub">'  + esc(d.subtitle || '') + '</span>';
+    btn.addEventListener('click', function() { selectDept(d.code); });
+    grid.appendChild(btn);
+  });
+}
+
+/* ── Select dept → always go directly to form (step 2) ─────────
+   The "Select Form" intermediate step is removed.
+   - 1 form:  go straight to it
+   - Many forms: use the first form as default (staff can use
+     ?form=slug to route to a specific form)
+────────────────────────────────────────────────────────────── */
+function selectDept(code) {
+  activeDept = null;
+  META.forEach(function(d) { if (d.code === code) activeDept = d; });
+  if (!activeDept) return;
+
+  updateContactInfo(activeDept);
+
+  document.querySelectorAll('#deptGrid .dept-tile').forEach(function(t) {
+    t.classList.toggle('sel', t.getAttribute('data-code') === code);
+  });
+  document.getElementById('hDept').value     = activeDept.name;
+  document.getElementById('hDeptCode').value = activeDept.code;
+  document.getElementById('deptPill').textContent = activeDept.name;
+  document.getElementById('deptPill').classList.add('show');
+
+  var forms = activeDept.forms || [];
+
+  if (forms.length === 0) {
+    console.error('AU Form: dept "' + code + '" has no forms. Check Form_Field_Config records.');
+    document.getElementById('metaError').style.display = 'block';
+    document.getElementById('metaError').innerHTML =
+      'No fields configured for <strong>' + esc(activeDept.name) + '</strong>. ' +
+      'Please add Form_Field_Config__mdt records in Salesforce.';
+    return;
+  }
+
+  /* If a specific form was requested via ?form=slug, find the matching
+     Form_Config record for THIS dept by matching the slug field.
+     e.g. _urlFormCode='wonderchat', dept=MASTERS → find form with slug='wonderchat'
+     in MASTERS.forms[]. Fall back to forms[0] if not found. */
+  var requestedSlug = (window._urlFormCode || '').toLowerCase();
+  var formToOpen    = null;
+  if (requestedSlug) {
+    forms.forEach(function(f) {
+      var fslug = (f.slug || '').toLowerCase();
+      if (fslug === requestedSlug) formToOpen = f;
+    });
+  }
+  selectForm(formToOpen ? formToOpen.code : forms[0].code);
+}
+
+/* ── Select form → build dynamic fields → go to step 2 ──────── */
+function selectForm(fCode) {
+  activeForm = null;
+  (activeDept.forms || []).forEach(function(f) {
+    if (f.code === fCode) activeForm = f;
+  });
+  if (!activeForm) return;
+
+  document.getElementById('hFormCode').value = activeForm.code;
+  /* Show dept name on pill — form name only if meaningfully different from dept */
+  document.getElementById('deptPill').textContent = activeDept.name;
+
+  buildDynFields(activeForm);
+  setTimeout(function() { showStep(2); }, 200);
+}
+
+/* ── Build dynamic fields from form metadata ─────────────────── */
+function buildDynFields(formObj) {
+  var container = document.getElementById('dynFields');
+  container.innerHTML = '';
+  document.getElementById('dynLabel').textContent = 'Programme Details';
+
+  var hasVisible = false;
+
+  (formObj.fields || []).forEach(function(f) {
+    if (f.isHidden) {
+      var hInput = document.createElement('input');
+      hInput.type = 'hidden';
+      hInput.name = f.sfApiName;
+      hInput.value = f.defaultValue || '';
+      container.appendChild(hInput);
+      return;
+    }
+
+    hasVisible = true;
+    var wrap = document.createElement('div');
+    wrap.className = 'fgrp' + (f.fullWidth ? ' sp2' : '');
+
+    var lbl = document.createElement('label');
+    lbl.innerHTML = esc(f.label) + (f.required ? ' <span class="req">*</span>' : '');
+    wrap.appendChild(lbl);
+
+    var el;
+    if (f.type === 'programme_picklist' || f.type === 'picklist') {
+      el = document.createElement('select');
+      el.name = f.sfApiName;
+      var dOpt = document.createElement('option');
+      dOpt.value = '';
+      dOpt.textContent = f.type === 'programme_picklist' ? 'Select Programme…' : 'Select…';
+      el.appendChild(dOpt);
+      var list = f.type === 'programme_picklist'
+        ? (formObj.programmes || f.options || []) : (f.options || []);
+      list.forEach(function(o) {
+        var opt = document.createElement('option');
+        opt.value = o; opt.textContent = o;
+        el.appendChild(opt);
+      });
+      if (f.defaultValue) {
+        el.value = f.defaultValue;
+      }
+    } else if (f.type === 'textarea') {
+      el = document.createElement('textarea');
+      el.name = f.sfApiName;
+      el.rows = 3;
+      el.placeholder = f.placeholder || '';
+      el.style.resize = 'vertical';
+      if (f.defaultValue) {
+        el.value = f.defaultValue;
+      }
+    } else {
+      el = document.createElement('input');
+      el.type = ({ number:'number', date:'date', email:'email', tel:'tel' })[f.type] || 'text';
+      el.name = f.sfApiName;
+      el.placeholder = f.placeholder || '';
+      if (f.type === 'number') { el.step = '0.01'; el.min = '0'; }
+      if (f.defaultValue) {
+        el.value = f.defaultValue;
+      }
+    }
+    if (f.required) el.required = true;
+    wrap.appendChild(el);
+
+    var eSpan = document.createElement('span');
+    eSpan.className = 'f-err';
+    eSpan.id = 'e_' + f.sfApiName;
+    eSpan.textContent = 'Please fill in ' + f.label;
+    wrap.appendChild(eSpan);
+
+    if (f.hint) {
+      var hint = document.createElement('span');
+      hint.className = 'f-hint';
+      hint.textContent = f.hint;
+      wrap.appendChild(hint);
+    }
+    container.appendChild(wrap);
+  });
+
+  document.getElementById('dynWrap').style.display = hasVisible ? 'block' : 'none';
+}
+
+/* ── Step navigation (3 steps) ──────────────────────────────── */
+function showStep(n) {
+  /* n=1: dept tiles  n=2: enquiry form  n=3: thank you */
+  document.getElementById('step1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('step2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('successPanel').classList.toggle('show', n === 3);
+
+  ['s1','s2','s3'].forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'step' + (i+1===n ? ' active' : i+1<n ? ' done' : '');
+  });
+  ['ln1','ln2'].forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'step-line' + (n > i+1 ? ' done' : '');
+  });
+
+  var deptName  = activeDept  ? activeDept.name == 'PhD' ? 'Doctoral' : activeDept.name   : '';
+  var formName  = activeForm  ? activeForm.name   : '';
+  var titles = {
+    1: 'Select Your Programme',
+    2: deptName ? deptName + ' Enquiry Form' : 'Enquiry Form',
+    3: 'Enquiry Confirmed'
+  };
+  document.getElementById('cardTitle').textContent = titles[n] || '';
+}
+
+/* ── Validation ──────────────────────────────────────────────── */
+function validateForm() {
+  var valid = true;
+
+  /* Required fields */
+  document.getElementById('eForm').querySelectorAll('[required]').forEach(function(el) {
+    if (el.type === 'checkbox') return;
+    var grp = el.closest('.fgrp');
+    var eEl = document.getElementById('e_' + el.name)
+              || (grp && grp.querySelector('.f-err'));
+    var empty = !el.value.trim();
+    el.classList.toggle('err', empty);
+    if (eEl) eEl.classList.toggle('show', empty);
+    if (empty) valid = false;
+    el.addEventListener('input', function fix() {
+      el.classList.remove('err');
+      if (eEl) eEl.classList.remove('show');
+      el.removeEventListener('input', fix);
+    });
+  });
+
+  /* Email format */
+  var emailEl = document.getElementById('fEmail');
+  if (emailEl && emailEl.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value)) {
+    emailEl.classList.add('err');
+    var em = document.getElementById('e_Email');
+    if (em) { em.textContent = 'Please enter a valid email address'; em.classList.add('show'); }
+    valid = false;
+  }
+
+  /* phone — digits only; India = exactly 10, other countries 6–14 digits */
+  var phoneEl = document.getElementById('fMobile');
+  if (phoneEl && phoneEl.value) {
+    var phoneOk = phoneDigitsOk();
+    phoneEl.classList.toggle('err', !phoneOk);
+    var ep = document.getElementById('e_Phone');
+    if (ep) ep.classList.toggle('show', !phoneOk);
+    if (!phoneOk) valid = false;
+    if (!phoneOk) {
+      phoneEl.addEventListener('input', function fixPhone() {
+        var ok = phoneDigitsOk();
+        phoneEl.classList.toggle('err', !ok);
+        if (ep) ep.classList.toggle('show', !ok);
+        if (ok) phoneEl.removeEventListener('input', fixPhone);
+      });
+    }
+  }
+
+  /* Consent */
+  var chk  = document.getElementById('consentChk');
+  var echk = document.getElementById('e_consent');
+  if (!chk.checked) { echk.classList.add('show'); valid = false; }
+  else               { echk.classList.remove('show'); }
+
+  return valid;
+}
+
+function phoneDigitsOk() {
+  var d = document.getElementById('fMobile').value.replace(/\D/g, '').replace(/^0+/, '');
+  var cc = document.getElementById('fPhoneCountry').value;
+  return cc === 'IN' ? d.length === 10 : (d.length >= 6 && d.length <= 14);
+}
+
+/* ── Collect payload ─────────────────────────────────────────── */
+function collectPayload() {
+  var payload = {};
+  new FormData(document.getElementById('eForm')).forEach(function(val, key) {
+    // national digits only; country sent separately as Phone_Country (ISO)
+    if (key === 'Phone') {
+      val = String(val).replace(/\D/g, '').replace(/^0+/, '');
+    }
+    if (val && String(val).trim()) payload[key] = String(val).trim();
+  });
+  return payload;
+}
+
+/* ── Back to dept selection (step 2 → step 1) ───────────────── */
+/* Department fixed by URL → no "Change Department" button */
+function hideBackToDept() {
+  var bar = document.querySelector('#step2 .back-bar');
+  if (bar) bar.style.display = 'none';
+}
+
+function goBackToDept() {
+  activeForm = null;
+  activeDept = null;
+  updateContactInfo(null);
+  document.querySelectorAll('#deptGrid .dept-tile').forEach(function(t) {
+    t.classList.remove('sel');
+  });
+  document.getElementById('deptPill').classList.remove('show');
+  document.getElementById('dynWrap').style.display = 'none';
+  document.getElementById('dynFields').innerHTML   = '';
+  document.getElementById('errBanner').classList.remove('show');
+  document.getElementById('eForm').querySelectorAll('.err').forEach(function(el) {
+    el.classList.remove('err');
+  });
+  document.getElementById('eForm').querySelectorAll('.f-err.show').forEach(function(el) {
+    el.classList.remove('show');
+  });
+  document.getElementById('e_consent').classList.remove('show');
+  /* If form was filtered by URL (e.g. ?form=wonderchat), back button
+     should only show the depts for that form, not all depts */
+  if (window._filteredDeptCodes && window._filteredDeptCodes.length) {
+    renderFilteredDeptTiles(window._filteredDeptCodes);
+  }
+  showStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Submit ──────────────────────────────────────────────────── */
+function handleSubmit() {
+  var errBanner  = document.getElementById('errBanner');
+  var captchaErr = document.getElementById('captchaErr');
+  errBanner.classList.remove('show');
+  captchaErr.classList.remove('show');
+
+  /* Step 1: Client-side form validation first */
+  if (!validateForm()) {
+    var firstErr = document.querySelector('.err');
+    if (firstErr) firstErr.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+
+  var btn     = document.getElementById('submitBtn');
+  var btnText = document.getElementById('btnText');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btnText.textContent = 'Verifying…';
+
+  /* Step 2: Execute reCAPTCHA v3 — get a token invisibly
+     The token is sent to the Apex controller for server-side verification.
+     Action name 'submit_enquiry' appears in the reCAPTCHA dashboard so you
+     can track scores per-action and detect bot patterns over time.        */
+  if (typeof grecaptcha === 'undefined') {
+    /* reCAPTCHA script failed to load (e.g. ad blocker or network error).
+       Degrade gracefully: proceed without score — log for monitoring.    */
+    console.warn('AU Form: reCAPTCHA not loaded — proceeding without CAPTCHA check.');
+    submitWithToken('');
+    return;
+  }
+
+  grecaptcha.ready(function() {
+    grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'submit_enquiry' })
+      .then(function(token) {
+        submitWithToken(token);
+      })
+      .catch(function(err) {
+        console.error('AU Form: reCAPTCHA execute failed:', err);
+        /* On reCAPTCHA API error, degrade gracefully */
+        submitWithToken('');
+      });
+  });
+}
+
+/* ── submitWithToken() — called after reCAPTCHA token is obtained ─────
+   Sends payload + token to Apex. Apex verifies the token with Google's
+   API server-side (score checked in AU_EnquiryFormController.createLead).
+─────────────────────────────────────────────────────────────────────── */
+function submitWithToken(captchaToken) {
+  var errBanner  = document.getElementById('errBanner');
+  var captchaErr = document.getElementById('captchaErr');
+  var btn        = document.getElementById('submitBtn');
+  var btnText    = document.getElementById('btnText');
+
+  btnText.textContent = 'Submitting…';
+
+  /* Add the token to the payload — Apex will verify it with Google */
+  var payload = collectPayload();
+  payload['captchaToken'] = captchaToken;
+
+  remoteCreateLead(payload, function(result, event) {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btnText.textContent = 'Submit Enquiry';
+
+    if (event.status && result && result.success) {
+      var bUrl = result.brochureUrl || '';
+      var bBox = document.getElementById('brochureBox');
+      if (/^https:\/\//i.test(bUrl)) {
+        document.getElementById('brochureLink').href = bUrl;
+        bBox.style.display = 'block';
+      } else {
+        bBox.style.display = 'none';
+      }
+      showStep(3);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (event.status && result && result.captchaFailed) {
+      /* Apex returned captchaFailed=true — score too low */
+      captchaErr.classList.add('show');
+      captchaErr.scrollIntoView({ behavior:'smooth', block:'center' });
+    } else {
+      var msg = (result && result.error)
+              ? result.error
+              : (event.message || 'Submission failed. Please try again.');
+      errBanner.textContent = '⚠ ' + msg;
+      errBanner.classList.add('show');
+      errBanner.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+  });
+}
+
+/* ── Reset ───────────────────────────────────────────────────── */
+function resetForm() {
+  document.getElementById('eForm').reset();
+  document.getElementById('dynWrap').style.display = 'none';
+  document.getElementById('dynFields').innerHTML   = '';
+  document.getElementById('deptPill').classList.remove('show');
+  document.getElementById('errBanner').classList.remove('show');
+  document.getElementById('e_consent').classList.remove('show');
+  activeDept = null;
+  activeForm  = null;
+  updateContactInfo(null);
+  document.querySelectorAll('.dept-tile').forEach(function(t) {
+    t.classList.remove('sel');
+  });
+  showStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Phone: digits only while typing, India capped at 10 ─────── */
+document.addEventListener('DOMContentLoaded', function() {
+  var ph = document.getElementById('fMobile');
+  var cc = document.getElementById('fPhoneCountry');
+  if (!ph || !cc) return;
+  function max() { return cc.value === 'IN' ? 10 : 14; }
+  function clean(v) {
+    var d = v.replace(/\D/g, '');
+    // drop a pasted dial code (e.g. +91 98765...) matching the selected country
+    var dial = cc.options[cc.selectedIndex].getAttribute('data-dial').replace('+', '');
+    if (/^\s*\+/.test(v) && d.indexOf(dial) === 0) d = d.slice(dial.length);
+    return d.slice(0, max());
+  }
+  ph.addEventListener('input', function() { this.value = this.value.replace(/\D/g, '').slice(0, max()); });
+  ph.addEventListener('paste', function(e) {
+    e.preventDefault();
+    this.value = clean((e.clipboardData || window.clipboardData).getData('text'));
+  });
+  cc.addEventListener('change', function() { ph.value = ph.value.slice(0, max()); });
+});
+
+/* ── INIT ────────────────────────────────────────────────────── */
+/*
+  3-STEP ROUTING LOGIC
+  ════════════════════
+  ?form=wonderchat&dept=masters
+    → Open Masters department form directly (skip step 1)
+
+  ?form=wonderchat  (no dept)
+    → Show only the departments that belong to this form (filtered step 1)
+    → Student selects a dept → opens that dept's form immediately
+
+  ?dept=masters  (no form)
+    → Open Masters with its first/default form directly (skip step 1)
+
+  No params
+    → Show all departments (default step 1)
+*/
+(function init() {
+  var url = getURLParams();
+
+  applyEmbedMode(url.embed);
+  initUTM(url);
+  updateContactInfo(null);
+  showStep(1);
+  window._filteredDeptCodes = null;  // used by goBackToDept
+
+  remoteGetStatePicklistValues(function(statesResult, statesEvent) {
+    if (statesEvent.status && statesResult && statesResult.length > 0) {
+      var stateSelect = document.getElementById('fState');
+      if (stateSelect) {
+        stateSelect.innerHTML = '<option value="">Select State</option>';
+        statesResult.forEach(function(stateName) {
+          var opt = document.createElement('option');
+          opt.value = stateName;
+          opt.textContent = stateName;
+          stateSelect.appendChild(opt);
+        });
+      }
+    }
+  });
+
+  remoteGetMetadata(function(result, event) {
+
+    if (!event.status || !result || !result.length) {
+      document.getElementById('metaLoading').style.display = 'none';
+      document.getElementById('metaError').style.display  = 'block';
+      if (!event.status) {
+        console.error('AU Form: getMetadata failed:', event.message, event.type);
+      } else {
+        console.warn('AU Form: getMetadata returned empty. Check Form_Department_Config__mdt records and Guest User permissions.');
+      }
+      return;
+    }
+
+    META     = result;
+    var slugMaps = buildSlugMaps(META);
+    DEPT_SLUGS   = slugMaps.dept;
+    FORM_SLUGS   = slugMaps.form;
+
+    /* Read URL params */
+    var p          = new URLSearchParams(window.location.search);
+    var rawDept    = (p.get('dept') || p.get('department') || '').trim();
+    var rawForm    = (p.get('form') || '').trim();
+    var serverDept = document.getElementById('hServerDept').value || '';
+    var serverForm = document.getElementById('hServerForm').value  || '';
+
+    var deptCode = rawDept ? resolveDeptSlug(rawDept) : serverDept;
+    var formCode = rawForm ? resolveFormSlug(rawForm) : serverForm;
+
+    /* ── SCENARIO 1: ?form + ?dept → open that specific dept's form directly ─
+       e.g. ?form=wonderchat&dept=masters
+       Finds the Form_Config record whose slug='wonderchat' AND whose dept='MASTERS'.
+       Skips step 1 entirely — goes straight to the enquiry form.                  */
+    if (formCode && deptCode) {
+      /* Find all form records matching this slug, then pick the one for deptCode */
+      var matches = findFormsBySlug(formCode);
+      var match   = null;
+      matches.forEach(function(m) {
+        if (m.dept.code === deptCode) match = m;
+      });
+      if (match) {
+        activeDept = match.dept;
+        document.getElementById('hDept').value     = activeDept.name;
+        document.getElementById('hDeptCode').value = activeDept.code;
+        document.getElementById('deptPill').classList.add('show');
+        updateContactInfo(activeDept);
+        /* Store slug so selectDept can find the right form */
+        window._urlFormCode = formCode;
+        hideBackToDept();
+        selectForm(match.form.code);
+        return;
+      }
+      /* Slug matched but no record for this specific dept — fall through */
+      console.warn('AU Form: no form with slug="' + formCode + '" for dept="' + deptCode + '".');
+    }
+
+    /* ── SCENARIO 2: ?form only → filter dept tiles to this form's depts ─────
+       e.g. ?form=wonderchat
+       Finds ALL Form_Config records with slug='wonderchat', collects their depts,
+       and shows ONLY those dept tiles. Student picks a dept → opens that form.   */
+    if (formCode && !deptCode) {
+      /* Find all dept codes that have a form matching this slug */
+      var slugMatches  = findFormsBySlug(formCode);
+      var formDeptCodes = [];
+      slugMatches.forEach(function(m) {
+        if (formDeptCodes.indexOf(m.dept.code) === -1) {
+          formDeptCodes.push(m.dept.code);
+        }
+      });
+
+      if (formDeptCodes.length > 0) {
+        /* Store the raw slug so selectDept → selectForm picks the right form */
+        window._urlFormCode        = formCode;
+        window._filteredDeptCodes  = formDeptCodes;
+
+        if (formDeptCodes.length === 1) {
+          /* Only one dept — skip step 1 */
+          renderFilteredDeptTiles(formDeptCodes);
+          hideBackToDept();
+          selectDept(formDeptCodes[0]);
+        } else {
+          /* Multiple depts — show filtered dept tiles (step 1) */
+          renderFilteredDeptTiles(formDeptCodes);
+          showStep(1);
+        }
+        return;
+      }
+      console.warn('AU Form: no Form_Config records found with slug="' + formCode +
+        '". Check Form_Slug__c values in Form_Config__mdt. Showing all depts.');
+    }
+
+    /* ── SCENARIO 3: ?dept only → open that dept's default form directly ─
+       Skip step 1, go straight to enquiry form.                           */
+    if (deptCode && !formCode) {
+      var deptObj = null;
+      META.forEach(function(d) { if (d.code === deptCode) deptObj = d; });
+      if (deptObj) {
+        renderDeptTiles();
+        hideBackToDept();
+        selectDept(deptCode);  /* selectDept always goes to step 2 now */
+        return;
+      }
+      console.warn('AU Form: deptCode "' + deptCode + '" not found.');
+    }
+
+    /* ── SCENARIO 4: No params → show all departments ─────────────────── */
+    renderDeptTiles();
+    showStep(1);
+  });
+})();
+</script>
+
+</body>
+</html>
+</apex:page>

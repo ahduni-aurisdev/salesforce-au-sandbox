@@ -151,21 +151,19 @@ global without sharing class mCubeController {
     webservice static boolean clickToCall(String recordId) { 
        
         string  mcubeObjectName = id.valueof( recordId).getSObjectType().getDescribe().getName() ;  
-        system.debug('154 ------ ' +mcubeObjectName);
         MCUBE_Object_Api__c mcubeObject=[select id,name,Campaign_Field_API__c, Source_Field_API__c, Field_to_Compare_Mobile_Incoming_Number__c,LandingNumber__c from MCUBE_Object_Api__c where name =:mcubeObjectName  limit 1];
         String condtn='Id='+'\''+recordId+'\'';
         String xQuery='Select id,'+mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c+ ' from '+mcubeObjectName+' where '+condtn;
-        system.debug('158 ------ ' +condtn);
+       
         
-        system.debug('160 ---------' +xQuery);         
+        system.debug(xQuery);         
         List<sObject> l = Database.query(xQuery);
-        system.debug('162 --------' +l);        
+        system.debug(l);        
         
         // Lead l =  [select id, Mobilephone from Lead where id=: leadId ];
         User u = [select mobilePhone from user where id=:userinfo.getUserId()];
         String m= String.valueof(l[0].get(mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c));
-        system.debug('167 --------' +u);     
-        system.debug('168 --------' +m);     
+        
         u.mobilePhone = u.mobilePhone.replace('+91','')  ; 
         u.mobilePhone = u.mobilePhone.replace('+','')  ;  
         u.mobilePhone=  u.mobilePhone.replaceAll('\\(', '');

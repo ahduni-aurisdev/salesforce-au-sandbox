@@ -7,14 +7,14 @@ public class RoundrobinUserTrigger_Test {
         User u1 = new User(
             Alias = 'testu', Email = 'test@akshareducation.com', EmailEncodingKey = 'UTF-8', LastName = 'Test1', LanguageLocaleKey = 'en_US',
             LocaleSidKey = 'en_US', TimeZoneSidKey='America/Los_Angeles', ProfileId = [Select Id from Profile where Name = 'System Administrator'].Id,
-            UserName='test1@akshareducation.com', Department = 'Sales'
+            UserName='test1@akshareducation.com'
         );
         userList.add(u1);
         
         User u2 = new User(
             Alias = 'testu', Email = 'test@akshareducation.com', EmailEncodingKey = 'UTF-8', LastName = 'Test2', LanguageLocaleKey = 'en_US',
             LocaleSidKey = 'en_US', TimeZoneSidKey='America/Los_Angeles', ProfileId = [Select Id from Profile where Name = 'System Administrator'].Id,
-            UserName='test2@akshareducation.com',Department = 'Marketing' 
+            UserName='test2@akshareducation.com'
         );
         userList.add(u2);
         INSERT userList;

@@ -60,8 +60,10 @@ export default class WalkinLeadForm extends LightningElement {
 
           // === Gmail Validation ===
           if (id === 'email') {
-              const emailValue = event.target.value?.toLowerCase() || '';
-              if (!emailValue.endsWith('@gmail.com')) {
+              const emailValue = event.target.value || '';
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+              if (!emailRegex.test(emailValue)) {
                   this.errorMessage = 'Please Use Valid Email ID';
               } else {
                   this.errorMessage = null; // clear error
@@ -90,10 +92,12 @@ export default class WalkinLeadForm extends LightningElement {
     this.successMessage = null;
     this.errorMessage = null;
 
-    if (!this.email || !this.email.toLowerCase().endsWith('@gmail.com')) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(this.email)) {
         this.errorMessage = 'Use Valid Email ID';
-        return; 
-    }
+        return;
+    }    
 
     if (!this.firstName && !this.lastName) {
       this.errorMessage = 'Please enter your name.';

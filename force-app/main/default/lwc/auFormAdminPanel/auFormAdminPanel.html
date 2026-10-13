@@ -1,0 +1,971 @@
+<template>
+    <div class="admin-wrapper slds-p-around_medium">
+        <!-- HEADER -->
+        <div class="slds-page-header slds-page-header_record-home header-card slds-m-bottom_medium">
+            <div class="slds-page-header__row">
+                <div class="slds-page-header__col-title">
+                    <div class="slds-media slds-media_center">
+                        <div class="slds-media__figure">
+                            <span class="header-icon-badge">
+                                <lightning-icon icon-name="standard:form" size="medium" alternative-text="Form Builder"></lightning-icon>
+                            </span>
+                        </div>
+                        <div class="slds-media__body">
+                            <div class="slds-page-header__name">
+                                <div class="slds-page-header__name-title">
+                                    <h1>
+                                        <span class="slds-page-header__title slds-truncate title-text">
+                                            Admission & Enquiry Form Builder
+                                        </span>
+                                    </h1>
+                                </div>
+                            </div>
+                            <p class="slds-page-header__name-meta subtitle-text">
+                                Build, customize, and manage dynamic enquiry forms and generate targeted campaign links for webinars, cities, and departments.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-page-header__col-actions">
+                    <div class="slds-page-header__controls">
+                        <div class="slds-page-header__control">
+                            <lightning-button-group>
+                                <lightning-button 
+                                    label="Refresh Data" 
+                                    icon-name="utility:refresh" 
+                                    onclick={handleRefresh}>
+                                </lightning-button>
+                                <lightning-button 
+                                    label="Programme Brochures" 
+                                    icon-name="utility:download" 
+                                    onclick={handleOpenBrochures}>
+                                </lightning-button>
+                                <lightning-button 
+                                    label="Create New Form" 
+                                    icon-name="utility:add" 
+                                    variant="brand" 
+                                    class="brand-btn"
+                                    onclick={handleOpenCreateModal}>
+                                </lightning-button>
+                            </lightning-button-group>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- METRIC CARDS -->
+            <div class="slds-grid slds-gutters slds-m-top_medium metrics-grid">
+                <div class="slds-col slds-size_1-of-4">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon_blue">
+                            <lightning-icon icon-name="utility:form" size="small"></lightning-icon>
+                        </div>
+                        <div>
+                            <div class="stat-val">{totalForms}</div>
+                            <div class="stat-lbl">Active Forms</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-4">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon_maroon">
+                            <lightning-icon icon-name="utility:work_order_type" size="small"></lightning-icon>
+                        </div>
+                        <div>
+                            <div class="stat-val">{totalDepartments}</div>
+                            <div class="stat-lbl">Departments</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-4">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon_green">
+                            <lightning-icon icon-name="utility:list" size="small"></lightning-icon>
+                        </div>
+                        <div>
+                            <div class="stat-val">{totalFields}</div>
+                            <div class="stat-lbl">Configured Fields</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-4">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon_purple">
+                            <lightning-icon icon-name="utility:user" size="small"></lightning-icon>
+                        </div>
+                        <div>
+                            <div class="stat-val">{totalLeadsDisplay}</div>
+                            <div class="stat-lbl">Total Leads Captured</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPINNER -->
+        <template if:true={isLoading}>
+            <div class="spinner-container">
+                <lightning-spinner alternative-text="Loading" size="medium" variant="brand"></lightning-spinner>
+            </div>
+        </template>
+
+        <!-- MAIN CONTENT TABS -->
+        <div class="slds-card content-card">
+            <!-- FILTER BAR -->
+            <div class="slds-p-around_medium filter-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                <div class="slds-grid slds-grid_vertical-align-center slds-gutters_small">
+                    <!-- Department Filter -->
+                    <div class="slds-col">
+                        <lightning-combobox
+                            name="deptFilter"
+                            label="Filter by Department"
+                            variant="label-hidden"
+                            value={selectedDeptFilter}
+                            placeholder="All Departments"
+                            options={departmentFilterOptions}
+                            onchange={handleDeptFilterChange}
+                            class="combobox-pill">
+                        </lightning-combobox>
+                    </div>
+                    <!-- Search Box -->
+                    <div class="slds-col">
+                        <lightning-input
+                            name="searchKey"
+                            variant="label-hidden"
+                            placeholder="Search by Form Name or Slug..."
+                            type="search"
+                            value={searchKey}
+                            onchange={handleSearchChange}
+                            class="search-input">
+                        </lightning-input>
+                    </div>
+                </div>
+                <div class="slds-text-color_weak slds-text-body_small">
+                    Showing <strong>{filteredFormsCount}</strong> of {totalForms} forms
+                </div>
+            </div>
+
+            <!-- FORMS TABLE / CARDS -->
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                <template if:true={hasFilteredForms}>
+                    <div class="table-container">
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered custom-table">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col" style="width: 40px;"></th>
+                                    <th scope="col"><strong>Form Name &amp; Title</strong></th>
+                                    <th scope="col"><strong>Department</strong></th>
+                                    <th scope="col" style="text-align: center;"><strong>Leads Received</strong></th>
+                                    <th scope="col" style="text-align: right;"><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={filteredForms} for:item="f">
+                                    <tr key={f.developerName} class="table-row">
+                                        <td class="form-icon-cell">
+                                            <span class="form-emoji-badge">{f.formIcon}</span>
+                                        </td>
+                                        <td>
+                                            <div class="form-title-cell">
+                                                <span class="form-name">{f.formName}</span>
+                                                <template if:true={f.formSubtitle}>
+                                                    <span class="form-subtitle">{f.formSubtitle}</span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="dept-badge">{f.departmentCode}</span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <template if:true={f.isLeadCountLoading}>
+                                                <span class="slds-text-color_weak slds-text-body_small">...</span>
+                                            </template>
+                                            <template if:false={f.isLeadCountLoading}>
+                                                <span class="lead-count-badge">
+                                                    <strong>{f.leadCount}</strong> Leads
+                                                </span>
+                                            </template>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <lightning-button-group>
+                                                <lightning-button-icon
+                                                    icon-name="utility:link"
+                                                    tooltip="Get Campaign Link / QR Code"
+                                                    alternative-text="Campaign Link"
+                                                    data-form-name={f.developerName}
+                                                    onclick={handleOpenUrlModal}>
+                                                </lightning-button-icon>
+                                                <lightning-button-icon
+                                                    icon-name="utility:edit"
+                                                    tooltip="Edit Form &amp; Fields"
+                                                    alternative-text="Edit"
+                                                    data-form-name={f.developerName}
+                                                    onclick={handleEditForm}>
+                                                </lightning-button-icon>
+                                                <lightning-button-icon
+                                                    icon-name="utility:copy"
+                                                    tooltip="Clone Form Configuration"
+                                                    alternative-text="Clone"
+                                                    data-form-name={f.developerName}
+                                                    onclick={handleCloneForm}>
+                                                </lightning-button-icon>
+                                                <lightning-button-icon
+                                                    icon-name="utility:delete"
+                                                    variant="error"
+                                                    tooltip="Delete Form"
+                                                    alternative-text="Delete"
+                                                    data-form-name={f.developerName}
+                                                    data-form-label={f.formName}
+                                                    data-form-slug={f.formSlug}
+                                                    data-dept={f.departmentCode}
+                                                    onclick={handleOpenDeleteConfirm}>
+                                                </lightning-button-icon>
+                                            </lightning-button-group>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+
+                <template if:false={hasFilteredForms}>
+                    <div class="empty-state slds-p-around_xx-large slds-text-align_center">
+                        <lightning-icon icon-name="utility:search" size="large" class="slds-m-bottom_small"></lightning-icon>
+                        <h3 class="slds-text-heading_medium">No Forms Found</h3>
+                        <p class="slds-text-color_weak slds-m-top_x-small">
+                            Try adjusting your filter or search query, or click <strong>Create New Form</strong>.
+                        </p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: FORM CREATOR & VISUAL FIELD BUILDER -->
+        <!-- ========================================================================= -->
+        <template if:true={isEditorOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+                <div class="slds-modal__container">
+                    <!-- MODAL HEADER -->
+                    <header class="slds-modal__header modal-hdr">
+                        <lightning-button-icon 
+                            icon-name="utility:close" 
+                            variant="bare-inverse" 
+                            onclick={handleCloseEditor} 
+                            alternative-text="Close" 
+                            class="slds-modal__close">
+                        </lightning-button-icon>
+                        <h2 class="slds-modal__title slds-hyphenate">
+                            <span class="modal-emoji">{currentForm.formIcon}</span>
+                            <span>{editorModalTitle}</span>
+                        </h2>
+                        <p class="slds-m-top_x-small modal-subtitle">
+                            Configure form settings, URL slug, and customize fields shown to students.
+                        </p>
+                    </header>
+
+                    <!-- MODAL BODY -->
+                    <div class="slds-modal__content slds-p-around_medium modal-body">
+                        <!-- TABS: Form Settings vs Visual Field Builder -->
+                        <lightning-tabset variant="scoped" active-tab-value={activeEditorTab}>
+                            
+                            <!-- TAB 1: FORM DETAILS -->
+                            <lightning-tab label="1. Form Configuration &amp; Metadata" value="tab-details" icon-name="utility:settings" onactive={handleTabSelect}>
+                                <div class="slds-grid slds-gutters slds-wrap slds-p-around_small">
+                                    
+                                    <!-- Department -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-combobox
+                                            name="departmentCode"
+                                            label="Department / Program Division"
+                                            value={currentForm.departmentCode}
+                                            options={departmentOptions}
+                                            required
+                                            onchange={handleDepartmentChange}>
+                                        </lightning-combobox>
+                                    </div>
+
+                                    <!-- Form Name -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-input
+                                            name="formName"
+                                            label="Form Name (e.g. Mumbai UG Webinar 2026)"
+                                            value={currentForm.formName}
+                                            required
+                                            onchange={handleFormNameChange}>
+                                        </lightning-input>
+                                    </div>
+
+                                    <!-- URL Slug -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-input
+                                            name="formSlug"
+                                            label="URL Slug (?form=value)"
+                                            value={currentForm.formSlug}
+                                            field-level-help="This key is used in the URL: /admissions?dept=...&form=your-slug"
+                                            required
+                                            onchange={handleFormInputChange}>
+                                        </lightning-input>
+                                    </div>
+
+                                    <!-- Auto-Assigned Lead Record Type (Read-only / Department Driven) -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <div class="slds-form-element">
+                                            <label class="slds-form-element__label">Target Lead Record Type</label>
+                                            <div class="slds-form-element__control slds-m-top_xx-small">
+                                                <div class="slds-box slds-box_xx-small slds-theme_shade slds-grid slds-grid_vertical-align-center" style="height: 32px; border-radius: 4px;">
+                                                    <span class="dept-badge slds-m-right_x-small">{currentForm.leadRecordTypeName}</span>
+                                                    <span class="slds-text-body_small slds-text-color_weak">(Auto-assigned from department)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Form Subtitle -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-input
+                                            name="formSubtitle"
+                                            label="Form Subtitle / Card Heading"
+                                            value={currentForm.formSubtitle}
+                                            placeholder="e.g. Register for online interaction"
+                                            onchange={handleFormInputChange}>
+                                        </lightning-input>
+                                    </div>
+
+                                    <!-- Section Label -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-input
+                                            name="sectionLabel"
+                                            label="Dynamic Fields Section Header"
+                                            value={currentForm.sectionLabel}
+                                            placeholder="e.g. Programme &amp; Background Details"
+                                            onchange={handleFormInputChange}>
+                                        </lightning-input>
+                                    </div>
+
+                                    <!-- Tile Icon / Emoji -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <lightning-combobox
+                                            name="formIcon"
+                                            label="Tile Emoji / Icon"
+                                            value={currentForm.formIcon}
+                                            options={iconOptions}
+                                            onchange={handleFormInputChange}>
+                                        </lightning-combobox>
+                                    </div>
+
+                                    <!-- Type of Form (Backend Default) -->
+                                    <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                        <div class="slds-form-element">
+                                            <label class="slds-form-element__label">Type of Form System Tag</label>
+                                            <div class="slds-form-element__control slds-m-top_xx-small">
+                                                <div class="slds-box slds-box_xx-small slds-theme_shade slds-grid slds-grid_vertical-align-center" style="height: 32px; border-radius: 4px;">
+                                                    <code class="slug-code">Admission_Form</code>
+                                                    <span class="slds-text-body_small slds-text-color_weak slds-m-left_x-small">(Default system tag)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- NEXT ACTION BUTTON -->
+                                <div class="slds-m-top_medium slds-p-top_small slds-border_top slds-grid slds-grid_align-end">
+                                    <lightning-button
+                                        label="Next: Configure Form Fields →"
+                                        icon-name="utility:forward"
+                                        variant="brand"
+                                        class="brand-btn"
+                                        onclick={handleGoToFieldsTab}>
+                                    </lightning-button>
+                                </div>
+                            </lightning-tab>
+
+                            <!-- TAB 2: VISUAL FIELD BUILDER -->
+                            <lightning-tab label="2. Form Fields Builder" value="tab-fields" icon-name="utility:form" onactive={handleTabSelect}>
+                                <div class="slds-p-around_small">
+                                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                                        <div>
+                                            <h3 class="slds-text-heading_small"><strong>Selected Form Fields</strong></h3>
+                                            <p class="slds-text-body_small slds-text-color_weak">
+                                                Add custom fields from the Lead object for this specific form, or leave empty if you only want the default department fields.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <lightning-button
+                                                label="Add Field from Lead Object"
+                                                icon-name="utility:add"
+                                                variant="neutral"
+                                                onclick={handleOpenAddFieldDrawer}>
+                                            </lightning-button>
+                                        </div>
+                                    </div>
+
+                                    <!-- FIELDS TABLE -->
+                                    <template if:true={hasCurrentFields}>
+                                        <table class="slds-table slds-table_bordered slds-table_cell-buffer field-edit-table">
+                                            <thead>
+                                                <tr class="slds-line-height_reset">
+                                                    <th style="width: 50px;">Order</th>
+                                                    <th>Field Label (Shown to Student)</th>
+                                                    <th>Salesforce Lead Field API Name</th>
+                                                    <th>Field Type</th>
+                                                    <th style="text-align: center;">Required</th>
+                                                    <th style="text-align: center;">Full Width</th>
+                                                    <th style="text-align: center;">Hidden</th>
+                                                    <th>Default Value</th>
+                                                    <th style="text-align: right;">Options / Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={currentForm.fields} for:item="f" for:index="idx">
+                                                    <tr key={f.sfApiName} class="field-row">
+                                                        <td>
+                                                            <div class="order-controls">
+                                                                <lightning-button-icon
+                                                                    icon-name="utility:up"
+                                                                    size="x-small"
+                                                                    variant="border-filled"
+                                                                    disabled={f.isFirst}
+                                                                    data-index={idx}
+                                                                    onclick={handleMoveFieldUp}
+                                                                    alternative-text="Move Up">
+                                                                </lightning-button-icon>
+                                                                <lightning-button-icon
+                                                                    icon-name="utility:down"
+                                                                    size="x-small"
+                                                                    variant="border-filled"
+                                                                    disabled={f.isLast}
+                                                                    data-index={idx}
+                                                                    onclick={handleMoveFieldDown}
+                                                                    alternative-text="Move Down">
+                                                                </lightning-button-icon>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <lightning-input
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="formLabel"
+                                                                value={f.formLabel}
+                                                                onchange={handleFieldPropertyChange}>
+                                                            </lightning-input>
+                                                        </td>
+                                                        <td>
+                                                            <code class="api-name-tag">{f.sfApiName}</code>
+                                                        </td>
+                                                        <td>
+                                                            <lightning-combobox
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="fieldType"
+                                                                value={f.fieldType}
+                                                                options={fieldTypeOptions}
+                                                                onchange={handleFieldPropertyChange}
+                                                                class="compact-combo">
+                                                            </lightning-combobox>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <lightning-input
+                                                                type="checkbox"
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="isRequired"
+                                                                checked={f.isRequired}
+                                                                onchange={handleFieldPropertyChange}>
+                                                            </lightning-input>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <lightning-input
+                                                                type="checkbox"
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="fullWidth"
+                                                                checked={f.fullWidth}
+                                                                onchange={handleFieldPropertyChange}>
+                                                            </lightning-input>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <lightning-input
+                                                                type="checkbox"
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="isHidden"
+                                                                checked={f.isHidden}
+                                                                title="Hide this field from student view on public form"
+                                                                onchange={handleFieldPropertyChange}>
+                                                            </lightning-input>
+                                                        </td>
+                                                        <td>
+                                                            <lightning-input
+                                                                variant="label-hidden"
+                                                                data-index={idx}
+                                                                data-field="defaultValue"
+                                                                value={f.defaultValue}
+                                                                placeholder="e.g. Inquired"
+                                                                onchange={handleFieldPropertyChange}>
+                                                            </lightning-input>
+                                                        </td>
+                                                        <td style="text-align: right;">
+                                                            <lightning-button-group>
+                                                                <lightning-button-icon
+                                                                    icon-name="utility:settings"
+                                                                    tooltip="More Settings (Help Text, Options, Default)"
+                                                                    data-index={idx}
+                                                                    onclick={handleOpenFieldConfigModal}>
+                                                                </lightning-button-icon>
+                                                                <lightning-button-icon
+                                                                    icon-name="utility:delete"
+                                                                    variant="error"
+                                                                    tooltip="Remove Field"
+                                                                    data-index={idx}
+                                                                    onclick={handleRemoveField}>
+                                                                </lightning-button-icon>
+                                                            </lightning-button-group>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </template>
+
+                                    <template if:false={hasCurrentFields}>
+                                        <div class="slds-box slds-text-align_center slds-p-around_large empty-field-box">
+                                            <p class="slds-text-body_regular slds-text-color_weak">
+                                                No fields added yet. Click <strong>"Add Field from Lead Object"</strong> to select fields.
+                                            </p>
+                                        </div>
+                                    </template>
+
+                                    <!-- NAVIGATION FOOTER INSIDE TAB 2 -->
+                                    <div class="slds-m-top_medium slds-p-top_small slds-border_top slds-grid">
+                                        <lightning-button
+                                            label="← Back to Form Details"
+                                            icon-name="utility:back"
+                                            onclick={handleGoToDetailsTab}>
+                                        </lightning-button>
+                                    </div>
+                                </div>
+                            </lightning-tab>
+
+                        </lightning-tabset>
+                    </div>
+
+                    <!-- MODAL FOOTER -->
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+                        <lightning-button 
+                            label="Cancel" 
+                            onclick={handleCloseEditor}>
+                        </lightning-button>
+                        <lightning-button 
+                            label="Save &amp; Deploy to Public Site" 
+                            icon-name="utility:save" 
+                            variant="brand" 
+                            class="brand-btn"
+                            onclick={handleSaveForm}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: ADD FIELD SELECTOR (DRAWER) -->
+        <!-- ========================================================================= -->
+        <template if:true={isAddFieldModalOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <lightning-button-icon 
+                            icon-name="utility:close" 
+                            variant="bare-inverse" 
+                            onclick={handleCloseAddFieldModal} 
+                            alternative-text="Close" 
+                            class="slds-modal__close">
+                        </lightning-button-icon>
+                        <h2 class="slds-modal__title slds-hyphenate">Select Lead Fields to Add</h2>
+                        <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak">
+                            Select one or multiple fields from the Lead object schema.
+                        </p>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <lightning-input
+                            name="fieldSearch"
+                            type="search"
+                            variant="label-hidden"
+                            placeholder="Filter Lead fields by label or API name..."
+                            value={fieldSearchKey}
+                            onchange={handleFieldSearchChange}
+                            class="slds-m-bottom_medium">
+                        </lightning-input>
+
+                        <div class="field-select-list">
+                            <template for:each={filteredAvailableFields} for:item="af">
+                                <div key={af.apiName} class="field-select-item slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                    <div>
+                                        <div class="field-select-label"><strong>{af.label}</strong></div>
+                                        <div class="field-select-meta">
+                                            <code>{af.apiName}</code> &bull; Type: <span class="type-tag">{af.type}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <template if:true={af.isAlreadyAdded}>
+                                            <lightning-badge label="Added" class="added-badge"></lightning-badge>
+                                        </template>
+                                        <template if:false={af.isAlreadyAdded}>
+                                            <lightning-button
+                                                label="Add"
+                                                icon-name="utility:add"
+                                                size="small"
+                                                data-api-name={af.apiName}
+                                                onclick={handleAddFieldToForm}>
+                                            </lightning-button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Done" variant="brand" onclick={handleCloseAddFieldModal}></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: FIELD ADVANCED CONFIGURATION (HELP TEXT & OPTIONS) -->
+        <!-- ========================================================================= -->
+        <template if:true={isFieldConfigModalOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <lightning-button-icon icon-name="utility:close" variant="bare-inverse" onclick={handleCloseFieldConfigModal} class="slds-modal__close"></lightning-button-icon>
+                        <h2 class="slds-modal__title">Configure Field: {activeFieldConfig.formLabel}</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <div class="slds-box slds-box_x-small slds-theme_shade slds-m-bottom_medium" style="border-radius: 6px;">
+                            <lightning-input
+                                type="checkbox"
+                                label="Hide from Student (Hidden Field)"
+                                checked={activeFieldConfig.isHidden}
+                                data-field="isHidden"
+                                field-level-help="When checked, students will not see this field on the public enquiry form, but its default value will be submitted automatically."
+                                onchange={handleActiveFieldPropChange}
+                                class="slds-m-bottom_x-small">
+                            </lightning-input>
+                            <lightning-input
+                                label="Default Value (Auto-populated on submission)"
+                                value={activeFieldConfig.defaultValue}
+                                data-field="defaultValue"
+                                placeholder="Enter default value..."
+                                field-level-help="Value automatically populated on Lead record when form is submitted."
+                                onchange={handleActiveFieldPropChange}>
+                            </lightning-input>
+                        </div>
+                        <lightning-input
+                            label="Placeholder Text (HTML placeholder)"
+                            value={activeFieldConfig.placeholderText}
+                            data-field="placeholderText"
+                            onchange={handleActiveFieldPropChange}
+                            class="slds-m-bottom_small">
+                        </lightning-input>
+                        <lightning-input
+                            label="Help / Hint Text (Shown below field)"
+                            value={activeFieldConfig.helpText}
+                            data-field="helpText"
+                            onchange={handleActiveFieldPropChange}
+                            class="slds-m-bottom_small">
+                        </lightning-input>
+                        <lightning-textarea
+                            label="Dropdown / Picklist Options (One per line)"
+                            value={activeFieldConfig.fieldOptions}
+                            data-field="fieldOptions"
+                            placeholder="Option 1&#10;Option 2&#10;Option 3"
+                            field-level-help="For picklist fields, enter each selectable choice on a new line."
+                            onchange={handleActiveFieldPropChange}
+                            class="slds-m-bottom_small">
+                        </lightning-textarea>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Apply Changes" variant="brand" onclick={handleCloseFieldConfigModal}></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: CAMPAIGN URL & QR CODE GENERATOR -->
+        <!-- ========================================================================= -->
+        <template if:true={isUrlModalOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header url-modal-hdr">
+                        <lightning-button-icon icon-name="utility:close" variant="bare-inverse" onclick={handleCloseUrlModal} class="slds-modal__close"></lightning-button-icon>
+                        <h2 class="slds-modal__title">
+                            <span class="modal-emoji">{selectedFormForUrl.formIcon}</span>
+                            <span>Generate Campaign Link: {selectedFormForUrl.formName}</span>
+                        </h2>
+                        <p class="slds-m-top_x-small slds-text-body_small">
+                            Add UTM parameters or city tags and share with students for webinars, social media, or event brochures.
+                        </p>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <!-- GENERATED URL BOX -->
+                        <div class="url-result-box slds-m-bottom_medium">
+                            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small">
+                                <label class="slds-form-element__label"><strong>Generated Public URL</strong></label>
+                                <lightning-button-icon
+                                    icon-name="utility:copy"
+                                    variant="border-filled"
+                                    size="small"
+                                    tooltip="Copy URL to Clipboard"
+                                    onclick={handleCopyGeneratedUrl}>
+                                </lightning-button-icon>
+                            </div>
+                            <div class="generated-url-text">{generatedFullUrl}</div>
+                        </div>
+
+                        <!-- PARAMETERS GRID -->
+                        <div class="slds-grid slds-gutters slds-wrap">
+                            <!-- UTM Source Select & Edit -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade" style="border-radius: 8px;">
+                                    <lightning-combobox
+                                        label="Select Preset UTM Source (Lead Source)"
+                                        value={urlParams.utmSource}
+                                        options={utmSourceOptions}
+                                        placeholder="-- Choose from LeadSource / Channels --"
+                                        onchange={handlePresetSourceSelect}>
+                                    </lightning-combobox>
+                                    <div class="slds-m-top_x-small">
+                                        <lightning-input
+                                            label="UTM Source (Editable / Custom Text)"
+                                            value={urlParams.utmSource}
+                                            data-param="utmSource"
+                                            placeholder="e.g. webinar, pune_roadshow, instagram"
+                                            field-level-help="Select from dropdown above OR type any custom value here."
+                                            onchange={handleUrlParamChange}>
+                                        </lightning-input>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- UTM Medium Select & Edit -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <div class="slds-box slds-box_x-small slds-theme_shade" style="border-radius: 8px;">
+                                    <lightning-combobox
+                                        label="Select Preset UTM Medium"
+                                        value={urlParams.utmMedium}
+                                        options={utmMediumOptions}
+                                        placeholder="-- Choose Medium --"
+                                        onchange={handlePresetMediumSelect}>
+                                    </lightning-combobox>
+                                    <div class="slds-m-top_x-small">
+                                        <lightning-input
+                                            label="UTM Medium (Editable / Custom Text)"
+                                            value={urlParams.utmMedium}
+                                            data-param="utmMedium"
+                                            placeholder="e.g. social, cpc, event, whatsapp"
+                                            field-level-help="Select from dropdown above OR type any custom value here."
+                                            onchange={handleUrlParamChange}>
+                                        </lightning-input>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- UTM Campaign / City / Event -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="UTM Campaign / City / Event Name"
+                                    value={urlParams.utmCampaign}
+                                    data-param="utmCampaign"
+                                    placeholder="e.g. mumbai_webinar_2026, ahd_connect"
+                                    onchange={handleUrlParamChange}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- UTM Content (Optional) -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="UTM Content (Optional ad creative/variant)"
+                                    value={urlParams.utmContent}
+                                    data-param="utmContent"
+                                    placeholder="e.g. banner_v1, post_session2"
+                                    onchange={handleUrlParamChange}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- Embed / Chatbot Mode -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_x-small">
+                                <div class="slds-box slds-box_x-small slds-grid slds-grid_vertical-align-center" style="background: #f8fafc; border-radius: 8px;">
+                                    <lightning-input
+                                        type="checkbox"
+                                        label="Embed / Chatbot Mode (?embed=1 for iFrame/Wonderchat modal without outer website headers)"
+                                        checked={urlParams.isEmbed}
+                                        data-param="isEmbed"
+                                        onchange={handleUrlParamChange}>
+                                    </lightning-input>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+                        <lightning-button label="Close" onclick={handleCloseUrlModal}></lightning-button>
+                        <div>
+                            <lightning-button 
+                                label="Open Form in New Tab" 
+                                icon-name="utility:new_window" 
+                                class="slds-m-right_small"
+                                onclick={handleTestFormUrl}>
+                            </lightning-button>
+                            <lightning-button 
+                                label="Copy Link" 
+                                icon-name="utility:copy" 
+                                variant="brand" 
+                                class="brand-btn"
+                                onclick={handleCopyGeneratedUrl}>
+                            </lightning-button>
+                        </div>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: DELETE CONFIRMATION -->
+        <!-- ========================================================================= -->
+        <template if:true={isDeleteModalOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header slds-theme_error slds-theme_alert-texture">
+                        <lightning-button-icon 
+                            icon-name="utility:close" 
+                            variant="bare-inverse" 
+                            onclick={handleCloseDeleteConfirm} 
+                            class="slds-modal__close">
+                        </lightning-button-icon>
+                        <h2 class="slds-modal__title slds-text-color_inverse">Delete Form Configuration</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                            <lightning-icon icon-name="utility:warning" variant="warning" size="medium" class="slds-m-right_small"></lightning-icon>
+                            <div>
+                                <p class="slds-text-heading_small">
+                                    Are you sure you want to permanently delete <strong>{formToDelete.formName}</strong>?
+                                </p>
+                            </div>
+                        </div>
+                        <div class="slds-box slds-box_x-small slds-theme_shade slds-m-top_small" style="border-radius: 6px;">
+                            <p class="slds-text-body_small">
+                                &bull; Department: <strong>{formToDelete.departmentCode}</strong><br/>
+                                &bull; Developer Name: <code>{formToDelete.developerName}</code><br/>
+                                &bull; URL Slug: <code>{formToDelete.formSlug}</code>
+                            </p>
+                        </div>
+                        <p class="slds-text-body_small slds-text-color_error slds-m-top_medium">
+                            Warning: This will delete the <code>Form_Config__mdt</code> record and any form-specific field metadata from Salesforce immediately.
+                        </p>
+                    </div>
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+                        <lightning-button label="Cancel" onclick={handleCloseDeleteConfirm}></lightning-button>
+                        <lightning-button 
+                            label="Delete Form" 
+                            variant="destructive" 
+                            icon-name="utility:delete" 
+                            onclick={handleConfirmDeleteForm}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- ========================================================================= -->
+        <!-- MODAL: PROGRAMME BROCHURES -->
+        <!-- ========================================================================= -->
+        <template if:true={isBrochureModalOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <lightning-button-icon 
+                            icon-name="utility:close" 
+                            variant="bare" 
+                            onclick={handleCloseBrochures} 
+                            class="slds-modal__close">
+                        </lightning-button-icon>
+                        <h2 class="slds-modal__title">Programme Brochures</h2>
+                        <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak">
+                            Add a public https:// link for each programme. After submitting the enquiry form, the student sees a
+                            Download Brochure button for the programme they chose. Programmes with no link show no button.
+                        </p>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" style="min-height: 320px; max-height: 60vh;">
+                        <template if:true={isBrochureLoading}>
+                            <lightning-spinner alternative-text="Loading" size="medium" variant="brand"></lightning-spinner>
+                        </template>
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input
+                                    type="search"
+                                    variant="label-hidden"
+                                    placeholder="Search programme or department..."
+                                    value={brochureSearchKey}
+                                    onchange={handleBrochureSearch}>
+                                </lightning-input>
+                            </div>
+                            <div class="slds-text-color_weak slds-text-body_small">
+                                <strong>{brochureLinkedCount}</strong> of {brochureRows.length} programmes have a brochure
+                            </div>
+                        </div>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col" style="width: 12%;"><div class="slds-truncate">Department</div></th>
+                                    <th scope="col" style="width: 38%;"><div class="slds-truncate">Programme</div></th>
+                                    <th scope="col"><div class="slds-truncate">Brochure URL (https://)</div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={filteredBrochureRows} for:item="r">
+                                    <tr key={r.key}>
+                                        <td>{r.departmentCode}</td>
+                                        <td class="slds-cell-wrap">{r.programmeName}</td>
+                                        <td>
+                                            <lightning-input
+                                                type="url"
+                                                variant="label-hidden"
+                                                label="Brochure URL"
+                                                placeholder="https://..."
+                                                data-key={r.key}
+                                                value={r.brochureUrl}
+                                                onchange={handleBrochureUrlChange}>
+                                            </lightning-input>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Cancel" onclick={handleCloseBrochures} class="slds-m-right_x-small"></lightning-button>
+                        <lightning-button 
+                            label="Save Brochures" 
+                            variant="brand" 
+                            icon-name="utility:save" 
+                            disabled={isBrochureSaving}
+                            onclick={handleSaveBrochures}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+    </div>
+</template>

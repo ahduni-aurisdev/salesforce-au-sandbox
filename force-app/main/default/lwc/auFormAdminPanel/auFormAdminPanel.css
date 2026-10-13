@@ -1,0 +1,346 @@
+/* ============================================================
+   AU FORM ADMIN PANEL LWC STYLING
+   ============================================================ */
+
+:host {
+    --brand-maroon: #801214;
+    --brand-maroon-dk: #5E0D0F;
+    --brand-maroon-tint: #F9ECEC;
+    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    --border-color: #E2E8F0;
+    --bg-light: #F8FAFC;
+}
+
+.admin-wrapper {
+    background: #F1F5F9;
+    min-height: 100vh;
+}
+
+/* Header Card */
+.header-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+    border-top: 4px solid var(--brand-maroon);
+}
+
+.header-icon-badge {
+    background: var(--brand-maroon-tint);
+    border-radius: 8px;
+    padding: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.subtitle-text {
+    font-size: 0.85rem;
+    color: #64748B;
+}
+
+.brand-btn {
+    --slds-c-button-brand-color-background: var(--brand-maroon);
+    --slds-c-button-brand-color-background-hover: var(--brand-maroon-dk);
+    --slds-c-button-brand-color-border: var(--brand-maroon);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    border-top: 1px solid #EDF2F7;
+    padding-top: 14px;
+}
+
+.stat-card {
+    background: #FAFCFE;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon_blue { background: #E0F2FE; color: #0369A1; }
+.stat-icon_maroon { background: var(--brand-maroon-tint); color: var(--brand-maroon); }
+.stat-icon_green { background: #DCFCE7; color: #15803D; }
+.stat-icon_purple { background: #F3E8FF; color: #7E22CE; }
+
+.stat-val {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0F172A;
+    line-height: 1.2;
+}
+
+.stat-lbl {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748B;
+}
+
+/* Content Card */
+.content-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.filter-bar {
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.combobox-pill {
+    min-width: 220px;
+}
+
+.search-input {
+    min-width: 280px;
+}
+
+/* Table Styling */
+.table-container {
+    overflow-x: auto;
+}
+
+.custom-table {
+    border-radius: 6px;
+}
+
+.custom-table thead th {
+    background: #F1F5F9;
+    color: #475569;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+}
+
+.table-row:hover {
+    background: #F8FAFC;
+}
+
+.form-icon-cell {
+    text-align: center;
+    width: 44px;
+}
+
+.form-emoji-badge {
+    font-size: 1.25rem;
+    display: inline-block;
+}
+
+.form-title-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-name {
+    font-weight: 600;
+    color: #1E293B;
+    font-size: 0.92rem;
+}
+
+.form-subtitle {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-top: 2px;
+}
+
+.dept-badge {
+    background: var(--brand-maroon-tint);
+    color: var(--brand-maroon);
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(128, 18, 20, 0.2);
+}
+
+.slug-code {
+    background: #EDF2F7;
+    color: #0F172A;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.rt-text {
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.field-pill {
+    background: #E2E8F0;
+    color: #334155;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.lead-count-badge {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* Modal Styling */
+.modal-hdr {
+    background: #1E293B;
+    color: #FFFFFF;
+}
+
+.modal-hdr h2 {
+    color: #FFFFFF;
+}
+
+.modal-emoji {
+    margin-right: 8px;
+    font-size: 1.2rem;
+}
+
+.modal-subtitle {
+    color: #94A3B8;
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Field Table in Modal */
+.field-edit-table thead th {
+    background: #F8FAFC;
+    color: #475569;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.field-row:hover {
+    background: #FAFAF9;
+}
+
+.order-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.api-name-tag {
+    background: #F1F5F9;
+    color: #0F172A;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+
+.compact-combo {
+    min-width: 140px;
+}
+
+/* Field Drawer Modal */
+.field-select-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+.field-select-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.15s ease;
+}
+
+.field-select-item:hover {
+    background: #F8FAFC;
+}
+
+.field-select-label {
+    font-size: 0.88rem;
+    color: #1E293B;
+}
+
+.field-select-meta {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-top: 2px;
+}
+
+.type-tag {
+    font-weight: 600;
+    color: #0369A1;
+}
+
+.added-badge {
+    --slds-c-badge-color-background: #DCFCE7;
+    --slds-c-badge-text-color: #15803D;
+}
+
+/* URL Generator Result Box */
+.url-modal-hdr {
+    background: var(--brand-maroon);
+    color: #FFFFFF;
+}
+
+.url-modal-hdr h2,
+.url-modal-hdr p {
+    color: #FFFFFF;
+}
+
+.url-result-box {
+    background: #F8FAFC;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.generated-url-text {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #0F172A;
+    background: #FFFFFF;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #E2E8F0;
+    word-break: break-all;
+    user-select: all;
+}
+
+/* Spinner */
+.spinner-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+}

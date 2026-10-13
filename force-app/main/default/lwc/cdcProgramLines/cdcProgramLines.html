@@ -1,0 +1,509 @@
+<template>
+    <lightning-card>
+        <div slot="title">
+            <div class="slds-media slds-media_center">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="standard:education" size="small"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <span class="slds-card__header-title">Program &amp; Area of Interest Lines</span>
+                </div>
+            </div>
+        </div>
+
+        <div slot="actions">
+            <template if:false={isReadOnly}>
+                <lightning-button-group>
+                    <lightning-button label="Bulk Add" icon-name="utility:multi_select_checkbox" variant="neutral"
+                        onclick={handleBulkAdd} disabled={isSaving}>
+                    </lightning-button>
+                    <lightning-button label="Add Line" icon-name="utility:add" variant="neutral" onclick={handleAddRow}
+                        disabled={isSaving}>
+                    </lightning-button>
+                    <lightning-button label="Save All" icon-name="utility:save" variant="brand" onclick={handleSaveAll}
+                        disabled={isSaving}>
+                    </lightning-button>
+                </lightning-button-group>
+            </template>
+            <template if:true={isReadOnly}>
+                <lightning-button-group>
+                    <lightning-button label="Bulk Add" icon-name="utility:multi_select_checkbox" variant="neutral"
+                        onclick={handleBulkAdd}>
+                    </lightning-button>
+                    <lightning-button label="Edit" icon-name="utility:edit" variant="neutral"
+                        onclick={handleToggleEdit}>
+                    </lightning-button>
+                </lightning-button-group>
+            </template>
+        </div>
+
+        <div class="slds-card__body slds-card__body_inner">
+
+            <!-- Error banner -->
+            <template if:true={errorMessage}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small"
+                        class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{errorMessage}</h2>
+                    <div class="slds-notify__close">
+                        <lightning-button-icon icon-name="utility:close" size="small" variant="bare-inverse"
+                            onclick={clearError}>
+                        </lightning-button-icon>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Success banner -->
+            <template if:true={successMessage}>
+                <div class="slds-notify slds-notify_alert slds-alert_success slds-m-bottom_small" role="status">
+                    <lightning-icon icon-name="utility:success" size="x-small"
+                        class="slds-m-right_x-small"></lightning-icon>
+                    <h2>{successMessage}</h2>
+                </div>
+            </template>
+
+            <!-- Loading spinner -->
+            <template if:true={isLoading}>
+                <div class="slds-align_absolute-center slds-p-around_large">
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                </div>
+            </template>
+
+            <template if:false={isLoading}>
+
+                <!-- Empty state -->
+                <template if:true={hasNoLines}>
+                    <div class="slds-align_absolute-center slds-p-around_large empty-state">
+                        <div class="slds-text-align_center">
+                            <lightning-icon icon-name="standard:all" size="large"
+                                class="slds-m-bottom_small"></lightning-icon>
+                            <p class="slds-text-heading_small slds-m-bottom_x-small">No Program Lines Added</p>
+                            <p class="slds-text-color_weak slds-m-bottom_medium">
+                                Add program and area of interest lines to track student counts for this drive.
+                            </p>
+                            <template if:false={isReadOnly}>
+                                <lightning-button-group>
+                                    <lightning-button label="Bulk Add" variant="brand"
+                                        icon-name="utility:multi_select_checkbox" onclick={handleBulkAdd}>
+                                    </lightning-button>
+                                    <lightning-button label="Add Single Line" variant="neutral" icon-name="utility:add"
+                                        onclick={handleAddRow}>
+                                    </lightning-button>
+                                </lightning-button-group>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Table -->
+                <template if:false={hasNoLines}>
+                    <div class="table-wrapper">
+                        <table
+                            class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped slds-table_fixed-layout">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th class="col-program">
+                                        <div class="slds-truncate">Program</div>
+                                    </th>
+                                    <th class="col-aoi">
+                                        <div class="slds-truncate">Area of Interest</div>
+                                    </th>
+                                    <th class="col-num">
+                                        <div class="slds-truncate">Expected</div>
+                                    </th>
+                                    <th class="col-num">
+                                        <div class="slds-truncate">Registered</div>
+                                    </th>
+                                    <th class="col-num">
+                                        <div class="slds-truncate">Appeared</div>
+                                    </th>
+                                    <th class="col-num">
+                                        <div class="slds-truncate">Shortlisted</div>
+                                    </th>
+                                    <th class="col-num col-selected">
+                                        <div class="slds-truncate">Selected</div>
+                                    </th>
+                                    <th class="col-num">
+                                        <div class="slds-truncate">Offers</div>
+                                    </th>
+                                    <th class="col-ctc">
+                                        <div title="CTC for Placement drives, Stipend for Internship drives">{ctcColumnLabel}</div>
+                                    </th>
+                                    <th class="col-remarks">
+                                        <div class="slds-truncate">Remarks</div>
+                                    </th>
+                                    <template if:false={isReadOnly}>
+                                        <th class="col-action">
+                                            <div class="slds-truncate">Del</div>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={lines} for:item="line">
+                                    <tr key={line.rowKey} class={line.rowClass}>
+
+                                        <!-- Program -->
+                                        <td data-label="Program">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-combobox value={line.Program__c} options={programOptions}
+                                                    placeholder="Select Program" variant="label-hidden"
+                                                    data-id={line.rowKey} data-field="Program__c"
+                                                    onchange={handleProgramChange} class="compact-input">
+                                                </lightning-combobox>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="program-badge">{line.Program__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- AOI (auto-filtered by selected Program) -->
+                                        <td data-label="Area of Interest">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-combobox value={line.AOI__c} options={line.aoiOptions}
+                                                    placeholder="Select AOI" variant="label-hidden"
+                                                    data-id={line.rowKey} data-field="AOI__c"
+                                                    onchange={handleFieldChange} disabled={line.aoiDisabled}
+                                                    class="compact-input">
+                                                </lightning-combobox>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="aoi-badge">{line.AOI__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Expected -->
+                                        <td data-label="Expected">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Expected_Students__c} min="0"
+                                                    step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Expected_Students__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="num-value">{line.Expected_Students__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Registered -->
+                                        <td data-label="Registered">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Registered_Students__c}
+                                                    min="0" step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Registered_Students__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="num-value">{line.Registered_Students__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Appeared -->
+                                        <td data-label="Appeared">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Appeared_Students__c} min="0"
+                                                    step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Appeared_Students__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="num-value">{line.Appeared_Students__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Shortlisted -->
+                                        <td data-label="Shortlisted">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Shortlisted_Students__c}
+                                                    min="0" step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Shortlisted_Students__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="num-value">{line.Shortlisted_Students__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Selected -->
+                                        <td data-label="Selected">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Selected_Students__c} min="0"
+                                                    step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Selected_Students__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span
+                                                    class="num-value selected-highlight">{line.Selected_Students__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Offer Accepted -->
+                                        <td data-label="Offers">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.Offer_Accepted__c} min="0"
+                                                    step="1" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="Offer_Accepted__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="num-value">{line.Offer_Accepted__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- CTC / Stipend (label depends on Opportunity Drive Type) -->
+                                        <td data-label={ctcColumnLabel}>
+                                            <template if:false={isReadOnly}>
+                                                <lightning-input type="number" value={line.CTC_Offered__c} min="0"
+                                                    step="0.01" variant="label-hidden" data-id={line.rowKey}
+                                                    data-field="CTC_Offered__c" onchange={handleFieldChange}
+                                                    class="compact-number">
+                                                </lightning-input>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="ctc-value">{line.CTC_Offered__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Remarks -->
+                                        <td data-label="Remarks">
+                                            <template if:false={isReadOnly}>
+                                                <lightning-textarea value={line.Remarks__c} max-length="500"
+                                                    variant="label-hidden" data-id={line.rowKey} data-field="Remarks__c"
+                                                    onchange={handleFieldChange} class="compact-textarea">
+                                                </lightning-textarea>
+                                            </template>
+                                            <template if:true={isReadOnly}>
+                                                <span class="slds-text-color_weak">{line.Remarks__c}</span>
+                                            </template>
+                                        </td>
+
+                                        <!-- Delete -->
+                                        <template if:false={isReadOnly}>
+                                            <td data-label="Action">
+                                                <lightning-button-icon icon-name="utility:delete" variant="bare"
+                                                    size="small" alternative-text="Delete" title="Delete this line"
+                                                    data-id={line.rowKey} data-sfid={line.Id} onclick={handleDeleteRow}
+                                                    class="delete-btn">
+                                                </lightning-button-icon>
+                                            </td>
+                                        </template>
+
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary bar -->
+                    <div class="summary-bar slds-m-top_small">
+                        <div class="summary-label">Totals</div>
+                        <div class="summary-item">
+                            <span class="summary-num">{totalExpected}</span>
+                            <span class="summary-caption">Expected</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-num">{totalRegistered}</span>
+                            <span class="summary-caption">Registered</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-num">{totalAppeared}</span>
+                            <span class="summary-caption">Appeared</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-num">{totalShortlisted}</span>
+                            <span class="summary-caption">Shortlisted</span>
+                        </div>
+                        <div class="summary-item highlight">
+                            <span class="summary-num selected-num">{totalSelected}</span>
+                            <span class="summary-caption">Selected</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-num">{totalOffers}</span>
+                            <span class="summary-caption">Offers</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-num ctc-max">{maxCTC} LPA</span>
+                            <span class="summary-caption">{ctcSummaryCaption}</span>
+                        </div>
+                    </div>
+                </template>
+
+            </template>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             BULK ADD MODAL
+        ════════════════════════════════════════════════════════════════ -->
+        <template if:true={showBulkModal}>
+            <section role="dialog" aria-modal="true" aria-label="Bulk Add Program Lines"
+                class="slds-modal slds-fade-in-open bulk-modal">
+                <div class="slds-modal__container">
+
+                    <header class="slds-modal__header bulk-modal-header">
+                        <lightning-button-icon icon-name="utility:close" variant="bare-inverse" size="small"
+                            class="slds-modal__close" alternative-text="Close" title="Close" onclick={handleBulkCancel}>
+                        </lightning-button-icon>
+                        <h2 class="slds-modal__title">Bulk Add Program Lines</h2>
+
+                        <!-- Step indicator -->
+                        <div class="step-indicator slds-m-top_x-small">
+                            <span class={step1Class}>
+                                <template if:true={isStep2}>
+                                    <lightning-icon icon-name="utility:check" size="xx-small"
+                                        class="slds-m-right_xx-small step-check"></lightning-icon>
+                                </template>
+                                1. Select Programs
+                            </span>
+                            <span class="step-arrow">›</span>
+                            <span class={step2Class}>2. Select Areas of Interest</span>
+                        </div>
+                    </header>
+
+                    <div class="slds-modal__content bulk-modal-content">
+
+                        <!-- Modal error banner -->
+                        <template if:true={bulkModalError}>
+                            <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium"
+                                role="alert">
+                                <lightning-icon icon-name="utility:error" size="x-small"
+                                    class="slds-m-right_x-small"></lightning-icon>
+                                <h2>{bulkModalError}</h2>
+                            </div>
+                        </template>
+
+                        <!-- ─── STEP 1: Program selection ─────────────────────── -->
+                        <template if:true={isStep1}>
+                            <div class="slds-m-bottom_small">
+                                <p class="slds-text-body_regular slds-m-bottom_x-small">
+                                    Select all programs the company is hiring from:
+                                </p>
+                                <div class="bulk-quick-actions">
+                                    <button type="button" class="slds-button slds-button_reset action-link"
+                                        onclick={handleBulkSelectAllPrograms}>
+                                        Select All
+                                    </button>
+                                    <span class="action-sep">·</span>
+                                    <button type="button" class="slds-button slds-button_reset action-link"
+                                        onclick={handleBulkClearAllPrograms}>
+                                        Clear All
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="prog-grid">
+                                <template for:each={bulkPrograms} for:item="prog">
+                                    <div key={prog.value} class={prog.cardClass} data-value={prog.value}
+                                        onclick={handleBulkProgramToggle}>
+                                        <template if:true={prog.selected}>
+                                            <lightning-icon icon-name="utility:check" size="xx-small"
+                                                class="prog-check-icon">
+                                            </lightning-icon>
+                                        </template>
+                                        <span class="prog-card-label">{prog.label}</span>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <p class="slds-m-top_small slds-text-color_weak slds-text-body_small">
+                                {bulkSelectedCount} program(s) selected
+                            </p>
+                        </template>
+
+                        <!-- ─── STEP 2: AOI selection per Program ─────────────── -->
+                        <template if:true={isStep2}>
+                            <p class="slds-text-body_regular slds-m-bottom_medium">
+                                Select the areas of interest for each program.
+                                The company will hire from all selected combinations.
+                            </p>
+
+                            <template for:each={bulkAOISections} for:item="section">
+                                <div key={section.program} class="aoi-section">
+                                    <div class="aoi-section-header">
+                                        <span class="program-badge-lg">{section.program}</span>
+                                        <div class="bulk-quick-actions">
+                                            <button type="button" class="slds-button slds-button_reset action-link"
+                                                data-program={section.program} onclick={handleBulkSelectAllAOI}>
+                                                Select All
+                                            </button>
+                                            <span class="action-sep">·</span>
+                                            <button type="button" class="slds-button slds-button_reset action-link"
+                                                data-program={section.program} onclick={handleBulkClearAllAOI}>
+                                                Clear All
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="aoi-grid">
+                                        <template for:each={section.aois} for:item="aoi">
+                                            <div key={aoi.value} class={aoi.cardClass} data-program={section.program}
+                                                data-aoi={aoi.value} onclick={handleBulkAOIToggle}>
+                                                <template if:true={aoi.selected}>
+                                                    <lightning-icon icon-name="utility:check" size="xx-small"
+                                                        class="aoi-check-icon">
+                                                    </lightning-icon>
+                                                </template>
+                                                <span class="aoi-card-label">{aoi.label}</span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </template>
+
+                    </div>
+
+                    <footer class="slds-modal__footer">
+                        <!-- Step 1 footer -->
+                        <template if:true={isStep1}>
+                            <lightning-button label="Cancel" onclick={handleBulkCancel} class="slds-m-right_small">
+                            </lightning-button>
+                            <lightning-button label="Next: Select AOIs ›" variant="brand" onclick={handleBulkNext}>
+                            </lightning-button>
+                        </template>
+
+                        <!-- Step 2 footer -->
+                        <template if:true={isStep2}>
+                            <lightning-button label="‹ Back" onclick={handleBulkBack} class="slds-m-right_small">
+                            </lightning-button>
+                            <lightning-button label="Cancel" onclick={handleBulkCancel} class="slds-m-right_small">
+                            </lightning-button>
+                            <lightning-button label={bulkAddButtonLabel} variant="brand" disabled={isBulkAddDisabled}
+                                onclick={handleBulkAddLines}>
+                            </lightning-button>
+                        </template>
+                    </footer>
+
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- Delete Confirmation Modal -->
+        <template if:true={showDeleteModal}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <h2 class="slds-modal__title">Confirm Delete</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <p>Are you sure you want to delete this Program Line? This cannot be undone.</p>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <lightning-button label="Cancel" onclick={cancelDelete}></lightning-button>
+                        <lightning-button label="Delete" variant="destructive"
+                            onclick={confirmDelete}></lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+    </lightning-card>
+</template>

@@ -11,40 +11,58 @@ export default class LeadCallConfirmation extends LightningElement {
     isSaveDisabled = true;
     isLoading = false;
 
-    get isYesSelected() {
-        return this.selectedValue === 'Yes';
+    get isNotConnectedSelected() {
+        return this.selectedValue === 'Not Connected';
     }
 
-    get isNoSelected() {
-        return this.selectedValue === 'No';
+    get isConnectedFollowUpRequiredSelected() {
+        return this.selectedValue === 'Connected Follow-Up Required';
     }
 
-    get isNotInterestedSelected() {
-        return this.selectedValue === 'Not Interested';
+    get isConnectedInterestedSelected() {
+        return this.selectedValue === 'Connected Interested';
     }
 
-    get isInterestedSelected() {
-        return this.selectedValue === 'Interested';
+    get isConnectedNotInterestedSelected() {
+        return this.selectedValue === 'Connected Not Interested';
     }
 
-    handleYesClick(event) {
+    get isConvertedSelected() {
+        return this.selectedValue === 'Converted';
+    }
+
+    get isClosedSelected() {
+        return this.selectedValue === 'Closed';
+    }
+
+    handleNotConnectedClick(event) {
         event.preventDefault();
-        this.updateSelection('Yes');
+        this.updateSelection('Not Connected');
     }
 
-    handleNoClick(event) {
+    handleConnectedFollowUpRequiredClick(event) {
         event.preventDefault();
-        this.updateSelection('No');
+        this.updateSelection('Connected Follow-Up Required');
     }
 
-    handleNotInterestedClick(event) {
+    handleConnectedInterestedClick(event) {
         event.preventDefault();
-        this.updateSelection('Not Interested');
+        this.updateSelection('Connected Interested');
     }
 
-    handleInterestedClick(event) {
+    handleConnectedNotInterestedClick(event) {
         event.preventDefault();
-        this.updateSelection('Interested');
+        this.updateSelection('Connected Not Interested');
+    }
+
+    handleConvertedClick(event) {
+        event.preventDefault();
+        this.updateSelection('Converted');
+    }
+
+    handleClosedClick(event) {
+        event.preventDefault();
+        this.updateSelection('Closed');
     }
 
     handleCommentChange(event) {

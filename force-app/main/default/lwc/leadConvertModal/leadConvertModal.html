@@ -1,0 +1,145 @@
+<template>
+    <template if:true={isModalOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium" aria-modal="true">
+            <div class="slds-modal__container">
+
+                <!-- Header -->
+                <header class="slds-modal__header modal-header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                        onclick={closeModal} title="Close">
+                        <lightning-icon icon-name="utility:close" size="small"
+                            alternative-text="close"></lightning-icon>
+                    </button>
+                    <div class="header-content">
+                        <lightning-icon icon-name="utility:convert" size="small" class="header-icon"></lightning-icon>
+                        <h2 class="slds-modal__title">Convert Lead</h2>
+                        <p class="header-subtitle">Review and confirm conversion details</p>
+                    </div>
+                </header>
+
+                <!-- Body -->
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id">
+
+                    <!-- Loading Spinner -->
+                    <template if:true={isLoading}>
+                        <div class="loading-container">
+                            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                            <p class="loading-text">Loading lead details...</p>
+                        </div>
+                    </template>
+
+                    <!-- Loaded Content -->
+                    <template if:false={isLoading}>
+
+                        <!-- Conversion Details -->
+                        <div class="conversion-section">
+
+                            <!-- Account -->
+                            <div class="conv-card">
+                                <div class="conv-card-header">
+                                    <lightning-icon icon-name="standard:account" size="x-small"></lightning-icon>
+                                    <span class="conv-card-title">Account</span>
+                                    <span class="badge badge-org">Organization Account</span>
+                                </div>
+                                <div class="slds-p-around_small">
+                                    <lightning-record-picker label="Account" placeholder="Search accounts..."
+                                        object-api-name="Account" value={selectedAccountId}
+                                        onchange={handleAccountChange} filter={accountFilter}></lightning-record-picker>
+                                    <template if:true={selectedAccountName}>
+                                        <div class="selected-badge">
+                                            <lightning-icon icon-name="utility:check" size="xx-small"
+                                                class="check-icon"></lightning-icon>
+                                            {selectedAccountName}
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Contact -->
+                            <div class="conv-card">
+                                <div class="conv-card-header">
+                                    <lightning-icon icon-name="standard:contact" size="x-small"></lightning-icon>
+                                    <span class="conv-card-title">Contact</span>
+                                </div>
+                                <div class="slds-p-around_small">
+                                    <lightning-record-picker label="Contact" placeholder="Search contacts..."
+                                        object-api-name="Contact" value={selectedContactId}
+                                        onchange={handleContactChange}></lightning-record-picker>
+                                    <template if:true={selectedContactName}>
+                                        <div class="selected-badge">
+                                            <lightning-icon icon-name="utility:check" size="xx-small"
+                                                class="check-icon"></lightning-icon>
+                                            {selectedContactName}
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Opportunity -->
+                            <div class="conv-card">
+                                <div class="conv-card-header">
+                                    <lightning-icon icon-name="standard:opportunity" size="x-small"></lightning-icon>
+                                    <span class="conv-card-title">Opportunity</span>
+                                    <lightning-input type="toggle" label="Create Opportunity"
+                                        checked={createOpportunity} onchange={handleOppToggle}
+                                        class="opp-toggle"></lightning-input>
+                                </div>
+                                <template if:true={createOpportunity}>
+                                    <div class="slds-p-around_small">
+                                        <lightning-input type="text" label="Opportunity Name" value={opportunityName}
+                                            onchange={handleOppNameChange} required
+                                            placeholder="Enter opportunity name..."
+                                            class="opp-name-input"></lightning-input>
+                                        <p class="field-help">You can edit the opportunity name before converting.</p>
+                                    </div>
+                                </template>
+                                <template if:false={createOpportunity}>
+                                    <div class="no-opp-msg">
+                                        <lightning-icon icon-name="utility:info" size="xx-small"></lightning-icon>
+                                        No opportunity will be created.
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Converted Status -->
+                            <!-- <div class="conv-card">
+                                <div class="conv-card-header">
+                                    <lightning-icon icon-name="utility:activity" size="x-small"></lightning-icon>
+                                    <span class="conv-card-title">Converted Status</span>
+                                </div>
+                                <div class="slds-p-around_small">
+                                    <lightning-combobox
+                                        label="Lead Status"
+                                        value={selectedStatus}
+                                        options={statusOptions}
+                                        onchange={handleStatusChange}
+                                        required
+                                    ></lightning-combobox>
+                                </div>
+                            </div> -->
+                        </div>
+
+                        <!-- Error / Info Message -->
+                        <template if:true={errorMessage}>
+                            <div class="error-toast">
+                                <lightning-icon icon-name="utility:error" size="x-small"></lightning-icon>
+                                <span>{errorMessage}</span>
+                            </div>
+                        </template>
+
+                    </template>
+                </div>
+
+                <!-- Footer -->
+                <footer class="slds-modal__footer modal-footer">
+                    <lightning-button label="Cancel" variant="neutral" onclick={closeModal}
+                        disabled={isConverting}></lightning-button>
+                    <lightning-button label={convertButtonLabel} variant="brand" icon-name="utility:convert"
+                        onclick={handleConvert} disabled={isConverting} class="convert-btn"></lightning-button>
+                </footer>
+
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

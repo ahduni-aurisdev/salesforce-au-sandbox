@@ -1,6 +1,4 @@
-/**
-* @description
- * ****************************************************************************************
+/******************************************************************************************
 * Created By       : Preksha Chauhan
 * Company          : GetonCRM Solutions
 * Class Name       : LeadAssignmentHelper
@@ -9,75 +7,60 @@
 *                    preferred program and record type configuration using custom metadata. 
 *                    It maintains a map of configurations and provides a method to assign 
 *                    lead owners accordingly.
-*********************************************************************************************
-*/
+**********************************************************************************************/
 public class LeadAssignmentHelper {
 
-    /**
-    * @description - Method to assign Masters leads in a round-robin fashion
-    * @param leads List of leads to be assigned
-    */
-    // public static void assignMastersLeads(List<Lead> leads) {
-    //     //Get LeadAssignment Custom metadata of masters
-    //     LeadAssignmentTrackerMasters__c tracker = LeadAssignmentTrackerMasters__c.getOrgDefaults();
-    //     //get last assigned index
-    //     Integer index = tracker != null && tracker.Last_Assigned_Index__c != null ? Integer.valueOf(tracker.Last_Assigned_Index__c) : 0;
+    // Method to assign Masters leads in a round-robin fashion
+    public static void assignLeads(List<Lead> leads) {
+        LeadAssignmentTrackers__c tracker = LeadAssignmentTrackers__c.getOrgDefaults();
+        Integer index = tracker != null && tracker.Last_Assigned_Index__c != null ? Integer.valueOf(tracker.Last_Assigned_Index__c) : 0;
         
-    //     // Map<String, Department_Record_Type_Mapping__mdt> departmentRecordType = Department_Record_Type_Mapping__mdt.getAll();
-    //     // for(String nameEmailDomain : departmentRecordType.keySet()){
-    //     //     System.debug('departmentRecordType Id----->'+departmentRecordType.get(nameEmailDomain).Record_Type_Id__c);
-    //     // }
+        // Map<String, Department_Record_Type_Mapping__mdt> departmentRecordType = Department_Record_Type_Mapping__mdt.getAll();
+        // for(String nameEmailDomain : departmentRecordType.keySet()){
+        //     System.debug('departmentRecordType Id----->'+departmentRecordType.get(nameEmailDomain).Record_Type_Id__c);
+        // }
 
-    //     // Department_Record_Type_Mapping__mdt departmentRecordTypeId = Department_Record_Type_Mapping__mdt.getInstance('Record_Type_Id__c');
-    //     // System.debug('departmentRecordTypeId Id ----->'+departmentRecordTypeId);
-    //     // Set of record type ids for masters
-    //     Set<Id> mastersRecordTypeIds = new Set<Id>();
-    //     for (Department_Record_Type_Mapping__mdt mapping : [
-    //         SELECT Record_Type_Id__c
-    //         FROM Department_Record_Type_Mapping__mdt
-    //         WHERE Department__c = 'Masters'
-    //     ]) {
-    //         mastersRecordTypeIds.add(mapping.Record_Type_Id__c);
-    //     }
-        
-    //     if (mastersRecordTypeIds.isEmpty()){
-    //         return;
-    //     }
-         
-        
-    //     //List of LeadAssignment Rule__mdt records
-    //     List<LeadAssignmentRule__mdt> rules = [
-    //         SELECT User__c
-    //         FROM LeadAssignmentRule__mdt
-    //         ORDER BY Round_Robin_Index__c
-    //     ];
+        // Department_Record_Type_Mapping__mdt departmentRecordTypeId = Department_Record_Type_Mapping__mdt.getInstance('Record_Type_Id__c');
+        // System.debug('departmentRecordTypeId Id ----->'+departmentRecordTypeId);
 
-    //     //gt number of usets from leadAssignmnetRule__mdt
-    //     Integer numUsers = rules.size();
-    //     if (numUsers == 0){
-    //         return;
-    //     } 
-    //     for (Lead lead : leads) {
-    //         if (mastersRecordTypeIds.contains(lead.RecordTypeId)) {
-    //             lead.OwnerId = rules[index].User__c;
-    //             lead.Last_Lead_Assigned_User__c = rules[index].User__c;
-    //             lead.Last_Index__c = index;
+        Set<Id> mastersRecordTypeIds = new Set<Id>();
+        for (Department_Record_Type_Mapping__mdt mapping : [
+            SELECT Record_Type_Id__c
+            FROM Department_Record_Type_Mapping__mdt
+            WHERE Department__c = 'Masters'
+        ]) {
+            mastersRecordTypeIds.add(mapping.Record_Type_Id__c);
+        }
+        
+        if (mastersRecordTypeIds.isEmpty()) return;
+        
+        List<LeadAssignmentRule__mdt> rules = [
+            SELECT User__c
+            FROM LeadAssignmentRule__mdt
+            ORDER BY Round_Robin_Index__c
+        ];
+
+        Integer numUsers = rules.size();
+        if (numUsers == 0) return;
+
+        for (Lead lead : leads) {
+            if (mastersRecordTypeIds.contains(lead.RecordTypeId)) {
+                lead.OwnerId = rules[index].User__c;
+                lead.Last_Lead_Assigned_User__c = rules[index].User__c;
+                lead.Last_Index__c = index;
                 
-    //             index = Math.mod(index + 1, numUsers);
-    //         }
-    //     }
+                index = Math.mod(index + 1, numUsers);
+            }
+        }
 
-    //     if (tracker == null) {
-    //         tracker = new LeadAssignmentTrackerMasters__c();
-    //     }
-    //     tracker.Last_Assigned_Index__c = index;
-    //     upsert tracker;
-    // }
+        if (tracker == null) {
+            tracker = new LeadAssignmentTrackers__c();
+        }
+        tracker.Last_Assigned_Index__c = index;
+        upsert tracker;
+    }
 
-    /**
-    * @description Updated method to assign PhD leads using custom metadata for the "Doctoral Admission User"  
-    * @param leads List of leads to be assigned
-    */
+    // Updated method to assign PhD leads using custom metadata for the "Doctoral Admission User"
     public static void assignPhdLeads(List<Lead> leads) {
         // Query custom metadata to get the user ID for "Doctoral Admission User"
         LeadAssignmentPhDUsers__mdt phdUserMetadata = [
@@ -94,37 +77,24 @@ public class LeadAssignmentHelper {
             for (Lead lead : leads) {
                 lead.OwnerId = doctoralAdmissionUserId;
             }
+        } else {
+            // Handle case where the user is not found in custom metadata
+            System.debug('No user found for Doctoral Admission in custom metadata');
         }
-        //  else {
-        //     // Handle case where the user is not found in custom metadata
-        //     System.debug('No user found for Doctoral Admission in custom metadata');
-        // }
     }
 
-    /**
-     * @description Helper method to check if a record type is "Masters" 
-     * @param recordTypeId Id of record type to check
-     * @return - returns true if record type is "Masters"
-    */
+    // Helper method to check if a record type is "Masters"
     public static Boolean isMastersRecordType(Id recordTypeId) {
         String recordTypeName = [SELECT Name FROM RecordType WHERE Id = :recordTypeId].Name;
         return recordTypeName == 'Masters';
     }
 
-    /**
-     * @description - Helper method to check if a record type is "PhD" 
-     * @param recordTypeId Id of record type to check
-     * @return - returns true if record type is "PhD"
-    */
+    // Helper method to check if a record type is "PhD"
     public static Boolean isPhdRecordType(Id recordTypeId) {
         String recordTypeName = [SELECT Name FROM RecordType WHERE Id = :recordTypeId].Name;
-        return recordTypeName == 'Phd';
+        return recordTypeName == 'PhD';
     }
 
-    /**
-    * @description - method to get record types
-    * @return - returns map of record type id and name
-    */
     public static Map<String,String> getRecordTypeWithName(){
         Map<String,String> recordTypeIdWithName = new Map<String,String>();
         List<Department_Record_Type_Mapping__mdt> recordTypeListMetadata = [SELECT Record_Type_Id__c , MasterLabel
@@ -143,9 +113,9 @@ public class LeadAssignmentHelper {
 
 //below is round robbin logic in sandbox org
 /*public class LeadAssignmentHelper {
-    public static void assignMastersLeads(List<Lead> leads) {
+    public static void assignLeads(List<Lead> leads) {
         // Fetch the last assigned index from custom setting
-        LeadAssignmentTrackerMasters__c tracker = LeadAssignmentTrackerMasters__c.getOrgDefaults();
+        LeadAssignmentTrackers__c tracker = LeadAssignmentTrackers__c.getOrgDefaults();
         
         Integer index = tracker != null && tracker.Last_Assigned_Index__c != null ? Integer.valueOf(tracker.Last_Assigned_Index__c) : 0;
 
@@ -191,7 +161,7 @@ public class LeadAssignmentHelper {
 
         // Update the index in the custom setting
         if (tracker == null) {
-            tracker = new LeadAssignmentTrackerMasters__c();
+            tracker = new LeadAssignmentTrackers__c();
         }
         tracker.Last_Assigned_Index__c = index;
         upsert tracker;

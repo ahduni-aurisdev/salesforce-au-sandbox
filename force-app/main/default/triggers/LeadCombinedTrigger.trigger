@@ -32,13 +32,16 @@
 trigger LeadCombinedTrigger on Lead (before insert, before update) {
     if (Trigger.isBefore) {
         if (Trigger.isInsert) {
+            LeadTriggerHandler.fillCdcLeadName(Trigger.new);
             LeadTriggerHandler.handleLeadAssignments(Trigger.new);
             LeadTriggerHandler.handlePhoneNumberUpdates(Trigger.new, 'insert');
-            LeadTriggerHandler.initializeLeadFields(Trigger.new);             
+            LeadTriggerHandler.initializeLeadFields(Trigger.new);
+            LeadTriggerHandler.stampMostRecentLeadSource(Trigger.new, null);
         } else if (Trigger.isUpdate) {
-            //LeadTriggerHandler.handleLeadAssignmentsForUpdateRecord(Trigger.new);
+            LeadTriggerHandler.fillCdcLeadName(Trigger.new);
             LeadTriggerHandler.handlePhoneNumberUpdates(Trigger.new, 'update');
-            LeadTriggerHandler.updateLeadLastNameIfBlank(Trigger.new, Trigger.oldMap);      
+            LeadTriggerHandler.updateLeadLastNameIfBlank(Trigger.new, Trigger.oldMap);
+            LeadTriggerHandler.stampMostRecentLeadSource(Trigger.new, Trigger.oldMap);
         }
     }
 }

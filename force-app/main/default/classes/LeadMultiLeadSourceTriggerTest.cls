@@ -355,4 +355,75 @@ public class LeadMultiLeadSourceTriggerTest {
         // Should have old values + converted Meta_Ads
         System.assertEquals('Alumni;Email;Meta_Ads', result3.Multi_Select_Lead_Source__c);
     }
+
+    // ---------------- TEST LEAD SOURCE ORDER TRACKING (INSERT) ----------------
+    @IsTest
+    static void testLeadSourceOrderTrackingOnInsert() {
+        Lead l = createSafeLead('OrderInsertTest', 'Alumni;Facebook', 'Email');
+
+        String today = formattedToday();
+
+        Test.startTest();
+        insert l;
+        Test.stopTest();
+
+        Lead result = [SELECT Multi_Select_Lead_Sources__c FROM Lead WHERE Id = :l.Id];
+
+        // Alumni, Email (from LeadSource) and Facebook are all new -> all captured with today's date
+        System.assert(result.Multi_Select_Lead_Sources__c.contains('Alumni (' + today + ')'));
+        System.assert(result.Multi_Select_Lead_Sources__c.contains('Email (' + today + ')'));
+        System.assert(result.Multi_Select_Lead_Sources__c.contains('Facebook (' + today + ')'));
+    }
+
+    // ---------------- TEST LEAD SOURCE ORDER TRACKING (UPDATE APPENDS, NEVER OVERWRITES) ----------------
+    @IsTest
+    static void testLeadSourceOrderTrackingOnUpdate() {
+        Lead l = createSafeLead('OrderUpdateTest', 'Alumni;Facebook', 'Email');
+        insert l;
+
+        Lead afterInsert = [SELECT Multi_Select_Lead_Sources__c FROM Lead WHERE Id = :l.Id];
+        String orderTextAfterInsert = afterInsert.Multi_Select_Lead_Sources__c;
+        System.assertNotEquals(null, orderTextAfterInsert);
+
+        Test.startTest();
+        // Add a brand-new source on the "second" occasion
+        l.Multi_Select_Lead_Source__c = 'Alumni;Facebook;Google_ads';
+        l.LeadSource = 'Google_ads';
+        update l;
+        Test.stopTest();
+
+        Lead result = [SELECT Multi_Select_Lead_Sources__c FROM Lead WHERE Id = :l.Id];
+
+        // Prior history is preserved untouched (never overwritten)...
+        System.assert(result.Multi_Select_Lead_Sources__c.startsWith(orderTextAfterInsert));
+        // ...and the newly introduced source is appended.
+        String today = formattedToday();
+        System.assert(result.Multi_Select_Lead_Sources__c.contains('Google_ads (' + today + ')'));
+    }
+
+    // ---------------- TEST LEAD SOURCE ORDER TRACKING (NO DUPLICATE RE-ADDS) ----------------
+    @IsTest
+    static void testLeadSourceOrderTrackingNoDuplicates() {
+        Lead l = createSafeLead('OrderDuplicateTest', 'Alumni;Facebook', 'Email');
+        insert l;
+
+        Lead afterInsert = [SELECT Multi_Select_Lead_Sources__c FROM Lead WHERE Id = :l.Id];
+        String orderTextAfterInsert = afterInsert.Multi_Select_Lead_Sources__c;
+
+        Test.startTest();
+        // Re-save with the exact same sources - nothing new should be appended
+        l.Multi_Select_Lead_Source__c = 'Alumni;Facebook';
+        l.LeadSource = 'Email';
+        update l;
+        Test.stopTest();
+
+        Lead result = [SELECT Multi_Select_Lead_Sources__c FROM Lead WHERE Id = :l.Id];
+        System.assertEquals(orderTextAfterInsert, result.Multi_Select_Lead_Sources__c);
+    }
+
+    private static String formattedToday() {
+        Date today = Date.today();
+        return (today.month() < 10 ? '0' : '') + today.month() + '/'
+            + (today.day() < 10 ? '0' : '') + today.day() + '/' + today.year();
+    }
 }
