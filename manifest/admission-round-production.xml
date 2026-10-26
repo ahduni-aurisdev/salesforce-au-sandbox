@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>AdmissionRoundApiModels</members>
+        <members>AdmissionRoundApiModelsTest</members>
+        <members>AdmissionRoundAssignmentSelector</members>
+        <members>AdmissionRoundAssignmentService</members>
+        <members>AdmissionRoundAssignmentServiceTest</members>
+        <members>AdmissionRoundLeadAssignmentAsyncTest</members>
+        <members>AdmissionRoundLeadAssignmentBatch</members>
+        <members>AdmissionRoundRestResource</members>
+        <members>AdmissionRoundRestResourceTest</members>
+        <members>AdmissionRoundService</members>
+        <members>AdmissionRoundServiceTest</members>
+        <members>AdmissionRoundTriggerHandler</members>
+        <members>LeadTriggerHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>AdmissionRoundTrigger</members>
+        <members>LeadCombinedTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>Admission_Round__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Lead.Assigned_Admission_Round__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Admission_Round__c-Admission Round Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Admin</members>
+        <members>Salesforce API Only System Integrations</members>
+        <name>Profile</name>
+    </types>
+    <version>65.0</version>
+</Package>

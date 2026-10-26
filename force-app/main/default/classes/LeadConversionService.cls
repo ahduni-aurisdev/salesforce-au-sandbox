@@ -436,7 +436,7 @@ global with sharing class LeadConversionService {
         return
             'SELECT Id, OwnerId, Name, FirstName, LastName, Company, Phone, Email, UTM_Link__c, Is_convert__c, ' +
             '       Registration_Number__c, Registration_Date__c, Status, ' +
-            '       Application_Number__c, Application_Date__c, LeadSource, ' +
+            '       Application_Number__c, Application_Date__c, LeadSource, Call_Log_Comment__c, ' +
             '       URL__c, Auris_Form_URL__c, Multi_Select_Lead_Source__c, ' +
             '       Most_Recent_Lead_Source__c, Multi_Select_Lead_Sources__c, ' +
             '       Campaign_Name__c, RecordType.DeveloperName, RecordTypeId, Department__c, ' +
@@ -1018,7 +1018,7 @@ global with sharing class LeadConversionService {
                             '       Multi_Select_Lead_Source__c, Most_Recent_Lead_Source__c, Multi_Select_Lead_Sources__c, ' +
                             '       Organisation_Institute_Name__c, Designation__c, Admission_Year__c, ' +
                             '       My_Highest_Qualification__c, Engagement_Score__c, ' +
-                            '       Total_Work_Experience_Year_s__c' +
+                            '       Total_Work_Experience_Year_s__c, Call_Log_Comment__c' +
                             groupFieldsSoql() +
                             ' FROM Lead WHERE ConvertedAccountId = \'' + personAccountId + '\' LIMIT 1';
                         List<Lead> convertedLeads = Database.query(convertedLeadSoql);
@@ -1153,7 +1153,7 @@ global with sharing class LeadConversionService {
                                     'majors'            => majors
                                 };
 
-                                Opportunity opp = buildGroupOpportunity(convertedLead, personAccountId, contactId, grp, nextSlot, maxPrograms);
+                                Opportunity opp = buildGroupOpportunity(convertedLead, personAccountId, contactId, grp, payloadMap, nextSlot, maxPrograms);
                                 opp.Lead__c = convertedLead.Id;
                                 oppsToInsert.add(opp);
                                 // Track in the map so if the same tag appears twice in the payload it is not duplicated
@@ -1295,12 +1295,24 @@ global with sharing class LeadConversionService {
     }
 
     /**
+     * Admission Year for the Opportunity created on conversion: the payload's own
+     * 'admissionYear' value takes priority when present; otherwise falls back to
+     * whatever is already on the Lead's Admission_Year__c field.
+     */
+    private static String resolveAdmissionYear(Lead lead, Map<String, Object> payloadMap) {
+        if (payloadMap != null && payloadMap.containsKey('admissionYear') && payloadMap.get('admissionYear') != null) {
+            return String.valueOf(payloadMap.get('admissionYear'));
+        }
+        return lead.Admission_Year__c;
+    }
+
+    /**
     * @description - Method to converts the Lead record into Account and Opportunity records for masters
     * @param lead leads to be converted
     * @param payloadMap map of payload
     * @param responseMap map of responses
     * @return - returns converted message
-    ****************************************************************************************** 
+    ******************************************************************************************
     * Method Name : convertLeadToAccountAndOpportunity
     * Created By  : Preksha Chauhan
     * Create Date : 30/07/2024
@@ -1310,7 +1322,7 @@ global with sharing class LeadConversionService {
     *               Opportunity. It also maps fields from Lead to Account and Opportunity and populates
     *               the response map with conversion results.
     ****************************************************************************************
-    ***/ 
+    ***/
     public static String convertLeadToAccountAndOpportunityMasters(
         Lead lead, 
         Map<String, Object> payloadMap, 
@@ -1326,7 +1338,8 @@ global with sharing class LeadConversionService {
                    Application_Number__c, Application_Date__c, LeadSource, URL__c, Auris_Form_URL__c,
                    Organisation_Institute_Name__c, Designation__c, My_Highest_Qualification__c,
                    Engagement_Score__c, Total_Work_Experience_Year_s__c, Department__c, Admission_Year__c,
-                   Multi_Select_Lead_Source__c, Most_Recent_Lead_Source__c, Multi_Select_Lead_Sources__c
+                   Multi_Select_Lead_Source__c, Most_Recent_Lead_Source__c, Multi_Select_Lead_Sources__c,
+                   Call_Log_Comment__c
             FROM Lead
             WHERE Id = :lead.Id
         ];
@@ -1491,64 +1504,65 @@ global with sharing class LeadConversionService {
                     opp.Multi_Select_Lead_Source__c = convertMultiSelectForOpportunity(freshLead.Multi_Select_Lead_Source__c);
                     opp.Most_Recent_Lead_Source__c = freshLead.Most_Recent_Lead_Source__c;
                     opp.Multi_Select_Lead_Sources__c = freshLead.Multi_Select_Lead_Sources__c;
+                    opp.Call_Log_Comment__c = freshLead.Call_Log_Comment__c;
 
                     // Added By Mihir Ramoliya - 21-04-2026
-                    // Set Admission Year
-                    opp.Admission_Year__c = freshLead.Admission_Year__c;
-                    
+                    // Set Admission Year - payload value takes priority over the lead's own field
+                    opp.Admission_Year__c = resolveAdmissionYear(freshLead, payloadMap);
+
                     // EXECUTIVE EDUCATION FIELD MAPPING
-                    if (recordTypeDevName == 'Executive_Education' || 
+                    if (recordTypeDevName == 'Executive_Education' ||
                         recordTypeDevName == 'Executive_Education_Lead') {
                         System.debug('Adding Executive Education field mapping to opportunity during creation');
-                        
+
                         // Map Organisation/Institute Name
                         if (freshLead.Organisation_Institute_Name__c != null) {
                             opp.Organisation_Institute_Name__c = freshLead.Organisation_Institute_Name__c;
                         } else if (freshLead.Company != null) {
                             opp.Organisation_Institute_Name__c = freshLead.Company;
                         }
-                        
+
                         // Map Designation
                         if (freshLead.Designation__c != null) {
                             opp.Designation__c = freshLead.Designation__c;
                         }
-                        
+
                         // Map Highest Qualification
                         if (freshLead.My_Highest_Qualification__c != null) {
                             opp.Highest_Qualification__c = freshLead.My_Highest_Qualification__c;
                         }
-                        
+
                         // Map Engagement Score
                         if (freshLead.Engagement_Score__c != null) {
                             opp.Engagement_Score__c = freshLead.Engagement_Score__c;
                         }
-                        
+
                         // Map Total Work Experience
                         if (freshLead.Total_Work_Experience_Year_s__c != null) {
                             opp.Total_Work_Experience_Year_s__c = freshLead.Total_Work_Experience_Year_s__c;
                         }
-                        
+
                         // Map Registration Date
                         if (freshLead.Registration_Date__c != null) {
                             opp.Registration_Date__c = freshLead.Registration_Date__c;
                         }
-                        
+
                         // Map Application Date
                         if (freshLead.Application_Date__c != null) {
                             opp.Application_Initiated_Date__c = freshLead.Application_Date__c;
                         }
-                        
+
                         // Map Application Number (if not already set from payload)
                         if (opp.Application_Number__c == null && freshLead.Application_Number__c != null) {
                             opp.Application_Number__c = freshLead.Application_Number__c;
                         }
-                        
+
                         System.debug('Executive Education fields mapped successfully');
                     }
-                    
+
                     opportunitiesToInsert.add(opp);
                 }
-                
+
                 // Insert new opportunities
                 if (!opportunitiesToInsert.isEmpty()) {
                     insert opportunitiesToInsert;
@@ -1747,6 +1761,10 @@ global with sharing class LeadConversionService {
                 opp.Multi_Select_Lead_Source__c = convertMultiSelectForOpportunity(freshLead.Multi_Select_Lead_Source__c);
                 opp.Most_Recent_Lead_Source__c = freshLead.Most_Recent_Lead_Source__c;
                 opp.Multi_Select_Lead_Sources__c = freshLead.Multi_Select_Lead_Sources__c;
+                opp.Call_Log_Comment__c = freshLead.Call_Log_Comment__c;
+
+                // Set Admission Year - payload value takes priority over the lead's own field
+                opp.Admission_Year__c = resolveAdmissionYear(freshLead, payloadMap);
 
                 // EXECUTIVE EDUCATION FIELD MAPPING
                 if (recordTypeDevName == 'Executive_Education' || 
@@ -2072,6 +2090,7 @@ global with sharing class LeadConversionService {
         // to produce the correct response message.
         Boolean wasAlreadyConverted = lead.IsConverted;
         List<Opportunity> opportunitiesToInsert = new List<Opportunity>();
+        Integer updatedExistingOppCount = 0;
 
         if (!lead.IsConverted) {
             // ── BRANCH A: Lead not yet converted ─────────────────────────────────
@@ -2090,7 +2109,7 @@ global with sharing class LeadConversionService {
             // AccountId is null at this point — it will be stamped after conversion.
             for (Map<String, Object> grp : storedGroups) {
                 opportunitiesToInsert.add(
-                    buildGroupOpportunity(lead, null, null, grp, (Integer) grp.get('slot'), maxPrograms)
+                    buildGroupOpportunity(lead, null, null, grp, payloadMap, (Integer) grp.get('slot'), maxPrograms)
                 );
             }
 
@@ -2114,10 +2133,8 @@ global with sharing class LeadConversionService {
                 draft.AccountId = accountId;
                 draft.ContactId = contactId;
                 draft.Lead__c   = lead.Id;
-
-                // Added By Mihir Ramoliya - 21-04-2026
-                // Set Admission Year
-                draft.Admission_Year__c = lead.Admission_Year__c;
+                // Admission_Year__c is already set correctly (payload-priority) by
+                // buildGroupOpportunity when this draft was built above.
             }
 
         } else {
@@ -2134,13 +2151,76 @@ global with sharing class LeadConversionService {
 
             // Query existing opportunities to know which groups already have one
             List<Opportunity> existingOpps = [
-                SELECT Id, Program_Group_Tag__c FROM Opportunity WHERE AccountId = :accountId
+                SELECT Id, Program_Group_Tag__c,
+                    Primary_Preferred_Program__c,     Primary_Preferred_Major__c,
+                    Secondary_Preferred_Programme__c, Secondary_Preferred_Major__c,
+                    Ternary_Preferred_Programme__c,   Ternary_Preferred_Major__c
+                FROM Opportunity WHERE AccountId = :accountId
             ];
             Set<String> existingGroupTags = new Set<String>();
+            Map<String, Opportunity> existingOppByTag = new Map<String, Opportunity>();
             for (Opportunity o : existingOpps) {
-                if (o.Program_Group_Tag__c != null) existingGroupTags.add(o.Program_Group_Tag__c);
+                if (o.Program_Group_Tag__c != null) {
+                    existingGroupTags.add(o.Program_Group_Tag__c);
+                    existingOppByTag.put(o.Program_Group_Tag__c, o);
+                }
             }
             System.debug('Existing group tags on account: ' + existingGroupTags);
+
+            // ── START: refresh programmes on EXISTING opportunities ───────────────
+            // Added By : Mihir Ramoliya | 14-Oct-2026
+            // Issue    : when the payload carried grpPrograms for a group that already
+            //            had an opportunity, only the Lead slot was updated; the
+            //            opportunity was skipped and kept stale / empty programmes.
+            // Fix      : for every payload group whose tag matches an existing
+            //            opportunity, overwrite that opportunity's programme/major
+            //            slots with the incoming list (payload = source of truth, same
+            //            rule as the personAccountId route). Groups with no valid
+            //            programmes in the payload leave the opportunity untouched.
+            if (payloadMap.containsKey('grpPrograms') && payloadMap.get('grpPrograms') != null) {
+                Map<Id, Opportunity> oppsToRefresh = new Map<Id, Opportunity>();
+                for (Object obj : (List<Object>) payloadMap.get('grpPrograms')) {
+                    Map<String, Object> grpMap = (Map<String, Object>) obj;
+                    Opportunity existingOpp = existingOppByTag.get((String) grpMap.get('grptag'));
+                    if (existingOpp == null) continue;
+
+                    List<Object> incomingProgObjs = getProgsList(grpMap);
+                    if (incomingProgObjs.size() > maxPrograms) {
+                        throw new CustomException(
+                            'Group "' + (String) grpMap.get('grptag') + '" cannot have more than '
+                            + maxPrograms + ' programme(s).'
+                        );
+                    }
+
+                    List<String> newProgs  = new List<String>();
+                    List<String> newMajors = new List<String>();
+                    for (Object progObj : incomingProgObjs) {
+                        Map<String, Object> pm = (Map<String, Object>) progObj;
+                        String pn    = (String) pm.get('programInterestedIn');
+                        String major = (String) pm.get('major');
+                        if (String.isBlank(pn)) continue;
+                        newProgs.add(pn.trim());
+                        newMajors.add(major != null ? major.trim() : '');
+                    }
+                    if (newProgs.isEmpty()) continue;
+
+                    existingOpp.Primary_Preferred_Program__c      = null; existingOpp.Primary_Preferred_Major__c   = null;
+                    existingOpp.Secondary_Preferred_Programme__c  = null; existingOpp.Secondary_Preferred_Major__c = null;
+                    existingOpp.Ternary_Preferred_Programme__c    = null; existingOpp.Ternary_Preferred_Major__c   = null;
+                    for (Integer pi = 0; pi < newProgs.size() && pi < maxPrograms; pi++) {
+                        if (pi == 0) { existingOpp.Primary_Preferred_Program__c     = newProgs[pi]; existingOpp.Primary_Preferred_Major__c   = newMajors[pi]; }
+                        if (pi == 1) { existingOpp.Secondary_Preferred_Programme__c = newProgs[pi]; existingOpp.Secondary_Preferred_Major__c = newMajors[pi]; }
+                        if (pi == 2) { existingOpp.Ternary_Preferred_Programme__c   = newProgs[pi]; existingOpp.Ternary_Preferred_Major__c   = newMajors[pi]; }
+                    }
+                    oppsToRefresh.put(existingOpp.Id, existingOpp);
+                }
+                if (!oppsToRefresh.isEmpty()) {
+                    update oppsToRefresh.values();
+                    updatedExistingOppCount = oppsToRefresh.size();
+                    System.debug('Refreshed programmes on ' + updatedExistingOppCount + ' existing opportunity/ies.');
+                }
+            }
+            // ── END: refresh programmes on EXISTING opportunities ─────────────────
 
             // Track whether this is a single-group request (grptag in payload)
             // so we can return a specific error instead of silently skipping
@@ -2159,7 +2239,7 @@ global with sharing class LeadConversionService {
                     System.debug('Opp already exists for "' + grpTag + '" – skipping.');
                     continue;
                 }
-                Opportunity opp = buildGroupOpportunity(lead, accountId, contactId, grp, (Integer) grp.get('slot'), maxPrograms);
+                Opportunity opp = buildGroupOpportunity(lead, accountId, contactId, grp, payloadMap, (Integer) grp.get('slot'), maxPrograms);
                 opp.Lead__c = lead.Id;
                 opportunitiesToInsert.add(opp);
                 System.debug('Queued opp for group: ' + grpTag);
@@ -2246,7 +2326,11 @@ global with sharing class LeadConversionService {
             ? 'Lead converted with ' + opportunitiesToInsert.size() + ' opportunity/ies.'
             : (!opportunitiesToInsert.isEmpty()
                 ? 'Already converted. Created ' + opportunitiesToInsert.size() + ' new opportunity/ies.'
-                : 'Already converted. All groups already have opportunities.');
+                    + (updatedExistingOppCount > 0 ? ' Updated programmes on ' + updatedExistingOppCount + ' existing opportunity/ies.' : '')
+                : (updatedExistingOppCount > 0
+                    ? 'Already converted. Updated programmes on ' + updatedExistingOppCount + ' existing opportunity/ies.'
+                    : 'Already converted. All groups already have opportunities.'));
+        if (updatedExistingOppCount > 0) responseMap.put('updatedOpportunities', updatedExistingOppCount);
 
         responseMap.put('message', msg);
         System.debug('=== END UG conversion: ' + msg + ' ===');
@@ -2290,6 +2374,7 @@ global with sharing class LeadConversionService {
             Id accountId,
             Id contactId,
             Map<String, Object> grp,
+            Map<String, Object> payloadMap,
             Integer slot,
             Integer maxPrograms
     ) {
@@ -2344,11 +2429,12 @@ global with sharing class LeadConversionService {
         opp.Auris_Form_URL__c             = lead.Auris_Form_URL__c;
         opp.Program_Group_Tag__c          = grpTag;
         opp.OwnerId                       = lead.OwnerId;
+        opp.Call_Log_Comment__c           = lead.Call_Log_Comment__c;
         opp.Auris_Last_Modified_Timestamp__c = System.now().format('yyyy-MM-dd:HH:mm:ss');
 
         // Added By Mihir Ramoliya - 21-04-2026
         // Set Admission Year
-        opp.Admission_Year__c = lead.Admission_Year__c;
+        opp.Admission_Year__c = resolveAdmissionYear(lead, payloadMap);
 
         // Map programmes to Primary / Secondary / Ternary slots in order
         if (progs != null) {

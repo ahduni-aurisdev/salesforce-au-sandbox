@@ -437,6 +437,8 @@ public class saveWebTo_YourProfileData_Test {
         System.assert(((String)((Map<String,Object>)errors[0]).get('errorMessage')).contains('non-empty'));
     }
 
+    // Modified 14-Oct-2026: a group with empty / null / missing programmes is no longer rejected.
+    // The group is still added to the lead.
     @IsTest
     static void test_ugAdmission_emptyProgrammesList() {
         if (ugRtId() == null) return;
@@ -449,6 +451,13 @@ public class saveWebTo_YourProfileData_Test {
                 new Map<String, Object>{
                     'grptag'     => 'UG_Lateral',
                     'programmes' => new List<Object>()
+                },
+                new Map<String, Object>{
+                    'grptag'     => 'UG_NullProg',
+                    'programmes' => null
+                },
+                new Map<String, Object>{
+                    'grptag'     => 'UG_MissingProg'
                 }
             }
         };
@@ -456,8 +465,43 @@ public class saveWebTo_YourProfileData_Test {
         Map<String, Object> resp = post(payload);
         Test.stopTest();
         List<Object> errors = (List<Object>) resp.get('errors');
-        System.assertEquals(1, errors.size());
-        System.assert(((String)((Map<String,Object>)errors[0]).get('errorMessage')).contains('at least one'));
+        System.assertEquals(0, errors.size(), 'Groups without programmes must not be rejected: ' + errors);
+        Lead l = [SELECT Group_1__c, Group_2__c, Group_3__c FROM Lead WHERE Registration_Number__c = 'REG-EMPTYPROG-001' LIMIT 1];
+        System.assertEquals('UG_Lateral', l.Group_1__c);
+        System.assertEquals('UG_NullProg', l.Group_2__c);
+        System.assertEquals('UG_MissingProg', l.Group_3__c);
+    }
+
+    // An existing group that arrives with no programmes stays on the lead and keeps its saved programmes.
+    @IsTest
+    static void test_ugAdmission_existingGroupWithoutProgrammesKeepsProgrammes() {
+        if (ugRtId() == null) return;
+        Map<String, Object> first = new Map<String, Object>{
+            'department'         => 'Undergraduation',
+            'typeOfForm'         => 'Auris_Admission_Form',
+            'registrationNumber' => 'REG-KEEPPROG-001',
+            'email' => 'keepprog@test.com', 'phone' => '9876543210',
+            'grpPrograms'        => new List<Object>{
+                new Map<String, Object>{
+                    'grptag'     => 'UG_Keep',
+                    'programmes' => new List<Object>{
+                        new Map<String, Object>{ 'programInterestedIn' => 'BSc', 'major' => 'Physics' }
+                    }
+                }
+            }
+        };
+        post(first);
+        Map<String, Object> second = first.clone();
+        second.put('grpPrograms', new List<Object>{
+            new Map<String, Object>{ 'grptag' => 'UG_Keep', 'programmes' => new List<Object>() }
+        });
+        Test.startTest();
+        Map<String, Object> resp = post(second);
+        Test.stopTest();
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size());
+        Lead l = [SELECT Group_1__c, Group_1_Programmes__c FROM Lead WHERE Registration_Number__c = 'REG-KEEPPROG-001' LIMIT 1];
+        System.assertEquals('UG_Keep', l.Group_1__c);
+        System.assertEquals('BSc', l.Group_1_Programmes__c);
     }
 
     @IsTest

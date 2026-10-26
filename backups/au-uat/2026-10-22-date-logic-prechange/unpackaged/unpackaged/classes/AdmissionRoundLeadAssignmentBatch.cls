@@ -1,0 +1,65 @@
+/**
+ * @description Assigns eligible Admission Rounds to existing unassigned Leads.
+ * @author AU Development Team
+ * @date 2026-10-19
+ * @version 1.0
+ * @lastModified 2026-10-19
+ */
+global without sharing class AdmissionRoundLeadAssignmentBatch implements Database.Batchable<SObject> {
+    private Map<String, Set<String>> departmentsByYear = new Map<String, Set<String>>();
+
+    // Retained so the previously deployed, now-unused scheduler remains binary compatible.
+    global AdmissionRoundLeadAssignmentBatch() {
+    }
+
+    global AdmissionRoundLeadAssignmentBatch(List<Admission_Round__c> activatedRounds) {
+        if (activatedRounds == null) return;
+        for (Admission_Round__c roundValue : activatedRounds) {
+            if (roundValue == null || !roundValue.Is_Active__c ||
+                String.isBlank(roundValue.Department__c) || String.isBlank(roundValue.Admission_Year__c)) continue;
+            String admissionYear = roundValue.Admission_Year__c.trim();
+            if (!departmentsByYear.containsKey(admissionYear)) {
+                departmentsByYear.put(admissionYear, new Set<String>());
+            }
+            departmentsByYear.get(admissionYear).addAll(
+                AdmissionRoundAssignmentService.leadDepartmentValues(roundValue.Department__c)
+            );
+        }
+    }
+
+    global Database.QueryLocator start(Database.BatchableContext context) {
+        String queryValue = 'SELECT Id, Department__c, Admission_Year__c, Assigned_Admission_Round__c ' +
+            'FROM Lead WHERE Assigned_Admission_Round__c = null';
+        List<String> groupFilters = new List<String>();
+        for (String admissionYear : departmentsByYear.keySet()) {
+            Set<String> departmentValues = departmentsByYear.get(admissionYear);
+            if (departmentValues.isEmpty()) continue;
+            groupFilters.add(
+                '(Admission_Year__c = \'' + String.escapeSingleQuotes(admissionYear) + '\' AND Department__c IN (' +
+                quotedValues(departmentValues) + '))'
+            );
+        }
+        queryValue += groupFilters.isEmpty() ? ' AND Id = null' : ' AND (' + String.join(groupFilters, ' OR ') + ')';
+        return Database.getQueryLocator(queryValue);
+    }
+
+    global void execute(Database.BatchableContext context, List<Lead> scope) {
+        try {
+            List<Lead> changedLeads = AdmissionRoundAssignmentService.assignActiveRounds(scope);
+            if (changedLeads.isEmpty()) return;
+            Database.SaveResult[] results = Database.update(changedLeads, false);
+            AdmissionRoundAssignmentService.logUpdateFailures(changedLeads, results);
+        } catch (Exception exceptionValue) {
+            AdmissionRoundAssignmentService.logUnexpected('AdmissionRoundLeadAssignmentBatch', exceptionValue.getMessage(), null);
+        }
+    }
+
+    global void finish(Database.BatchableContext context) {
+    }
+
+    private static String quotedValues(Set<String> values) {
+        List<String> quoted = new List<String>();
+        for (String value : values) quoted.add('\'' + String.escapeSingleQuotes(value) + '\'');
+        return String.join(quoted, ',');
+    }
+}

@@ -28,6 +28,7 @@
 //                                     (1) grpPrograms not null,
 //                                     (2) grpPrograms not empty,
 //                                     (3) every group has grptag + programmes.
+//                                     [14-Oct-2026: programmes no longer required per group]
 //                                     handleDuplicateLeadUndergraduation now
 //                                     queries all Group slot fields so the
 //                                     returned lead can be used for slot
@@ -245,21 +246,15 @@ global class saveWebTo_YourProfileData {
                     throw new CustomException('grpPrograms cannot be an empty list. At least one group is required.');
                 }
 
-                // Validation 3: every group must have a grptag and at least one programme
+                // Validation 3: every group must have a grptag.
+                // Modified By : Mihir Ramoliya | 14-Oct-2026
+                // A group is no longer required to carry programmes. A group with null / missing /
+                // empty programmes is still added to the lead (tag, application number and date).
                 for (Object groupObj : programGroups) {
                     Map<String, Object> gm = (Map<String, Object>) groupObj;
                     String tag = (String) gm.get('grptag');
                     if (String.isBlank(tag)) {
                         throw new CustomException('Each group in grpPrograms must have a non-empty "grptag".');
-                    }
-                    List<Object> progs = new List<Object>();
-                    if (gm.containsKey('programmes') && gm.get('programmes') != null) {
-                        progs = (List<Object>) gm.get('programmes');
-                    } else if (gm.containsKey('programs') && gm.get('programs') != null) {
-                        progs = (List<Object>) gm.get('programs');
-                    }
-                    if (progs.isEmpty()) {
-                        throw new CustomException('Group "' + tag + '" must have at least one programme.');
                     }
                 }
                 // ── END: grpPrograms validations ──────────────────────────────
@@ -423,9 +418,15 @@ global class saveWebTo_YourProfileData {
                             }
 
                             // Always overwrite — this replaces any removed programmes
-                            // and captures additions and major changes in one operation
-                            newLead.put(groupSlotField(slot, 'programmes'), String.join(newProgNames, ','));
-                            newLead.put(groupSlotField(slot, 'majors'),     String.join(newMajors,    ','));
+                            // and captures additions and major changes in one operation.
+                            // Modified By : Mihir Ramoliya | 14-Oct-2026
+                            // Exception: when the payload sends NO programmes for this group
+                            // (null / missing / empty) the group is still kept on the lead, but
+                            // its saved programmes and majors are left untouched instead of wiped.
+                            if (!newProgNames.isEmpty()) {
+                                newLead.put(groupSlotField(slot, 'programmes'), String.join(newProgNames, ','));
+                                newLead.put(groupSlotField(slot, 'majors'),     String.join(newMajors,    ','));
+                            }
 
                             // Update applicationNumber only if payload provides one and slot is blank
                             if (String.isBlank((String) newLead.get(groupSlotField(slot, 'appNumber')))) {

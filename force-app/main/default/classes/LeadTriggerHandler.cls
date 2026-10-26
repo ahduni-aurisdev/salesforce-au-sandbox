@@ -490,4 +490,23 @@ public class LeadTriggerHandler {
             }
         }
     }
+
+    @TestVisible private static Boolean isAdmissionRoundAssignmentExecuting = false;
+
+    /** Assigns an eligible Admission Round without blocking Lead creation on failure. */
+    public static void assignAdmissionRounds(List<Lead> newLeads) {
+        if (isAdmissionRoundAssignmentExecuting) return;
+        isAdmissionRoundAssignmentExecuting = true;
+        try {
+            AdmissionRoundAssignmentService.assignEligibleRounds(newLeads);
+        } catch (Exception exceptionValue) {
+            AdmissionRoundAssignmentService.logUnexpected(
+                'LeadTriggerHandler',
+                exceptionValue.getMessage(),
+                null
+            );
+        } finally {
+            isAdmissionRoundAssignmentExecuting = false;
+        }
+    }
 }

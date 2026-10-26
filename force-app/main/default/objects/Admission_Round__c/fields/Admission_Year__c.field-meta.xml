@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Admission_Year__c</fullName>
+    <description>Admission year supplied by the external admissions system. The picklist is unrestricted so new year values can be accepted.</description>
+    <label>Admission Year</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>false</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Admission Year - 2024</fullName>
+                <default>false</default>
+                <label>Admission Year - 2024</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2025</fullName>
+                <default>false</default>
+                <label>Admission Year - 2025</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2027</fullName>
+                <default>false</default>
+                <label>Admission Year - 2027</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

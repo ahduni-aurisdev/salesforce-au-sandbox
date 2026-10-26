@@ -1,0 +1,44 @@
+<template>
+    <lightning-card title="WhatsApp Inbox" icon-name="standard:messaging_conversation">
+        <lightning-button-icon slot="actions" icon-name="utility:refresh" alternative-text="Refresh" onclick={handleRefresh}></lightning-button-icon>
+        <div class="slds-var-p-horizontal_medium">
+            <template if:true={error}>
+                <p class="slds-text-color_error">{error}</p>
+            </template>
+            <template if:true={hasMessages}>
+                <p class="summary slds-var-m-bottom_x-small">{summary}</p>
+                <div class="thread">
+                    <template for:each={days} for:item="d">
+                        <div key={d.day} class="day">
+                            <span class="daychip"><lightning-formatted-date-time value={d.at} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time></span>
+                            <template for:each={d.items} for:item="m">
+                                <div key={m.id} class={m.rowClass}>
+                                    <div class={m.bubbleClass}>
+                                        <div class="head">
+                                            <span class="title">{m.title}</span>
+                                            <span class={m.tickClass}>{m.tick} {m.status}</span>
+                                        </div>
+                                        <template if:true={m.sender}><div class="meta">From: {m.sender}</div></template>
+                                        <template if:true={m.whoLabel}><div class="meta">To: {m.whoLabel}</div></template>
+                                        <template if:true={m.journey}><div class="meta">Journey: {m.journey}</div></template>
+                                        <template if:true={m.attachment}><div class="text">{m.attachment}</div></template>
+                                        <template if:true={m.text}><div class="text">{m.text}</div></template>
+                                        <template if:true={m.reason}><div class="reason">{m.reason}</div></template>
+                                        <div class="steps">
+                                            <template for:each={m.steps} for:item="s">
+                                                <span key={s.key} class="step">{s.label}: <lightning-formatted-date-time value={s.at} hour="2-digit" minute="2-digit" month="short" day="2-digit"></lightning-formatted-date-time></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template if:false={hasMessages}>
+                <p class="slds-text-color_weak slds-var-p-bottom_small">No WhatsApp messages for this record yet.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

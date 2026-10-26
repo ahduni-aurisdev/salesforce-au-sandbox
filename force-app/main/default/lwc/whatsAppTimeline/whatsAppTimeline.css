@@ -1,0 +1,20 @@
+.summary { font-weight: 600; color: #444; }
+.filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.thread { max-height: 520px; overflow-y: auto; background: #f4f6f9; border-radius: 8px; padding: 8px; }
+.daychip { display: block; text-align: center; font-size: 11px; color: #706e6b; margin: 6px 0; }
+.row { display: flex; margin-bottom: 8px; }
+.row.out { justify-content: flex-end; }
+.row.in { justify-content: flex-start; }
+.bubble { border-radius: 8px; padding: 8px 12px; max-width: 92%; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.bubble.outbound { background: #e7f7d9; }
+.bubble.inbound { background: #ffffff; }
+.bubble.failed { background: #fde8e8; }
+.head { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+.meta { font-size: 12px; color: #706e6b; }
+.text { margin: 6px 0; white-space: pre-wrap; }
+.reason { color: #ba0517; font-size: 12px; margin-top: 2px; }
+.steps { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 11px; color: #706e6b; margin-top: 4px; }
+.tick { white-space: nowrap; }
+.tick.sent, .tick.delivered { color: #706e6b; }
+.tick.read { color: #1b96ff; }
+.tick.failed { color: #ba0517; }

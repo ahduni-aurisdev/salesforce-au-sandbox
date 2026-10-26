@@ -279,17 +279,14 @@ return false;
             }
      if(   cw.executive == null){    
             if(cw.dialstatus  == 'CONNECTING'){   
-                String xQuery='Select id from '+mcubeObject.Name+' where '+mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c+'=\''+cw.callfrom+'\'';
+                String xQuery='Select id from '+mcubeObject.Name+' where '+mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c+' LIKE \'%'+cw.callfrom+'%\'';
                 List<sObject> inboundList = Database.query(xQuery); 
                 
                 Call_Detail__c c = new Call_Detail__c(); 
-                 
-                List<user> usersList = [select id from user where mobilephone  like : cw.empnumber limit 1]; 
+	            List<user> usersList = [select id from user where mobilephone  like :'%'+ cw.empnumber  + '%' limit 1]; 
                 if(usersList.size() > 0){
                       u = usersList[0]; 
-                }
-                
-               
+                }         
                 c.Parent_ID__c=ApexPages.currentPage().getParameters().get('id');  
                 u.LastAssignmentTime__c  = decimal.valueof(  system.now().gettime() );
                 sObject l = Schema.getGlobalDescribe().get(mcubeObject.Name).newSObject() ;  
@@ -348,14 +345,14 @@ return false;
 
             }else  
             {
-                List<user> usersList = [select id from user where mobilephone  like : cw.empnumber limit 1]; 
-                if(usersList.size() > 0){
-                      u = usersList[0]; 
-                }  
-                String X1='\''+cw.callfrom+'\''; 
-                String xQuery='Select id from '+mcubeObject.Name+' where '+mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c+' ='+x1; 
-                List<sObject> inboundList = Database.query(xQuery); 
-                sObject l = inboundList[0];  
+                //List<user> usersList = [select id from user where mobilephone  like : cw.empnumber limit 1]; 
+                //if(usersList.size() > 0){
+                  //    u = usersList[0]; 
+               // }  
+               // String X1='\''+cw.callfrom+'\''; 
+               // String xQuery='Select id from '+mcubeObject.Name+' where '+mcubeObject.Field_to_Compare_Mobile_Incoming_Number__c+' ='+x1; 
+               // List<sObject> inboundList = Database.query(xQuery); 
+               // sObject l = inboundList[0];  
                 if(cList.size() == 1){
                     Call_Detail__c  c = [select id from Call_Detail__c where Call_ID__c =: cw.callid ];
                     c.End_Time__c = Datetime.valueof(cw.endtime).addHours(-5).addMinutes(-30);
@@ -375,7 +372,7 @@ return false;
                 List<sObject> inboundList = Database.query(xQuery);
                 
                 Call_Detail__c c = new Call_Detail__c();  
-                List<user> usersList = [select id from user where  mobilePhone like : cw.executive limit 1];  
+                List<user> usersList = [select id from user where  mobilePhone like :'%'+ cw.executive +'%' limit 1];  
                 if(usersList.size() > 0){
                       u = usersList[0]; 
                 } 

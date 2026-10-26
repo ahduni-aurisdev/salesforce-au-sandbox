@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>TaskActivityApiModels</members>
+        <members>TaskActivityApiModelsTest</members>
+        <members>TaskActivityRestResource</members>
+        <members>TaskActivityRestResourceTest</members>
+        <members>TaskActivitySelector</members>
+        <members>TaskActivityService</members>
+        <members>TaskActivityServiceTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Admin</members>
+        <members>Salesforce API Only System Integrations</members>
+        <name>Profile</name>
+    </types>
+    <version>65.0</version>
+</Package>

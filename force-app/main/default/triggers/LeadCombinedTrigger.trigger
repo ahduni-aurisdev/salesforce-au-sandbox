@@ -37,6 +37,7 @@ trigger LeadCombinedTrigger on Lead (before insert, before update) {
             LeadTriggerHandler.handlePhoneNumberUpdates(Trigger.new, 'insert');
             LeadTriggerHandler.initializeLeadFields(Trigger.new);
             LeadTriggerHandler.stampMostRecentLeadSource(Trigger.new, null);
+            LeadTriggerHandler.assignAdmissionRounds(Trigger.new);
         } else if (Trigger.isUpdate) {
             LeadTriggerHandler.fillCdcLeadName(Trigger.new);
             LeadTriggerHandler.handlePhoneNumberUpdates(Trigger.new, 'update');

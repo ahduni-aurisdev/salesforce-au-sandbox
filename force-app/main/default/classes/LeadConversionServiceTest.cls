@@ -6469,4 +6469,73 @@ static void testUpdateAccountWithLatestApplicationNumber_UpdatesAccount2() {
         System.assert(result != null);
     }
 
+
+    /**
+     * Already-converted UG lead: a repeat payload for an existing group must refresh the
+     * programmes/majors on that group's existing opportunity (14-Oct-2026 fix).
+     */
+    @isTest
+    static void testUGConversion_BranchB_ExistingOppProgrammesRefreshed() {
+        Id leadRtId = getRecordTypeId('Lead', 'Undergraduation');
+        if (leadRtId == null) return;
+
+        Lead lead = new Lead(
+            LastName     = 'UGRefresh',
+            Company      = 'Test Co',
+            Status       = 'Open - Not Contacted',
+            RecordTypeId = leadRtId,
+            Email        = 'ugrefresh@test.com',
+            MobilePhone  = '1234567890'
+        );
+        insert lead;
+
+        Map<String, Object> first = new Map<String, Object>{
+            'leadId'      => lead.Id,
+            'leadStatus'  => System.label.LeadToOppootunityConversionStage,
+            'grpPrograms' => new List<Object>{
+                new Map<String, Object>{
+                    'grptag'            => 'UG_Group1',
+                    'applicationNumber' => 'UG-REFRESH-1',
+                    'programmes'        => new List<Object>{
+                        new Map<String, Object>{ 'programInterestedIn' => 'ProgA', 'major' => 'MajA' }
+                    }
+                }
+            }
+        };
+        callConvertLead(first);
+
+        List<Opportunity> opps = [SELECT Id, Primary_Preferred_Program__c FROM Opportunity WHERE Program_Group_Tag__c = 'UG_Group1'];
+        if (opps.isEmpty()) return; // conversion not possible in this org's test context
+        System.assertEquals('ProgA', opps[0].Primary_Preferred_Program__c);
+
+        Map<String, Object> second = new Map<String, Object>{
+            'leadId'      => lead.Id,
+            'leadStatus'  => System.label.LeadToOppootunityConversionStage,
+            'grpPrograms' => new List<Object>{
+                new Map<String, Object>{
+                    'grptag'     => 'UG_Group1',
+                    'programmes' => new List<Object>{
+                        new Map<String, Object>{ 'programInterestedIn' => 'ProgB', 'major' => 'MajB' },
+                        new Map<String, Object>{ 'programInterestedIn' => 'ProgC', 'major' => 'MajC' }
+                    }
+                }
+            }
+        };
+        Test.startTest();
+        callConvertLead(second);
+        Test.stopTest();
+
+        Opportunity refreshed = [
+            SELECT Primary_Preferred_Program__c, Primary_Preferred_Major__c,
+                   Secondary_Preferred_Programme__c, Secondary_Preferred_Major__c,
+                   Ternary_Preferred_Programme__c
+            FROM Opportunity WHERE Id = :opps[0].Id
+        ];
+        System.assertEquals('ProgB', refreshed.Primary_Preferred_Program__c);
+        System.assertEquals('MajB',  refreshed.Primary_Preferred_Major__c);
+        System.assertEquals('ProgC', refreshed.Secondary_Preferred_Programme__c);
+        System.assertEquals('MajC',  refreshed.Secondary_Preferred_Major__c);
+        System.assertEquals(null,    refreshed.Ternary_Preferred_Programme__c);
+    }
+
 }
