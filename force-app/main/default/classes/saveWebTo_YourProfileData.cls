@@ -383,6 +383,8 @@ global class saveWebTo_YourProfileData {
                             }
                             newLead.put(groupSlotField(slot, 'programmes'), String.join(progNames, ','));
                             newLead.put(groupSlotField(slot, 'majors'),     String.join(majors,    ','));
+                            // Pre-registration (23-Oct-2026): store preRegister / preRegistrationDate when sent
+                            LeadConversionService.applyPreRegToLead(newLead, newLead, slot, groupMap, true);
                             System.debug('New group "' + incomingTag + '" written to slot ' + slot);
 
                         } else {
@@ -436,6 +438,8 @@ global class saveWebTo_YourProfileData {
                             if (appDate != null && newLead.get(groupSlotField(slot, 'appDate')) == null) {
                                 newLead.put(groupSlotField(slot, 'appDate'), appDate);
                             }
+                            // Pre-registration (23-Oct-2026): update the flag / date only when sent in the payload
+                            LeadConversionService.applyPreRegToLead(newLead, newLead, slot, groupMap, false);
                             System.debug('Existing group "' + incomingTag + '" overwritten in slot ' + slot
                                 + ' with ' + newProgNames.size() + ' programme(s).');
                         }
@@ -610,6 +614,13 @@ global class saveWebTo_YourProfileData {
         // ================================================
         // CRITICAL: Call insertPreferredPrograms if we have program data
         // ================================================
+        // Pre-registration (23-Oct-2026): when the student's lead is already converted, mirror the
+        // group slots to the converted Account too (Account is used for pre-registration reports).
+        if (!programGroups.isEmpty() && newLead.Id != null && existingLead != null
+                && newLead.get('IsConverted') == true && newLead.get('ConvertedAccountId') != null) {
+            LeadConversionService.syncGroupsToAccount(newLead, (Id) newLead.get('ConvertedAccountId'),
+                LeadConversionService.leadHasPreRegisteredGroup(newLead));
+        }
         if (!programGroups.isEmpty() && newLead.Id != null) {
             System.debug('Calling insertPreferredPrograms with JSONKey: programs');
             insertPreferredPrograms('programs', programGroups, newLead.Id, registrationNumber);
@@ -682,8 +693,10 @@ global class saveWebTo_YourProfileData {
             q += ', Group_'  + s + '_Application_Date__c';
             q += ', Group_'  + s + '_Programmes__c';
             q += ', Group_'  + s + '_Majors__c';
+            q += ', Group_'  + s + '_Pre_Register__c';
+            q += ', Group_'  + s + '_Pre_Registration_Date__c';
         }
-        q += ' , LeadSource';
+        q += ' , LeadSource, IsConverted, ConvertedAccountId';
         q += ' FROM Lead WHERE Id = \'' + leadId + '\' LIMIT 1';
         return q;
     }
