@@ -54,11 +54,11 @@ The endpoint accepts 1–200 records per request.
 | Other object IDs (Contact, Opportunity, etc.) | Rejected with an error |
 | Task owner | Account owner for converted Leads and Account IDs; Lead owner for unconverted Leads |
 | Owner fallback | If the owner is a queue or an inactive user (neither can own a Task), the integration user owns the Task |
-| Status | `Completed` when `dueDate` is before today; otherwise (`dueDate` today, in future, or blank) `In Progress` |
+| Status | `Completed` when `dueDate` is today or earlier; otherwise (`dueDate` in future, or blank) `In Progress` |
 | Priority | Always `Normal`; status and priority are not accepted in the payload |
 | Duplicate protection | Not required — a retried request creates the Task again |
 
-Assumption to confirm: a `dueDate` equal to today is treated as not yet passed and is created `In Progress`.
+Decision confirmed 2026-10-26: a `dueDate` equal to today is created `Completed` (previously `In Progress`).
 
 ## Response behavior
 

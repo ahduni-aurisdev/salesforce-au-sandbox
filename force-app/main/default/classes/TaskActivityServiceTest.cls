@@ -81,11 +81,12 @@ private class TaskActivityServiceTest {
     }
 
     @IsTest
-    static void shouldCreateCompletedTaskWhenDueDateHasPassed() {
+    static void shouldCreateCompletedTaskWhenDueDateIsTodayOrPast() {
         Account accountValue = [SELECT Id FROM Account WHERE Name = :ACCOUNT_PREFIX + '1'];
         TaskActivityApiModels.RequestEnvelope envelope = envelope(new List<TaskActivityApiModels.TaskRequest>{
             request(accountValue.Id, 'Past visit', String.valueOf(Date.today().addDays(-1)), null),
-            request(accountValue.Id, 'Visit today', String.valueOf(Date.today()), null)
+            request(accountValue.Id, 'Visit today', String.valueOf(Date.today()), null),
+            request(accountValue.Id, 'Visit tomorrow', String.valueOf(Date.today().addDays(1)), null)
         });
 
         Test.startTest();
@@ -93,11 +94,12 @@ private class TaskActivityServiceTest {
         Test.stopTest();
 
         System.assertEquals('Completed', response.results[0].taskStatus, 'A past due date should complete the task.');
-        System.assertEquals('In Progress', response.results[1].taskStatus, 'A due date of today should stay In Progress.');
+        System.assertEquals('Completed', response.results[1].taskStatus, 'A due date of today should complete the task.');
+        System.assertEquals('In Progress', response.results[2].taskStatus, 'A due date of tomorrow should stay In Progress.');
         System.assertEquals(
             'Completed',
-            [SELECT Status FROM Task WHERE Id = :response.results[0].taskId].Status,
-            'The stored task should be Completed.'
+            [SELECT Status FROM Task WHERE Id = :response.results[1].taskId].Status,
+            'The stored task due today should be Completed.'
         );
     }
 

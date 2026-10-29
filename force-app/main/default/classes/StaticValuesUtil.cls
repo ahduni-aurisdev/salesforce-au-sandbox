@@ -40,4 +40,6 @@ public with sharing class StaticValuesUtil {
     public static final String FIELD_CAMPAIGN_SOURCE = 'campaignSource';
     public static final String FIELD_CAMPAIGN_MEDIUM = 'campaignMedium';
     public static final String FIELD_PHD_SCHOOL_NAME = 'phdSchoolName';
+    public static final String LEAD_STATUS_NEW = 'New';
+    public static final String LEAD_STATUS_NEW_LEAD = 'New Lead';
     }

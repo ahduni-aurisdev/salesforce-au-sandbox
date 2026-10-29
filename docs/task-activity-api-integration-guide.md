@@ -109,7 +109,7 @@ Unknown fields are ignored. `status` and `priority` are **not** accepted — Sal
 | `dueDate` | Task status |
 |---|---|
 | Before today (in the past) | `Completed` |
-| Today | `In Progress` |
+| Today | `Completed` |
 | In the future | `In Progress` |
 | Not sent / `null` | `In Progress` |
 

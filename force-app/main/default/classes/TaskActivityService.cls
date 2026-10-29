@@ -3,8 +3,8 @@
  *              Account (converted Lead or Account ID) or on the Lead itself (unconverted Lead ID).
  * @author AU Development Team
  * @date 2026-10-23
- * @version 1.1
- * @lastModified 2026-10-23
+ * @version 1.2
+ * @lastModified 2026-10-26
  */
 // System mode is intentional: the partner API runs as a Salesforce Integration license user,
 // and that license cannot hold the Edit Tasks permission or Lead/Account/Contact access.
@@ -251,7 +251,7 @@ public without sharing class TaskActivityService {
             Subject = input.subject.trim(),
             ActivityDate = dueDate,
             Description = input.comments,
-            Status = dueDate != null && dueDate < Date.today() ? STATUS_COMPLETED : STATUS_IN_PROGRESS,
+            Status = dueDate != null && dueDate <= Date.today() ? STATUS_COMPLETED : STATUS_IN_PROGRESS,
             Priority = PRIORITY_NORMAL,
             OwnerId = ownerId,
             WhoId = target.whoId,

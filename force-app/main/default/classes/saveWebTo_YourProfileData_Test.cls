@@ -2020,4 +2020,152 @@ public class saveWebTo_YourProfileData_Test {
     //     resp = post(payload);
     //     Test.stopTest();
     // }
+
+    // =========================================================================
+    // Lead Status normalisation ('New' → 'New Lead', no reset of progressed Leads)
+    // =========================================================================
+
+    /** Insert a UG Lead at the given Status that the UG duplicate check will match. */
+    private static Lead insertUGLeadWithStatus(String regNum, String email, String phone, String status) {
+        Lead l = new Lead(
+            LastName               = 'StatusLead',
+            FirstName              = 'Test',
+            Company                = 'Test',
+            Status                 = status,
+            RecordTypeId           = ugRtId(),
+            Department__c          = 'Undergraduation',
+            Email                  = email,
+            Phone                  = phone,
+            Registration_Number__c = regNum
+        );
+        insert l;
+        return l;
+    }
+
+    @IsTest
+    static void test_status_newLeadWithLegacyNew_savedAsNewLead() {
+        if (ugRtId() == null) return;
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-NEW-001');
+        payload.put('leadStatus', StaticValuesUtil.LEAD_STATUS_NEW);
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Registration_Number__c = 'REG-STATUS-NEW-001'];
+        System.assertEquals(StaticValuesUtil.LEAD_STATUS_NEW_LEAD, l.Status, 'Incoming legacy New must be saved as New Lead');
+    }
+
+    @IsTest
+    static void test_status_existingLegacyNewLead_movedToNewLead() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGLeadWithStatus('REG-STATUS-NEW-002', 'status.legacy@test.com', '9876500201',
+            StaticValuesUtil.LEAD_STATUS_NEW);
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-NEW-002');
+        payload.put('email', 'status.legacy@test.com');
+        payload.put('phone', '9876500201');
+        payload.put('leadStatus', StaticValuesUtil.LEAD_STATUS_NEW_LEAD);
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals(StaticValuesUtil.LEAD_STATUS_NEW_LEAD, l.Status, 'Existing Lead on legacy New must move to New Lead');
+    }
+
+    @IsTest
+    static void test_status_progressedLead_notResetByLegacyNew() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGLeadWithStatus('REG-STATUS-NEW-003', 'status.progressed@test.com', '9876500202',
+            'Nurturing');
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-NEW-003');
+        payload.put('email', 'status.progressed@test.com');
+        payload.put('phone', '9876500202');
+        payload.put('leadStatus', StaticValuesUtil.LEAD_STATUS_NEW);
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals('Nurturing', l.Status, 'A progressed Lead must not be reset by an incoming New');
+    }
+
+    // Regression: behaviour that existed before the 'New' normalisation must be unchanged.
+
+    @IsTest
+    static void test_status_regression_progressedLead_notResetByNewLead() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGLeadWithStatus('REG-STATUS-REG-001', 'status.reg1@test.com', '9876500211',
+            'Nurturing');
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-REG-001');
+        payload.put('email', 'status.reg1@test.com');
+        payload.put('phone', '9876500211');
+        payload.put('leadStatus', StaticValuesUtil.LEAD_STATUS_NEW_LEAD);
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals('Nurturing', l.Status, 'A progressed Lead must still not be reset to New Lead');
+    }
+
+    @IsTest
+    static void test_status_regression_newLeadWithNewLead_savedAsNewLead() {
+        if (ugRtId() == null) return;
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-REG-002');
+        payload.put('leadStatus', StaticValuesUtil.LEAD_STATUS_NEW_LEAD);
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Registration_Number__c = 'REG-STATUS-REG-002'];
+        System.assertEquals(StaticValuesUtil.LEAD_STATUS_NEW_LEAD, l.Status, 'Incoming New Lead must still be saved as sent');
+    }
+
+    @IsTest
+    static void test_status_regression_newLeadMovesForward() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGLeadWithStatus('REG-STATUS-REG-003', 'status.reg3@test.com', '9876500213',
+            StaticValuesUtil.LEAD_STATUS_NEW_LEAD);
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-REG-003');
+        payload.put('email', 'status.reg3@test.com');
+        payload.put('phone', '9876500213');
+        payload.put('leadStatus', 'Nurturing');
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals('Nurturing', l.Status, 'A Lead on New Lead must still accept any other incoming status');
+    }
+
+    @IsTest
+    static void test_status_regression_otherStatusAppliedAsSent() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGLeadWithStatus('REG-STATUS-REG-004', 'status.reg4@test.com', '9876500214',
+            'Nurturing');
+        Map<String, Object> payload = ugRegPayload('REG-STATUS-REG-004');
+        payload.put('email', 'status.reg4@test.com');
+        payload.put('phone', '9876500214');
+        payload.put('leadStatus', 'Open - Not Contacted');
+
+        Test.startTest();
+        Map<String, Object> resp = post(payload);
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead l = [SELECT Status FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals('Open - Not Contacted', l.Status, 'Statuses other than New / New Lead must still be applied as sent');
+    }
 }

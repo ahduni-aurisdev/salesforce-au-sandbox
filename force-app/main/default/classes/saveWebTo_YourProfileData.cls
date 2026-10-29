@@ -518,11 +518,19 @@ global class saveWebTo_YourProfileData {
                 // submitted again. Once the sales team has moved the Lead past New Lead, an
                 // incoming 'leadStatus' of New Lead is ignored. Any other incoming status
                 // still applies, and a Lead that is still New Lead can be updated normally.
-                if (mapRec.Label == 'Status' && newLead.Id != null) {
+                // Modified By : Jitendra Varma | 29th October 2026
+                // An incoming legacy 'New' is saved as 'New Lead', and an existing Lead still on
+                // 'New' is treated like 'New Lead' so it can be moved to 'New Lead'.
+                if (mapRec.Label == 'Status') {
+                    if (String.valueOf(fieldValue).equalsIgnoreCase(StaticValuesUtil.LEAD_STATUS_NEW)) {
+                        fieldValue = StaticValuesUtil.LEAD_STATUS_NEW_LEAD;
+                    }
                     String currentStatus = (String) newLead.get('Status');
-                    if (String.isNotBlank(currentStatus)
-                        && !currentStatus.equalsIgnoreCase('New Lead')
-                        && String.valueOf(fieldValue).equalsIgnoreCase('New Lead')) {
+                    if (newLead.Id != null
+                        && String.isNotBlank(currentStatus)
+                        && !currentStatus.equalsIgnoreCase(StaticValuesUtil.LEAD_STATUS_NEW_LEAD)
+                        && !currentStatus.equalsIgnoreCase(StaticValuesUtil.LEAD_STATUS_NEW)
+                        && String.valueOf(fieldValue).equalsIgnoreCase(StaticValuesUtil.LEAD_STATUS_NEW_LEAD)) {
                         System.debug('Skipping Status reset to New Lead - existing Lead is already at ' + currentStatus);
                         continue;
                     }
