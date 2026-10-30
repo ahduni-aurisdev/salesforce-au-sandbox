@@ -89,6 +89,43 @@ public class saveWebTo_YourProfileData_Test {
 
     /** Post a single payload map and return the parsed response. */
     private static Map<String, Object> post(Map<String, Object> payloadMap) {
+        return postRaw(withAdmissionLeadId(payloadMap));
+    }
+
+    /**
+     * Mirrors the real Auris flow for UG Admission Form payloads that do not set 'leadId':
+     * the Lead with the same Registration Number is used, or one is first created through
+     * a Registration Form call, and its Id is added as 'leadId'. Other payloads (incl.
+     * Masters / PhD), and payloads that already have a 'leadId' key, are returned unchanged.
+     * Public so other test classes posting Admission Forms can reuse it.
+     */
+    public static Map<String, Object> withAdmissionLeadId(Map<String, Object> payloadMap) {
+        if (payloadMap.get('typeOfForm') != 'Auris_Admission_Form'
+                || payloadMap.get('department') != 'Undergraduation'
+                || payloadMap.containsKey('leadId')
+                || String.isBlank((String) payloadMap.get('registrationNumber'))) {
+            return payloadMap;
+        }
+        String regNum = (String) payloadMap.get('registrationNumber');
+        List<Lead> existing = [SELECT Id FROM Lead WHERE Registration_Number__c = :regNum
+                               ORDER BY CreatedDate ASC LIMIT 1];
+        if (existing.isEmpty()) {
+            Map<String, Object> regPayload = new Map<String, Object>(payloadMap);
+            regPayload.put('typeOfForm', 'Auris_Registration_Form');
+            regPayload.remove('grpPrograms');
+            postRaw(regPayload);
+            existing = [SELECT Id FROM Lead WHERE Registration_Number__c = :regNum
+                        ORDER BY CreatedDate ASC LIMIT 1];
+        }
+        Map<String, Object> withLeadId = new Map<String, Object>(payloadMap);
+        if (!existing.isEmpty()) {
+            withLeadId.put('leadId', String.valueOf(existing[0].Id));
+        }
+        return withLeadId;
+    }
+
+    /** Post a single payload exactly as given and return the parsed response. */
+    private static Map<String, Object> postRaw(Map<String, Object> payloadMap) {
         RestRequest  req = new RestRequest();
         RestResponse res = new RestResponse();
         req.requestUri  = '/services/apexrest/saveLeadRelatedData/';
@@ -977,6 +1014,386 @@ public class saveWebTo_YourProfileData_Test {
         // System.assert(returned.Multi_Select_Lead_Source__c.contains('AURIS'),    'AURIS should be added');
         // System.assert(returned.Multi_Select_Lead_Source__c.contains('Website'),  'Website should be preserved');
         // System.assert(returned.Multi_Select_Lead_Source__c.contains('Referral'), 'Referral should be preserved');
+    }
+
+    /** Build a UG Lead with Department__c set so the duplicate lookup can find it. */
+    private static Lead buildUGDuplicateCandidate(String regNum, String email, String phone) {
+        return new Lead(
+            LastName = 'DupCandidate', FirstName = 'Test', Company = 'T',
+            Status = 'Open - Not Contacted', RecordTypeId = ugRtId(),
+            Department__c = 'Undergraduation',
+            Email = email, Phone = phone, Registration_Number__c = regNum
+        );
+    }
+
+    /** Insert a single UG duplicate-candidate Lead. */
+    private static Lead insertUGDuplicateCandidate(String regNum, String email, String phone) {
+        Lead l = buildUGDuplicateCandidate(regNum, email, phone);
+        insert l;
+        return l;
+    }
+
+    @IsTest
+    static void test_handleDuplicateUG_matchesByRegistrationNumber() {
+        if (ugRtId() == null) return;
+        Lead existing = insertUGDuplicateCandidate('UG2027-DUPREG-001', 'regmatch@test.com', '9876500081');
+
+        Test.startTest();
+        Lead returned = saveWebTo_YourProfileData.handleDuplicateLeadUndergraduation(
+            new Map<String, Object>{
+                'registrationNumber' => 'UG2027-DUPREG-001',
+                'email' => 'different@test.com', 'phone' => '1112223334'
+            },
+            'Undergraduation', 'Auris_Admission_Form'
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, returned, 'Lead with the same Registration Number should be matched');
+        System.assertEquals(existing.Id, returned.Id, 'Matched lead should be the one with the same Registration Number');
+    }
+
+    @IsTest
+    static void test_handleDuplicateUG_phoneWithPlusAndCountryCode_matches() {
+        if (ugRtId() == null) return;
+        // Existing lead saved in the old format - the case that created duplicates
+        Lead existing = insertUGDuplicateCandidate(null, 'plusphone@test.com', '91447887139054');
+
+        Test.startTest();
+        Lead returned = saveWebTo_YourProfileData.handleDuplicateLeadUndergraduation(
+            new Map<String, Object>{
+                'registrationNumber' => 'UG2027-PLUS-001',
+                'email' => 'plusphone@test.com', 'phone' => '+447887139054'
+            },
+            'Undergraduation', 'Auris_Admission_Form'
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, returned, 'Phone with + and country code should match the saved digits-only phone');
+        System.assertEquals(existing.Id, returned.Id, 'Matched lead should be the existing Email + Phone lead');
+    }
+
+    @IsTest
+    static void test_handleDuplicateUG_prefersRegistrationNumberOverEmailPhone() {
+        if (ugRtId() == null) return;
+        // Single DML for both leads - one bulk insert, as a real data load would do
+        Lead emailPhoneLead = buildUGDuplicateCandidate(null, 'prefer@test.com', '9876500082');
+        Lead regLead = buildUGDuplicateCandidate('UG2027-PREFER-001', 'other@test.com', '9876500083');
+        insert new List<Lead>{ emailPhoneLead, regLead };
+
+        Test.startTest();
+        Lead returned = saveWebTo_YourProfileData.handleDuplicateLeadUndergraduation(
+            new Map<String, Object>{
+                'registrationNumber' => 'UG2027-PREFER-001',
+                'email' => 'prefer@test.com', 'phone' => '9876500082'
+            },
+            'Undergraduation', 'Auris_Admission_Form'
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, returned, 'A lead should be matched');
+        System.assertEquals(regLead.Id, returned.Id,
+            'Registration Number match should win over the Email + Phone match ' + emailPhoneLead.Id);
+    }
+
+    @IsTest
+    static void test_handleDuplicateUG_blankRegistrationNumber_doesNotMatchLeadsWithout() {
+        if (ugRtId() == null) return;
+        insertUGDuplicateCandidate(null, 'noreg@test.com', '9876500084');
+
+        Test.startTest();
+        Lead returned = saveWebTo_YourProfileData.handleDuplicateLeadUndergraduation(
+            new Map<String, Object>{
+                'registrationNumber' => '',
+                'email' => 'someoneelse@test.com', 'phone' => '1112223335'
+            },
+            'Undergraduation', 'Auris_Admission_Form'
+        );
+        Test.stopTest();
+
+        System.assertEquals(null, returned, 'Blank Registration Number must not match leads that have no Registration Number');
+    }
+
+    @IsTest
+    static void test_buildPhoneMatchPattern() {
+        System.assertEquals('%7887139054%', saveWebTo_YourProfileData.buildPhoneMatchPattern('+447887139054'),
+            'Should keep only the last 10 digits');
+        System.assertEquals('%7887139054%', saveWebTo_YourProfileData.buildPhoneMatchPattern('+44 7887-139054'),
+            'Spaces and dashes should be removed');
+        System.assertEquals('%9876543210%', saveWebTo_YourProfileData.buildPhoneMatchPattern('9876543210'),
+            'Plain 10-digit number should be unchanged');
+        System.assertEquals('%12345%', saveWebTo_YourProfileData.buildPhoneMatchPattern('12345'),
+            'Short number should be used as-is');
+        System.assertEquals(null, saveWebTo_YourProfileData.buildPhoneMatchPattern('+'),
+            'No digits should return null');
+        System.assertEquals(null, saveWebTo_YourProfileData.buildPhoneMatchPattern(null),
+            'Null phone should return null');
+    }
+
+    @IsTest
+    static void test_ugRegistrationThenAdmission_plusPhone_updatesSameLead() {
+        if (ugRtId() == null) return;
+        // Mirrors the production payloads that created two leads for UG2027-90000202:
+        // the Admission Form now sends the leadId returned by the Registration Form call.
+        Map<String, Object> regResp = postRaw(new Map<String, Object>{
+            'department' => 'Undergraduation', 'typeOfForm' => 'Auris_Registration_Form',
+            'leadStatus' => 'New Lead', 'registrationNumber' => 'UG2027-E2E-001',
+            'email' => 'e2eplus@test.com', 'firstName' => 'E2E', 'lastName' => 'Plus',
+            'phone' => '+447887139054', 'country' => 'India'
+        });
+        String leadIdFromRegistration = (String) ((List<Object>) regResp.get('leadIds'))[0];
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(new Map<String, Object>{
+            'leadId' => leadIdFromRegistration,
+            'department' => 'Undergraduation', 'typeOfForm' => 'Auris_Admission_Form',
+            'leadStatus' => 'Application Initiated', 'registrationNumber' => 'UG2027-E2E-001',
+            'email' => 'e2eplus@test.com', 'phone' => '+447887139054', 'mobile' => '+447887139054',
+            'grpPrograms' => new List<Object>{
+                new Map<String, Object>{
+                    'grptag' => 'UG_Lateral', 'applicationNumber' => '', 'applicationDate' => '',
+                    'programmes' => new List<Object>()
+                }
+            }
+        });
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        List<Lead> leads = [SELECT Id, Phone, Status FROM Lead WHERE Registration_Number__c = 'UG2027-E2E-001'];
+        System.assertEquals(1, leads.size(),
+            'Admission Form must update the Registration Form lead, not create a second lead');
+        System.assertEquals(leadIdFromRegistration, String.valueOf(leads[0].Id),
+            'The Lead given by leadId must be the one updated');
+        System.assertEquals('Application Initiated', leads[0].Status, 'Admission status should be applied');
+        System.assertEquals('+447887139054', leads[0].Phone,
+            'Phone sent with + and country code must be saved as sent, without 91 added');
+    }
+
+    @IsTest
+    static void test_ugRegistration_indianPlusPhone_noDoubleCountryCode() {
+        if (ugRtId() == null) return;
+        Test.startTest();
+        Map<String, Object> resp = post(new Map<String, Object>{
+            'department' => 'Undergraduation', 'typeOfForm' => 'Auris_Registration_Form',
+            'registrationNumber' => 'UG2027-PLUS91-001', 'email' => 'plus91@test.com',
+            'firstName' => 'Plus', 'lastName' => 'Ninety One',
+            'phone' => '+91 98765 43210', 'country' => 'India'
+        });
+        Test.stopTest();
+
+        System.assertEquals(0, ((List<Object>) resp.get('errors')).size(), 'Unexpected errors: ' + resp.get('errors'));
+        Lead saved = [SELECT Phone FROM Lead WHERE Registration_Number__c = 'UG2027-PLUS91-001' LIMIT 1];
+        System.assertEquals('+919876543210', saved.Phone, 'Indian +91 number must not be saved with a double 91');
+    }
+
+    @IsTest
+    static void test_ugRegistration_phoneWithoutPlus_stillGetsCountryCode() {
+        if (ugRtId() == null) return;
+        Test.startTest();
+        post(ugRegPayload('UG2027-NOPLUS-001'));
+        Test.stopTest();
+
+        Lead saved = [SELECT Phone FROM Lead WHERE Registration_Number__c = 'UG2027-NOPLUS-001' LIMIT 1];
+        System.assertEquals('919876543211', saved.Phone, 'Phone without + should keep the existing 91 prefix behaviour');
+    }
+
+    // =========================================================================
+    // Admission Form leadId
+    // =========================================================================
+
+    /** UG Admission payload for the given registration number, without a leadId key. */
+    private static Map<String, Object> ugAdmissionWithoutLeadId(String regNum) {
+        return new Map<String, Object>{
+            'department' => 'Undergraduation', 'typeOfForm' => 'Auris_Admission_Form',
+            'leadStatus' => 'Application Initiated', 'registrationNumber' => regNum,
+            'email' => 'admission@test.com', 'phone' => '+919000000099',
+            'grpPrograms' => new List<Object>{
+                new Map<String, Object>{
+                    'grptag' => 'UG_Lateral', 'applicationNumber' => '', 'applicationDate' => '',
+                    'programmes' => new List<Object>()
+                }
+            }
+        };
+    }
+
+    /** Returns the errorMessage of the first error in a response, or null when there is none. */
+    private static String firstError(Map<String, Object> resp) {
+        List<Object> errors = (List<Object>) resp.get('errors');
+        return errors.isEmpty() ? null : (String) ((Map<String, Object>) errors[0]).get('errorMessage');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_missingKey_returnsError() {
+        Test.startTest();
+        Map<String, Object> resp = postRaw(ugAdmissionWithoutLeadId('UG2027-NOLEADID-001'));
+        Test.stopTest();
+
+        String error = firstError(resp);
+        System.assertNotEquals(null, error, 'Admission Form without leadId must be rejected');
+        System.assert(error.contains('Missing required field: leadId'), 'Unexpected error: ' + error);
+        System.assertEquals(0, [SELECT COUNT() FROM Lead WHERE Registration_Number__c = 'UG2027-NOLEADID-001'],
+            'No Lead may be created when leadId is missing');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_blankAndNull_returnError() {
+        Map<String, Object> blankPayload = ugAdmissionWithoutLeadId('UG2027-BLANKID-001');
+        blankPayload.put('leadId', '  ');
+        Map<String, Object> nullPayload = ugAdmissionWithoutLeadId('UG2027-NULLID-001');
+        nullPayload.put('leadId', null);
+
+        Test.startTest();
+        String blankError = firstError(postRaw(blankPayload));
+        String nullError = firstError(postRaw(nullPayload));
+        Test.stopTest();
+
+        System.assert(blankError != null && blankError.contains('Missing required field: leadId'),
+            'Blank leadId must be rejected: ' + blankError);
+        System.assert(nullError != null && nullError.contains('Missing required field: leadId'),
+            'Null leadId must be rejected: ' + nullError);
+    }
+
+    @IsTest
+    static void test_admissionLeadId_invalidFormat_returnsError() {
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-BADID-001');
+        payload.put('leadId', 'not-an-id');
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('not a valid Salesforce Id'),
+            'Malformed leadId must be rejected: ' + error);
+    }
+
+    @IsTest
+    static void test_admissionLeadId_notALeadId_returnsError() {
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-USERID-001');
+        payload.put('leadId', UserInfo.getUserId());
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('not a Lead Id'),
+            'A non-Lead Id must be rejected: ' + error);
+    }
+
+    @IsTest
+    static void test_admissionLeadId_deletedLead_returnsError() {
+        if (ugRtId() == null) return;
+        Lead gone = insertUGDuplicateCandidate('UG2027-GONE-001', 'gone@test.com', '9000000097');
+        delete gone;
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-GONE-001');
+        payload.put('leadId', String.valueOf(gone.Id));
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('no Lead found'),
+            'A leadId with no Lead must be rejected: ' + error);
+    }
+
+    @IsTest
+    static void test_admissionLeadId_registrationNumberMismatch_returnsError() {
+        if (ugRtId() == null) return;
+        Lead other = insertUGDuplicateCandidate('UG2027-OWNER-001', 'owner@test.com', '9000000096');
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-INTRUDER-001');
+        payload.put('leadId', String.valueOf(other.Id));
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('belongs to Registration Number'),
+            'leadId of another student must be rejected: ' + error);
+        System.assertEquals('UG2027-OWNER-001',
+            [SELECT Registration_Number__c FROM Lead WHERE Id = :other.Id].Registration_Number__c,
+            'The other student\'s Lead must not be changed');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_departmentMismatch_returnsError() {
+        Id rt = mastersRtId();
+        if (ugRtId() == null || rt == null) return;
+        Lead mastersLead = new Lead(
+            LastName = 'DeptMismatch', FirstName = 'Test', Company = 'T',
+            Status = 'Open - Not Contacted', RecordTypeId = rt, Department__c = 'Masters',
+            Email = 'dept@test.com', Phone = '9000000095', Registration_Number__c = 'UG2027-DEPT-001'
+        );
+        insert mastersLead;
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-DEPT-001');
+        payload.put('leadId', String.valueOf(mastersLead.Id));
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('belongs to department'),
+            'leadId from another department must be rejected: ' + error);
+    }
+
+    @IsTest
+    static void test_admissionLeadId_validUG_updatesThatLeadOnly() {
+        if (ugRtId() == null) return;
+        // Email/phone differ from the payload - leadId alone decides which Lead is updated
+        Lead target = insertUGDuplicateCandidate('UG2027-TARGET-001', 'target@test.com', '9000000094');
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-TARGET-001');
+        payload.put('leadId', String.valueOf(target.Id));
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(payload);
+        Test.stopTest();
+
+        System.assertEquals(null, firstError(resp), 'Valid leadId must be accepted');
+        System.assertEquals(String.valueOf(target.Id), (String) ((List<Object>) resp.get('leadIds'))[0],
+            'Response must return the leadId that was updated');
+        System.assertEquals(1, [SELECT COUNT() FROM Lead WHERE Registration_Number__c = 'UG2027-TARGET-001'],
+            'No new Lead may be created');
+        System.assertEquals('UG_Lateral', [SELECT Group_1__c FROM Lead WHERE Id = :target.Id].Group_1__c,
+            'Group from the payload must be written to the leadId Lead');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_ugWithoutContactFields_keepsLeadValues() {
+        if (ugRtId() == null) return;
+        Lead target = insertUGDuplicateCandidate('UG2027-NOCONTACT-001', 'keep@test.com', '9000000091');
+        update new Lead(Id = target.Id, Admission_Year__c = 'Admission Year - 2027', MobilePhone = '9000000090');
+        Lead before = [SELECT Email, Phone, MobilePhone, Admission_Year__c FROM Lead WHERE Id = :target.Id];
+
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-NOCONTACT-001');
+        payload.put('leadId', String.valueOf(target.Id));
+        payload.remove('email');
+        payload.remove('phone');
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(payload);
+        Test.stopTest();
+
+        System.assertEquals(null, firstError(resp), 'email / phone / mobile / admissionYear are optional with leadId');
+        Lead after = [SELECT Email, Phone, MobilePhone, Admission_Year__c, Group_1__c FROM Lead WHERE Id = :target.Id];
+        System.assertEquals(before.Email, after.Email, 'Email must be kept when not sent');
+        System.assertEquals(before.Phone, after.Phone, 'Phone must be kept when not sent');
+        System.assertEquals(before.MobilePhone, after.MobilePhone, 'MobilePhone must be kept when not sent');
+        System.assertEquals('Admission Year - 2027', after.Admission_Year__c,
+            'Admission Year must be kept, not reset to the default, when not sent');
+        System.assertEquals('UG_Lateral', after.Group_1__c, 'Group from the payload must still be written');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_mastersAdmission_doesNotRequireLeadId() {
+        if (mastersRtId() == null) return;
+        Test.startTest();
+        Map<String, Object> resp = postRaw(new Map<String, Object>{
+            'department' => 'Masters', 'typeOfForm' => 'Auris_Admission_Form',
+            'registrationNumber' => 'MS2027-NOLEADID-001',
+            'email' => 'mnoleadid@test.com', 'phone' => '+919000000092'
+        });
+        Test.stopTest();
+
+        String error = firstError(resp);
+        System.assert(error == null || !error.contains('leadId'),
+            'Masters Admission Form must not require leadId: ' + error);
     }
 
     // =========================================================================

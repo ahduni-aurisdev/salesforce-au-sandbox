@@ -105,6 +105,27 @@ public class LeadHelperTest {
     }
 
     /**
+    * @description A phone already starting with '+' keeps its own country code; only
+    *              spaces/dashes are removed. Numbers without '+' still get the code added.
+    */
+    @isTest
+    static void testPhoneWithPlusKeepsOwnCountryCode() {
+        Lead indianPlus  = new Lead(LastName = 'Plus IN', Phone = '+91 98765-43210', Country = 'India');
+        Lead foreignPlus = new Lead(LastName = 'Plus GB', Phone = '+447887139054', Country = 'India');
+        Lead noPlus      = new Lead(LastName = 'No Plus', Phone = '9876543210', Country = 'India');
+        Lead plusOnly    = new Lead(LastName = 'Plus Only', Phone = '+', Country = 'India');
+
+        Test.startTest();
+        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ indianPlus, foreignPlus, noPlus, plusOnly }, 'insert');
+        Test.stopTest();
+
+        System.assertEquals('+919876543210', indianPlus.Phone, 'Indian number with + should be kept, spaces/dashes removed');
+        System.assertEquals('+447887139054', foreignPlus.Phone, 'Foreign number with + must not get the lead country code added');
+        System.assertEquals('919876543210', noPlus.Phone, 'Number without + should still get the lead country code');
+        System.assertEquals('91+', plusOnly.Phone, 'A + with no digits falls back to the existing behaviour');
+    }
+
+    /**
     * @description test method for phone update
     */
     @isTest

@@ -14,7 +14,9 @@ private class UGPreRegistrationTest {
         RestResponse res = new RestResponse();
         req.requestUri = '/services/apexrest/saveLeadRelatedData/';
         req.httpMethod = 'POST';
-        req.requestBody = Blob.valueOf(JSON.serialize(payload));
+        // Admission Form requires leadId - created / looked up the same way Auris does it
+        Map<String, Object> withLeadId = saveWebTo_YourProfileData_Test.withAdmissionLeadId(payload);
+        req.requestBody = Blob.valueOf(JSON.serialize(withLeadId));
         RestContext.request = req;
         RestContext.response = res;
         saveWebTo_YourProfileData.handleAurisData();

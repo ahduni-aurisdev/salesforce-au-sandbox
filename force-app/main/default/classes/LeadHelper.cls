@@ -774,6 +774,17 @@ public without sharing class LeadHelper {
         for (Lead lead : newLeads) {
             if (lead.Phone != null) {
                 String phoneNumber = lead.Phone.trim();
+
+                // Modified By : Jitendra Varma | 29-Oct-2026
+                // A number starting with '+' already has its country code (e.g.
+                // '+447887139054'). Keep it, only removing spaces/dashes - adding the
+                // lead's country code here saved it as '91+447887139054'.
+                String digits = phoneNumber.replaceAll('\\D', '');
+                if (phoneNumber.startsWith('+') && String.isNotBlank(digits)) {
+                    lead.Phone = '+' + digits;
+                    continue;
+                }
+
                 String countryCode = getCountryCodeForLead(lead);
                 
                 // Check if the number already starts with the country code

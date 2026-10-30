@@ -117,12 +117,13 @@ private class UGPreRegistrationRestTest {
         RestRequest cr = new RestRequest();
         cr.requestUri = '/services/apexrest/saveLeadRelatedData/';
         cr.httpMethod = 'POST';
-        cr.requestBody = Blob.valueOf(JSON.serialize(new Map<String, Object>{
+        // Admission Form requires leadId - created / looked up the same way Auris does it
+        cr.requestBody = Blob.valueOf(JSON.serialize(saveWebTo_YourProfileData_Test.withAdmissionLeadId(new Map<String, Object>{
             'department' => 'Undergraduation', 'typeOfForm' => 'Auris_Admission_Form', 'registrationNumber' => 'HK10',
             'firstName' => 'Pre', 'lastName' => 'HookHK10', 'email' => 'hookhk10@test.com', 'phone' => '9876501010',
             'grpPrograms' => new List<Object>{ new Map<String, Object>{ 'grptag' => 'UG_Group1', 'applicationNumber' => 'APP-1',
                 'applicationDate' => '2026-01-14', 'programmes' => new List<Object>{
-                    new Map<String, Object>{ 'programInterestedIn' => 'UG_Group1_Prog1', 'major' => 'Computer Science' } } } } }));
+                    new Map<String, Object>{ 'programInterestedIn' => 'UG_Group1_Prog1', 'major' => 'Computer Science' } } } } })));
         RestContext.request = cr;
         RestContext.response = new RestResponse();
         saveWebTo_YourProfileData.handleAurisData();
