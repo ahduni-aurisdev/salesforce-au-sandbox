@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <description>Emails the Zoom error alert recipient (Custom Label ZOOM_ERROR_ALERT_EMAIL).</description>
+        <name>Send_Zoom_Error_Email</name>
+        <label>Send Zoom Error Email</label>
+        <locationX>176</locationX>
+        <locationY>323</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <faultConnector>
+            <targetReference>Log_Email_Failure</targetReference>
+        </faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value>
+                <elementReference>$Label.ZOOM_ERROR_ALERT_EMAIL</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value>
+                <elementReference>EmailSubject</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value>
+                <elementReference>EmailBody</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>sendRichBody</name>
+            <value>
+                <booleanValue>false</booleanValue>
+            </value>
+        </inputParameters>
+        <nameSegment>emailSimple</nameSegment>
+    </actionCalls>
+    <apiVersion>64.0</apiVersion>
+    <description>v1 (2026-11-02): Sends an email to the address in Custom Label ZOOM_ERROR_ALERT_EMAIL whenever the Zoom integration logs a failure to API_Log__c (Apex class ZoomWebhook, ZoomWebinarSync or ZoomApiService, Log Type Failed). If the email cannot be sent, the fault path logs it to API_Log__c with Log Name ZoomErrorAlert, which does not re-trigger this Flow. Logs never contain registrant personal data.</description>
+    <environments>Default</environments>
+    <formulas>
+        <description>Email subject naming the failing Zoom component.</description>
+        <name>EmailSubject</name>
+        <dataType>String</dataType>
+        <expression>&apos;Zoom integration error - &apos; &amp; {!$Record.Log_Name__c}</expression>
+    </formulas>
+    <formulas>
+        <description>Link to the API Log record.</description>
+        <name>LogRecordUrl</name>
+        <dataType>String</dataType>
+        <expression>LEFT({!$Api.Partner_Server_URL_260}, FIND(&apos;/services&apos;, {!$Api.Partner_Server_URL_260})) &amp; {!$Record.Id}</expression>
+    </formulas>
+    <interviewLabel>API Log - Notify Zoom Integration Errors {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>API Log - Notify Zoom Integration Errors</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <description>Fault handler: records why the alert email could not be sent. Uses a class name outside the entry filter, so it never re-triggers this Flow.</description>
+        <name>Log_Email_Failure</name>
+        <label>Log Email Failure</label>
+        <locationX>440</locationX>
+        <locationY>431</locationY>
+        <inputAssignments>
+            <field>Apex_Class_Name__c</field>
+            <value>
+                <stringValue>Flow: API Log - Notify Zoom Integration Errors</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Log_Name__c</field>
+            <value>
+                <stringValue>ZoomErrorAlert</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Log_Type__c</field>
+            <value>
+                <stringValue>Failed</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Registration_Number__c</field>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Response__c</field>
+            <value>
+                <elementReference>$Flow.FaultMessage</elementReference>
+            </value>
+        </inputAssignments>
+        <object>API_Log__c</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Send_Zoom_Error_Email</targetReference>
+        </connector>
+        <filterFormula>AND(TEXT({!$Record.Log_Type__c}) = &apos;Failed&apos;, OR({!$Record.Apex_Class_Name__c} = &apos;ZoomWebhook&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomWebinarSync&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomApiService&apos;))</filterFormula>
+        <object>API_Log__c</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+    <textTemplates>
+        <description>Plain-text email body. Contains no registrant personal data.</description>
+        <name>EmailBody</name>
+        <isViewedAsPlainText>true</isViewedAsPlainText>
+        <text>A Zoom integration error was logged in Salesforce.
+
+Time: {!$Record.CreatedDate}
+Component: {!$Record.Log_Name__c} ({!$Record.Apex_Class_Name__c})
+Zoom meeting / event: {!$Record.Registration_Number__c}
+
+Error:
+{!$Record.Response__c}
+
+Open the log: {!LogRecordUrl}
+
+What to do: Zoom rate limits and outages are retried automatically. Login, scope or configuration errors need fixing in Zoom Marketplace or in Salesforce Setup (Zoom Config, Named Credential ZOOM_OAUTH).</text>
+    </textTemplates>
+</Flow>

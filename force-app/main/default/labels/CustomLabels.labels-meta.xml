@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="http://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>ZOOM_ERROR_ALERT_EMAIL</fullName>
+        <categories>Zoom Integration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Zoom error alert recipient</shortDescription>
+        <value>salescloudsupport@ahduni.edu.in</value>
+    </labels>
+</CustomLabels>

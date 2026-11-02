@@ -6,7 +6,7 @@
  *              FeatureFlag Zoom_Meetings is enabled.
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.2
+ * @version 1.3
  * @lastModified 2026-11-02
  */
 // System mode is intentional: events arrive through the Zoom webhook, which runs as the Site guest user
@@ -53,6 +53,7 @@ public without sharing class ZoomEventService {
     private static final Integer MAX_TEXT_LENGTH = 255;
     private static final Integer MAX_ANSWERS_LENGTH = 32768;
     private static final Long MILLIS_PER_MINUTE = 60000;
+    private static final String DUPLICATE_VALUE = 'DUPLICATE_VALUE';
     private static final List<String> STANDARD_ANSWER_KEYS = new List<String>{
         'address', 'city', 'state', 'zip', 'country', 'org', 'job_title', 'industry', 'comments'
     };
@@ -165,20 +166,84 @@ public without sharing class ZoomEventService {
         return session;
     }
 
-    /** Upserts the session by Zoom ID. A new session without a topic gets a placeholder name. */
+    /**
+     * @description Upserts the session by Zoom ID. A new session without a topic gets a placeholder name.
+     *              Zoom often sends two events for a new meeting at the same instant (e.g. participant joined and
+     *              left); both transactions then try to insert the same Zoom ID and one fails with DUPLICATE_VALUE.
+     *              That one is retried once: by then the record exists, so the retry updates it.
+     */
     public static void saveSession(Zoom_Webinar__c session) {
+        saveSession(session, true);
+    }
+
+    private static void saveSession(Zoom_Webinar__c session, Boolean retryOnDuplicate) {
+        Boolean usesPlaceholderName = false;
         if (session.Name == null
             && !ZoomSelector.selectSessionsByZoomIds(new Set<String>{ session.Webinar_Id__c }).containsKey(session.Webinar_Id__c)) {
             session.Name = ('Zoom ' + session.Type__c + ' ' + session.Webinar_Id__c).left(MAX_NAME_LENGTH);
+            usesPlaceholderName = true;
         }
-        upsert session Webinar_Id__c;
+        try {
+            simulateDuplicateForTest();
+            upsert session Webinar_Id__c;
+        } catch (DmlException e) {
+            if (!retryOnDuplicate || !isDuplicateValue(e)) {
+                throw e;
+            }
+            // Retry without the placeholder name so the concurrent insert's real topic is not overwritten.
+            Zoom_Webinar__c retry = new Zoom_Webinar__c();
+            for (String field : session.getPopulatedFieldsAsMap().keySet()) {
+                if (field != 'Id' && !(usesPlaceholderName && field == 'Name')) {
+                    retry.put(field, session.get(field));
+                }
+            }
+            saveSession(retry, false);
+            session.Id = retry.Id;
+        }
     }
 
     /**
      * @description Registers or marks attendance for a batch of people on one saved session.
      *              Bulk-safe: 3 SOQL (registrations, Leads, Contacts) and 2 DML (Tasks, registrations) per call.
+     *              A DUPLICATE_VALUE on the registration key (a concurrent event inserted the same person) rolls back
+     *              this attempt, Tasks included, and retries once against the now-existing rows, so Tasks are never
+     *              created twice.
      */
     public static void applyPeople(Zoom_Webinar__c session, List<Person> people, Boolean fromRegistration) {
+        Savepoint beforeApply = Database.setSavepoint();
+        try {
+            applyPeopleOnce(session, people, fromRegistration);
+        } catch (DmlException e) {
+            if (!isDuplicateValue(e)) {
+                throw e;
+            }
+            Database.rollback(beforeApply);
+            applyPeopleOnce(session, people, fromRegistration);
+        }
+    }
+
+    /**
+     * @description True when the DML failed because another transaction inserted the same unique key first.
+     *              Checks the status code in the message (e.g. "first error: DUPLICATE_VALUE, duplicate value found"),
+     *              which works for platform DML errors and for the simulated test error alike.
+     */
+    @TestVisible
+    private static Boolean isDuplicateValue(DmlException e) {
+        return e.getMessage() != null && e.getMessage().contains(DUPLICATE_VALUE);
+    }
+
+    /** Test hook: number of upcoming upserts that must fail as if a concurrent transaction won the insert. */
+    @TestVisible
+    private static Integer simulatedDuplicateFailures = 0;
+
+    private static void simulateDuplicateForTest() {
+        if (Test.isRunningTest() && simulatedDuplicateFailures > 0) {
+            simulatedDuplicateFailures--;
+            throw new DmlException('Upsert failed. ' + DUPLICATE_VALUE + ', duplicate value found (simulated concurrent insert)');
+        }
+    }
+
+    private static void applyPeopleOnce(Zoom_Webinar__c session, List<Person> people, Boolean fromRegistration) {
         Set<String> keys = new Set<String>();
         Set<String> emails = new Set<String>();
         for (Person person : people) {
@@ -220,6 +285,7 @@ public without sharing class ZoomEventService {
             registrations.add(byKey.get(key));
         }
         createActivities(session, registrations, ownerByPersonId);
+        simulateDuplicateForTest();
         upsert registrations Registration_Key__c;
     }
 

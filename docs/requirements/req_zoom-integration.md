@@ -68,6 +68,18 @@ See `docs/zoom-integration-development.md` for the full design. Summary:
 - Gated by FeatureFlag `Zoom_Meetings`. Meeting keys in the sync queue are prefixed `M:`.
 - Handle `meeting.*` webhook events and sync `/users/{id}/meetings`, `/meetings/{id}/registrants`, `/past_meetings/{id}/participants`
 
+### Decision — sync approach (2026-11-02, user)
+- **Keep current design: webhook (real-time) + 2-hourly API sync (safety net). No code change.**
+- Reason: webhook covers short-notice meetings, cancellations and real-time updates; the API sync repairs anything a missed webhook leaves out.
+- Considered and not chosen: API-sync-only (simpler Zoom setup, but misses meetings created and ended between runs and does not record cancellations).
+- Zoom admin request: 4 meeting read scopes (+ any event scopes Zoom asks for), event subscription `Salesforce UAT`, Secret Token must match `Zoom_Config.Default.Webhook_Secret_Token__c`.
+
+### Deferred — Zoom → Lead create/update (2026-11-02, user: "skip for now")
+- Requested: on each registration/participant, create or update a Lead (match email + phone; email-only / phone-only when one is missing), fill blank fields only, attach to `Zoom_Registration__c`, Lead Source "Zoom"; trigger on `Zoom_Registration__c` so webhook and sync both apply.
+- Open decisions before resuming: Lead Record Type for Zoom Leads (drives owner round-robin and duplicate rules); owner logic — AU assigns owners in Apex (`LeadCombinedTrigger` round-robin), and Lead assignment rules would override it; email-matches-but-phone-differs case.
+- Impact notes gathered: 4 active Lead duplicate rules (UG, Graduate 2, PhD, general); active Lead triggers `LeadCombinedTrigger`, `LeadTrigger`, `LeadMultiLeadSourceTrigger`, `TDTM_Lead`; phone stored as 10-digit `MobilePhone` and `91`-prefixed `Phone`.
+- Current behaviour unchanged: match existing Lead (then Contact) by email, link, add Tasks; no Lead created or updated.
+
 ### Known remaining deviations from project standards
 - Zoom payloads are parsed with `JSON.deserializeUntyped`, not typed wrapper classes
 - No cross-transaction token cache (Platform Cache)

@@ -253,6 +253,63 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
+    static void concurrentSessionInsertIsRetriedAsUpdate() {
+        configure(false);
+        ZoomEventService.simulatedDuplicateFailures = 1;
+        Test.startTest();
+        ZoomEventService.process(event('webinar.started', null));
+        Test.stopTest();
+
+        System.assertEquals(0, ZoomEventService.simulatedDuplicateFailures, 'The simulated concurrent insert must have been hit');
+        Zoom_Webinar__c session = [SELECT Name, Status__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        System.assertEquals('Started', session.Status__c, 'The retried save must apply the event');
+        System.assertEquals(TOPIC, session.Name, 'The retried save must keep the real topic');
+    }
+
+    @IsTest
+    static void concurrentRegistrationInsertIsRetriedWithoutDuplicateTasks() {
+        configure(false);
+        Lead lead = [SELECT Id FROM Lead WHERE Email = :emailOf(4)];
+        ZoomEventService.process(event('webinar.started', null));
+        ZoomEventService.simulatedDuplicateFailures = 1;
+        Test.startTest();
+        ZoomEventService.process(event('webinar.registration_created',
+            '"registrant":{"id":"r4","email":"' + emailOf(4) + '","status":"approved"}'));
+        Test.stopTest();
+
+        System.assertEquals(1, [SELECT COUNT() FROM Zoom_Registration__c WHERE Email__c = :emailOf(4)], 'Exactly one registration must exist');
+        System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id],
+            'The rolled-back attempt must not leave a second Registered Task');
+        System.assertNotEquals(null, [SELECT Registration_Task_Id__c FROM Zoom_Registration__c WHERE Email__c = :emailOf(4)].Registration_Task_Id__c,
+            'The Task must be linked to the registration');
+    }
+
+    @IsTest
+    static void duplicateRetriedOnlyOnce() {
+        configure(false);
+        ZoomEventService.process(event('webinar.started', null));
+        ZoomEventService.simulatedDuplicateFailures = 2;
+        DmlException caught;
+        Test.startTest();
+        try {
+            ZoomEventService.process(event('webinar.registration_created',
+                '"registrant":{"id":"r5","email":"' + emailOf(5) + '","status":"approved"}'));
+        } catch (DmlException e) {
+            caught = e;
+        }
+        Test.stopTest();
+
+        System.assertNotEquals(null, caught, 'A second DUPLICATE_VALUE must be raised, not retried again');
+        System.assert(ZoomEventService.isDuplicateValue(caught), 'The raised error must be the duplicate failure');
+    }
+
+    @IsTest
+    static void otherDmlErrorsAreNotTreatedAsDuplicates() {
+        System.assertEquals(false, ZoomEventService.isDuplicateValue(new DmlException('REQUIRED_FIELD_MISSING')),
+            'Only DUPLICATE_VALUE may trigger a retry');
+    }
+
+    @IsTest
     static void unknownAndEmptyEventsAreIgnored() {
         configure(true);
         Test.startTest();

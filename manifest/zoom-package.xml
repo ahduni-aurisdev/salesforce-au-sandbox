@@ -73,5 +73,13 @@
         <members>Zoom_OAuth</members>
         <name>RemoteSiteSetting</name>
     </types>
+    <types>
+        <members>ZOOM_ERROR_ALERT_EMAIL</members>
+        <name>CustomLabel</name>
+    </types>
+    <types>
+        <members>API_Log_Notify_Zoom_Integration_Errors</members>
+        <name>Flow</name>
+    </types>
     <version>64.0</version>
 </Package>
