@@ -193,7 +193,7 @@ global class saveWebTo_YourProfileData {
      // Modify By: Rishav Raj
     // MODIFICATION: Updated processSingleRecord with Registration Number focus
     public static String processSingleRecord(Map<String, Object> payloadMap) {
-        String department = (String) payloadMap.get('department');
+        String department = normalizeDepartment((String) payloadMap.get('department'));
         String typeOfForm = (String) payloadMap.get('typeOfForm');
         String registrationNumber = (String) payloadMap.get('registrationNumber');
     
@@ -956,6 +956,11 @@ global class saveWebTo_YourProfileData {
         }
         String matchingPhone = buildPhoneMatchPattern((String) payloadMap.get('phone'));
         String matchingEmail = (String) payloadMap.get('email');
+        Set<String> matchingDepartments = new Set<String>{ department };
+        if (UG_DEPARTMENT.equalsIgnoreCase(normalizeDepartment(department))) {
+            matchingDepartments.add(UG_DEPARTMENT);
+            matchingDepartments.add(UG_DEPARTMENT_ALIAS);
+        }
 
         // ── START: Modified By Mihir Ramoliya | 28-Mar-2026 ───────────────────────
         // Change: Added all Group slot fields (Group_1__c … Group_4__c + related
@@ -980,7 +985,7 @@ global class saveWebTo_YourProfileData {
                 Group_4__c, Group_4_Application_Date__c,
                 Group_4_Application_Number__c, Group_4_Majors__c, Group_4_Programmes__c
             FROM   Lead
-            WHERE  Department__c = :department
+            WHERE  Department__c IN :matchingDepartments
             AND    (Registration_Number__c IN :matchingRegistrationNumbers
                     OR (Phone LIKE :matchingPhone AND Email = :matchingEmail))
             ORDER BY CreatedDate ASC
@@ -1037,8 +1042,21 @@ global class saveWebTo_YourProfileData {
     private static final String AURIS_ADMISSION_FORM = 'Auris_Admission_Form';
     // Only this department's Admission Form requires leadId.
     private static final String UG_DEPARTMENT = 'Undergraduation';
+    private static final String UG_DEPARTMENT_ALIAS = 'Undergraduate';
     // Payload key holding the Salesforce Lead Id on the Admission Form.
     private static final String LEAD_ID_KEY = 'leadId';
+
+    /**
+     * @description Resolve both supported UG names to the department used by form metadata.
+     * Modified: 02-Nov-2026. All other department names retain their existing behavior.
+     */
+    private static String normalizeDepartment(String department) {
+        if (UG_DEPARTMENT.equalsIgnoreCase(department)
+                || UG_DEPARTMENT_ALIAS.equalsIgnoreCase(department)) {
+            return UG_DEPARTMENT;
+        }
+        return department;
+    }
 
     // Added By : Jitendra Varma | 29-Oct-2026
     // Returns the Lead a UG Admission Form payload must update, taken from its 'leadId'.
@@ -1091,7 +1109,8 @@ global class saveWebTo_YourProfileData {
             throw new CustomException('leadId "' + leadIdValue + '" belongs to Registration Number "'
                 + lead.Registration_Number__c + '", but the payload has "' + registrationNumber + '".');
         }
-        if (String.isNotBlank(lead.Department__c) && !lead.Department__c.equalsIgnoreCase(department)) {
+        if (String.isNotBlank(lead.Department__c)
+                && !normalizeDepartment(lead.Department__c).equalsIgnoreCase(normalizeDepartment(department))) {
             throw new CustomException('leadId "' + leadIdValue + '" belongs to department "'
                 + lead.Department__c + '", but the payload has "' + department + '".');
         }

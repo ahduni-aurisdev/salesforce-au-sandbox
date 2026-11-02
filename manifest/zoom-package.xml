@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>FeatureFlagService</members>
+        <members>FeatureFlagServiceTest</members>
+        <members>ZoomApiService</members>
+        <members>ZoomConfig</members>
+        <members>ZoomEventService</members>
+        <members>ZoomIntegrationTest</members>
+        <members>ZoomLogger</members>
+        <members>ZoomLoggerTest</members>
+        <members>ZoomSelector</members>
+        <members>ZoomSelectorTest</members>
+        <members>ZoomWebhook</members>
+        <members>ZoomWebinarSync</members>
+        <members>ZoomWebinarSyncScheduler</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>ZoomWebhookInfo</members>
+        <name>ApexPage</name>
+    </types>
+    <types>
+        <members>FeatureFlag.Zoom_Integration</members>
+        <members>FeatureFlag.Zoom_Meetings</members>
+        <members>FeatureFlag.Zoom_Named_Credential</members>
+        <members>FeatureFlag.Zoom_Webinars</members>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
+        <members>FeatureFlag__mdt</members>
+        <members>Zoom_Config__mdt</members>
+        <members>Zoom_Registration__c</members>
+        <members>Zoom_Webinar__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>FeatureFlag__mdt.IsEnabled__c</members>
+        <members>Zoom_Webinar__c.Type__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Zoom_Registration__c</members>
+        <members>Zoom_Webinar__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>ZOOM_API</members>
+        <members>ZOOM_OAUTH</members>
+        <name>ExternalCredential</name>
+    </types>
+    <types>
+        <members>Zoom_Config__mdt-Zoom Config Layout</members>
+        <members>Zoom_Registration__c-Zoom Registration Layout</members>
+        <members>Zoom_Webinar__c-Zoom Webinar Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>ZOOM_API</members>
+        <members>ZOOM_OAUTH</members>
+        <name>NamedCredential</name>
+    </types>
+    <types>
+        <members>Zoom_Webinar_Full_Access</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Zoom Webhook Profile</members>
+        <name>Profile</name>
+    </types>
+    <types>
+        <members>Zoom_API</members>
+        <members>Zoom_OAuth</members>
+        <name>RemoteSiteSetting</name>
+    </types>
+    <version>64.0</version>
+</Package>

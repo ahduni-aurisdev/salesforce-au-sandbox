@@ -1380,6 +1380,126 @@ public class saveWebTo_YourProfileData_Test {
         System.assertEquals('UG_Lateral', after.Group_1__c, 'Group from the payload must still be written');
     }
 
+    /** Verify alias routing through the real REST handler, without contact-field matching. */
+    private static void assertUGDepartmentAliasAdmission(String leadDepartment, String payloadDepartment) {
+        System.assertNotEquals(null, ugRtId(), 'UG record type is required for alias regression tests');
+        String regNum = 'UG2027-ALIAS-001';
+        Lead target = buildUGDuplicateCandidate(regNum, 'alias-target@test.com', '9000000088');
+        target.Department__c = leadDepartment;
+        Lead unrelated = buildUGDuplicateCandidate('UG2027-ALIAS-OTHER', 'alias-other@test.com', '9000000089');
+        insert new List<Lead>{ target, unrelated };
+        Map<String, Object> payload = ugAdmissionWithoutLeadId(regNum);
+        payload.put('department', payloadDepartment);
+        payload.put('leadId', String.valueOf(target.Id));
+        payload.remove('email');
+        payload.remove('phone');
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(payload);
+        Test.stopTest();
+
+        System.assertEquals(null, firstError(resp), 'Both supported UG department names must be accepted');
+        System.assertEquals(200, RestContext.response.statusCode, 'Alias admission must succeed');
+        System.assertEquals(new List<Object>{ String.valueOf(target.Id) }, (List<Object>) resp.get('leadIds'),
+            'The response must contain exactly the supplied Lead ID');
+        System.assertEquals(1, [SELECT COUNT() FROM Lead WHERE Registration_Number__c = :regNum],
+            'Alias admission must not create another Lead');
+        System.assertEquals('UG_Lateral', [SELECT Group_1__c FROM Lead WHERE Id = :target.Id].Group_1__c,
+            'UG form mappings and group processing must run for either payload department');
+        System.assertEquals(null, [SELECT Group_1__c FROM Lead WHERE Id = :unrelated.Id].Group_1__c,
+            'An unrelated Lead must not receive the admission group');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_undergraduateLead_acceptsCanonicalPayload() {
+        assertUGDepartmentAliasAdmission('Undergraduate', 'Undergraduation');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_canonicalLead_acceptsUndergraduatePayload() {
+        assertUGDepartmentAliasAdmission('Undergraduation', 'Undergraduate');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_bothUndergraduate_acceptsPayload() {
+        assertUGDepartmentAliasAdmission('Undergraduate', 'Undergraduate');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_undergraduatePayload_requiresLeadId() {
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-ALIAS-NOID');
+        payload.put('department', 'Undergraduate');
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(payload);
+        Test.stopTest();
+
+        String error = firstError(resp);
+        System.assert(error != null && error.contains('Missing required field: leadId'),
+            'The alias must not bypass UG Lead ID validation: ' + error);
+        System.assertEquals(0, ((List<Object>) resp.get('leadIds')).size(), 'Rejected admission must return no IDs');
+        System.assertEquals(0, [SELECT COUNT() FROM Lead WHERE Registration_Number__c = 'UG2027-ALIAS-NOID'],
+            'Missing Lead ID must not create a Lead for the alias');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_undergraduatePayload_rejectsWrongRegistration() {
+        System.assertNotEquals(null, ugRtId(), 'UG record type is required for alias regression tests');
+        Lead target = insertUGDuplicateCandidate('UG2027-ALIAS-OWNER', 'alias-owner@test.com', '9000000087');
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-ALIAS-WRONG');
+        payload.put('department', 'Undergraduate');
+        payload.put('leadId', String.valueOf(target.Id));
+
+        Test.startTest();
+        String error = firstError(postRaw(payload));
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('belongs to Registration Number'),
+            'The alias must retain registration ownership validation: ' + error);
+        System.assertEquals('UG2027-ALIAS-OWNER',
+            [SELECT Registration_Number__c FROM Lead WHERE Id = :target.Id].Registration_Number__c,
+            'A mismatched request must not change the target registration');
+    }
+
+    @IsTest
+    static void test_admissionLeadId_undergraduatePayload_rejectsMastersLead() {
+        System.assertNotEquals(null, mastersRtId(), 'Masters record type is required for department validation');
+        Lead target = new Lead(LastName = 'AliasDepartmentMismatch', Company = 'T',
+            RecordTypeId = mastersRtId(), Department__c = 'Masters',
+            Registration_Number__c = 'UG2027-ALIAS-DEPT');
+        insert target;
+        Map<String, Object> payload = ugAdmissionWithoutLeadId('UG2027-ALIAS-DEPT');
+        payload.put('department', 'Undergraduate');
+        payload.put('leadId', String.valueOf(target.Id));
+
+        Test.startTest();
+        Map<String, Object> resp = postRaw(payload);
+        String error = firstError(resp);
+        Test.stopTest();
+
+        System.assert(error != null && error.contains('belongs to department'),
+            'UG aliases must not allow a Masters Lead: ' + error);
+        System.assertEquals(0, ((List<Object>) resp.get('leadIds')).size(),
+            'Department mismatch must return no Lead IDs');
+    }
+
+    @IsTest
+    static void test_handleDuplicateUG_matchesUndergraduateDepartment() {
+        System.assertNotEquals(null, ugRtId(), 'UG record type is required for alias regression tests');
+        Lead target = buildUGDuplicateCandidate('UG2027-ALIAS-REG', 'alias-reg@test.com', '9000000086');
+        target.Department__c = 'Undergraduate';
+        insert target;
+
+        Test.startTest();
+        Lead matched = saveWebTo_YourProfileData.handleDuplicateLeadUndergraduation(
+            new Map<String, Object>{ 'registrationNumber' => 'UG2027-ALIAS-REG' },
+            'Undergraduation', 'Auris_Registration_Form');
+        Test.stopTest();
+
+        System.assertNotEquals(null, matched, 'Canonical registration must find an existing Undergraduate Lead');
+        System.assertEquals(target.Id, matched.Id, 'Registration must reuse the existing alias Lead');
+    }
+
     @IsTest
     static void test_admissionLeadId_mastersAdmission_doesNotRequireLeadId() {
         if (mastersRtId() == null) return;

@@ -7,3 +7,5 @@
 | 📄 Requirements | `req_admission-round-api.md` | Admission Round object and authenticated bulk-upsert API contract |
 | 📄 Requirements | `req_task-activity-api.md` | Task Activity API: create Tasks on Lead / converted Account / Account with owner and status rules |
 | Integration Guide | `../task-activity-api-integration-guide.md` | Integration-team handoff for the Task Activity API: UAT and Production endpoints, auth, payload variations, responses, errors, retry rules |
+| Integration Guide | `../zoom-integration-development.md` | Zoom webinar integration: architecture, components, data model, webhook events, API sync, setup checklist, pending work (Meetings not implemented) |
+| 📄 Requirements | `req_zoom-integration.md` | Zoom integration: verified UAT status, phased pending work (readiness, hardening, Meetings) |
