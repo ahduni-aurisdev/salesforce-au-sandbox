@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ZoomConfig</members>
+        <members>ZoomEventService</members>
+        <members>ZoomIntegrationTest</members>
+        <members>ZoomWebinarSync</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Zoom_Config__mdt.Allowed_Host_Ids__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Zoom_Config__mdt-Zoom Config Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>64.0</version>
+</Package>

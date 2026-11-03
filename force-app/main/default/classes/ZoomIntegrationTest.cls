@@ -2,10 +2,12 @@
  * @description Tests for the Zoom integration: ZoomWebhook, ZoomEventService, ZoomApiService, ZoomWebinarSync,
  *              ZoomWebinarSyncScheduler and ZoomConfig. Covers webinars and meetings, a 200-person bulk sync,
  *              Zoom failures (401, 429, 5xx, timeout), retries, feature flags and webhook rejection paths.
+ *              Since v1.2 the webhook and the session sync never create Leads or Tasks: registrations are saved as
+ *              "Pending setup" and the sync chain ends by starting ZoomLeadQueueable (see ZoomLeadServiceTest).
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.1
- * @lastModified 2026-11-02
+ * @version 1.2
+ * @lastModified 2026-11-03
  */
 @IsTest
 private class ZoomIntegrationTest {
@@ -140,17 +142,19 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         Zoom_Registration__c registration = [
-            SELECT Is_Registered__c, Attended__c, Lead__c, Is_Matched__c, Time_In_Session_Minutes__c, Form_Answers__c
+            SELECT Is_Registered__c, Attended__c, Lead__c, Lead_Status__c, Time_In_Session_Minutes__c, Form_Answers__c
             FROM Zoom_Registration__c WHERE Email__c = :emailOf(0)
         ];
         System.assert(registration.Is_Registered__c, 'The registrant must be marked registered');
         System.assert(registration.Attended__c, 'The registrant must be marked attended after joining');
-        System.assertEquals(lead.Id, registration.Lead__c, 'The registrant must be matched to the Lead by email, ignoring case');
+        System.assertEquals(null, registration.Lead__c, 'The webhook must not link Leads; the scheduled sync does');
+        System.assertEquals('Pending setup', registration.Lead_Status__c, 'A new registration must wait for the Lead step');
         System.assertEquals(20, registration.Time_In_Session_Minutes__c, 'Time in session must be leave minus join');
         System.assert(registration.Form_Answers__c.contains('City: Surat'), 'Custom question answers must be stored');
-        System.assertEquals(2, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id], 'Exactly one registered and one attended Task, despite the duplicate event');
-        System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id AND Subject = :'Zoom Webinar Attended: ' + TOPIC],
-            'The attended Task subject must name the webinar');
+        System.assertEquals(0, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id], 'The webhook must not create Tasks');
+        Zoom_Registration__c walkIn = [SELECT Last_Name__c, Lead_Status__c FROM Zoom_Registration__c WHERE Email__c = 'guest@elsewhere.com'];
+        System.assertEquals('Guest', walkIn.Last_Name__c, 'A one-word walk-in display name must be stored as the last name');
+        System.assertEquals('Pending setup', walkIn.Lead_Status__c, 'A walk-in must also wait for the Lead step');
         Zoom_Webinar__c session = [SELECT Type__c, Registered_Count__c, Attended_Count__c, Walk_In_Count__c FROM Zoom_Webinar__c];
         System.assertEquals('Webinar', session.Type__c, 'Webinar events must create a Webinar session');
         System.assertEquals(1, session.Registered_Count__c, 'One person registered');
@@ -191,6 +195,50 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
+    static void webhookIgnoresOtherHosts() {
+        configure(true);
+        ZoomConfig.testOverride.Allowed_Host_Ids__c = ' ADMISSIONS , SECONDHOST ';
+        Test.startTest();
+        ZoomEventService.process(event('meeting.participant_joined', '"host_id":"CLASSROOM","participant":{"user_name":"Student","email":"s@x.com"}'));
+        ZoomEventService.process(event('meeting.started', null));
+        ZoomEventService.process(event('meeting.started', '"host_id":"SECONDHOST"'));
+        ZoomEventService.process(event('meeting.ended', null));
+        Test.stopTest();
+
+        System.assertEquals(0, [SELECT COUNT() FROM Zoom_Registration__c], 'Events hosted by someone else must be ignored');
+        Zoom_Webinar__c session = [SELECT Status__c FROM Zoom_Webinar__c];
+        System.assertEquals('Ended', session.Status__c,
+            'An allowed host is accepted, and a later event without host_id is applied to the session it already created');
+        System.assertEquals(new Set<String>{ 'ADMISSIONS', 'SECONDHOST' }, ZoomConfig.allowedHostIds(), 'Host IDs must be split and trimmed');
+    }
+
+    @IsTest
+    static void webhookWithoutHostIgnoresUnknownSession() {
+        configure(true);
+        ZoomConfig.testOverride.Allowed_Host_Ids__c = 'ADMISSIONS';
+        Test.startTest();
+        ZoomEventService.process(event('meeting.started', null));
+        Test.stopTest();
+
+        System.assertEquals(0, [SELECT COUNT() FROM Zoom_Webinar__c],
+            'Without host_id, an event may only update a session Salesforce already holds');
+    }
+
+    @IsTest
+    static void syncSkipsSessionOfOtherHost() {
+        configure(true);
+        ZoomConfig.testOverride.Allowed_Host_Ids__c = 'ADMISSIONS';
+        Test.setMock(HttpCalloutMock.class, new ZoomMock()
+            .respondTo('/oauth/token', 200, '{"access_token":"tok"}')
+            .respondTo('/meetings/555', 200, '{"id":555,"host_id":"CLASSROOM","topic":"Class","start_time":"2020-01-01T10:00:00Z","duration":30}'));
+        Test.startTest();
+        new ZoomWebinarSync(new List<String>{ ZoomWebinarSync.MEETING_PREFIX + '555' }).execute(null);
+        Test.stopTest();
+
+        System.assertEquals(0, [SELECT COUNT() FROM Zoom_Webinar__c], 'A session hosted by someone else must not be synced');
+    }
+
+    @IsTest
     static void meetingEventsIgnoredWhenFlagOff() {
         configure(false);
         Test.startTest();
@@ -213,8 +261,7 @@ private class ZoomIntegrationTest {
 
         System.assertEquals('Meeting', [SELECT Type__c FROM Zoom_Webinar__c].Type__c, 'Meeting events must create a Meeting session');
         System.assertEquals('Pending', [SELECT Status__c FROM Zoom_Registration__c].Status__c, 'A pending registrant must be Pending');
-        System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id AND Subject = :'Zoom Meeting Attended: ' + TOPIC],
-            'The attended Task must say Zoom Meeting');
+        System.assertEquals(0, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id], 'Meeting events must not create Tasks in the webhook');
     }
 
     @IsTest
@@ -267,9 +314,8 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
-    static void concurrentRegistrationInsertIsRetriedWithoutDuplicateTasks() {
+    static void concurrentRegistrationInsertIsRetriedOnce() {
         configure(false);
-        Lead lead = [SELECT Id FROM Lead WHERE Email = :emailOf(4)];
         ZoomEventService.process(event('webinar.started', null));
         ZoomEventService.simulatedDuplicateFailures = 1;
         Test.startTest();
@@ -277,11 +323,10 @@ private class ZoomIntegrationTest {
             '"registrant":{"id":"r4","email":"' + emailOf(4) + '","status":"approved"}'));
         Test.stopTest();
 
+        System.assertEquals(0, ZoomEventService.simulatedDuplicateFailures, 'The simulated concurrent insert must have been hit');
         System.assertEquals(1, [SELECT COUNT() FROM Zoom_Registration__c WHERE Email__c = :emailOf(4)], 'Exactly one registration must exist');
-        System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :lead.Id],
-            'The rolled-back attempt must not leave a second Registered Task');
-        System.assertNotEquals(null, [SELECT Registration_Task_Id__c FROM Zoom_Registration__c WHERE Email__c = :emailOf(4)].Registration_Task_Id__c,
-            'The Task must be linked to the registration');
+        System.assertEquals('Pending setup', [SELECT Lead_Status__c FROM Zoom_Registration__c WHERE Email__c = :emailOf(4)].Lead_Status__c,
+            'The retried registration must keep its Lead Status');
     }
 
     @IsTest
@@ -430,10 +475,10 @@ private class ZoomIntegrationTest {
         job.execute(null);
         Test.stopTest();
 
-        System.assertEquals(BULK_SIZE, [SELECT COUNT() FROM Zoom_Registration__c WHERE Is_Matched__c = true AND Attended__c = true],
-            'All 200 registrants must be stored, matched to their Leads and marked attended');
-        System.assertEquals(BULK_SIZE * 2, [SELECT COUNT() FROM Task WHERE Subject LIKE 'Zoom Webinar%'],
-            'Each of the 200 Leads must get one registered and one attended Task');
+        System.assertEquals(BULK_SIZE, [SELECT COUNT() FROM Zoom_Registration__c WHERE Lead_Status__c = 'Pending setup' AND Attended__c = true],
+            'All 200 registrants must be stored, marked attended and left for the Lead step');
+        System.assertEquals(0, [SELECT COUNT() FROM Task WHERE Subject LIKE 'Zoom Webinar%'], 'The session sync must not create Tasks');
+        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'The end of the sync chain must start the Lead step');
         Zoom_Webinar__c session = [SELECT Registered_Count__c, Attended_Count__c FROM Zoom_Webinar__c];
         System.assertEquals(BULK_SIZE, session.Registered_Count__c, 'Roll-up must count 200 registered');
         System.assertEquals(BULK_SIZE, session.Attended_Count__c, 'Roll-up must count 200 attended');
@@ -483,6 +528,7 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs.size(), 'A rate-limited call must be retried once');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'A retry carries the chain, so the Lead step must not start yet');
         System.assertEquals(1, ZoomWebinarSync.enqueuedDelays[0], 'The first retry must wait 1 minute');
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs[0].attempt, 'The retry must carry the attempt number');
         System.assertEquals(new List<String>{ SESSION_ID, '111' }, ZoomWebinarSync.enqueuedJobs[0].sessionKeys,
@@ -506,6 +552,7 @@ private class ZoomIntegrationTest {
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs.size(), 'The chain must continue with the next session');
         System.assertEquals(0, ZoomWebinarSync.enqueuedDelays[0], 'The next session must run without delay');
         System.assertEquals(new List<String>{ '111' }, ZoomWebinarSync.enqueuedJobs[0].sessionKeys, 'Only the remaining session must be queued');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'The Lead step must wait until the last session is synced');
     }
 
     @IsTest
@@ -517,6 +564,7 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assert(ZoomWebinarSync.enqueuedJobs.isEmpty(), 'A 401 must not be retried');
+        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'The Lead step must still run after the last session failed');
         API_Log__c log = [SELECT Response__c FROM API_Log__c WHERE Log_Name__c = 'ZoomWebinarSync'];
         System.assert(log.Response__c.contains('HTTP 401'), 'The log must contain the HTTP status');
     }
@@ -545,6 +593,32 @@ private class ZoomIntegrationTest {
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs.size(), 'A Zoom 5xx during discovery must be retried');
         System.assertEquals(null, ZoomWebinarSync.enqueuedJobs[0].sessionKeys, 'The retry must run discovery again');
         System.assertEquals(0, logCount(), 'A retried discovery failure must not be logged yet');
+    }
+
+    @IsTest
+    static void emptyDiscoveryStartsLeadStep() {
+        configure(false);
+        Test.setMock(HttpCalloutMock.class, new ZoomMock()
+            .respondTo('/oauth/token', 200, '{"access_token":"tok"}')
+            .respondTo('/users/', 200, '{"webinars":[]}'));
+        Test.startTest();
+        new ZoomWebinarSync().execute(null);
+        Test.stopTest();
+
+        System.assert(ZoomWebinarSync.enqueuedJobs.isEmpty(), 'Nothing to sync means no further sync job');
+        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'Pending registrations must still be processed when Zoom has no sessions');
+    }
+
+    @IsTest
+    static void failedDiscoveryStillStartsLeadStep() {
+        configure(false);
+        Test.setMock(HttpCalloutMock.class, new ZoomMock().respondTo('/oauth/token', 401, '{"reason":"Invalid client"}'));
+        Test.startTest();
+        new ZoomWebinarSync().execute(null);
+        Test.stopTest();
+
+        System.assertEquals(1, logCount(), 'The discovery failure must be logged');
+        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'A failed discovery must not block the Lead step');
     }
 
     @IsTest

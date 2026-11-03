@@ -5,13 +5,14 @@
  *              to import sessions that already exist in Zoom. One session per Queueable job; jobs are chained.
  *              Rate limits, Zoom 5xx and timeouts are retried up to MAX_RETRIES times with 1, 2, 4 minute delays;
  *              every other failure is logged to API_Log__c and the chain moves on to the next session.
+ *              When the chain finishes it starts ZoomLeadQueueable, which creates / links Leads and logs Tasks.
  *                System.enqueueJob(new ZoomWebinarSync());                                // discover + sync all
  *                System.enqueueJob(new ZoomWebinarSync(new List<String>{'123456789'}));    // one webinar
  *                System.enqueueJob(new ZoomWebinarSync(new List<String>{'M:123456789'}));  // one meeting
  *              ZoomWebinarSyncScheduler.schedule() runs it every 2 hours.
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.3
+ * @version 1.4
  * @lastModified 2026-11-03
  */
 // System mode is intentional: a scheduled system job that syncs every Zoom session regardless of who scheduled it.
@@ -65,12 +66,15 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
             try {
                 sessionKeys = discover();
             } catch (ZoomApiService.ZoomApiException e) {
-                handleFailure(null, DISCOVER_REFERENCE, e);
+                if (!handleFailure(null, DISCOVER_REFERENCE, e)) {
+                    ZoomLeadQueueable.start();
+                }
                 return;
             }
             attempt = 0;
         }
         if (sessionKeys.isEmpty()) {
+            ZoomLeadQueueable.start();
             return;
         }
         String current = sessionKeys.remove(0);
@@ -87,6 +91,8 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         }
         if (!sessionKeys.isEmpty()) {
             enqueue(new ZoomWebinarSync(sessionKeys, 0), 0);
+        } else {
+            ZoomLeadQueueable.start();
         }
     }
 
@@ -168,7 +174,7 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
 
         Zoom_Webinar__c existing = ZoomSelector.selectSessionsByZoomIds(new Set<String>{ rawZoomId }).get(rawZoomId);
         Map<String, Object> source = ZoomApiService.get(resource + zoomId);
-        if (source.isEmpty()) {
+        if (source.isEmpty() || !isAllowedHost(ZoomEventService.str(source.get('host_id')))) {
             return;
         }
         Zoom_Webinar__c session = ZoomEventService.sessionFromObject(source,
@@ -189,6 +195,12 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         if (!participants.isEmpty()) {
             ZoomEventService.applyPeople(session, participants.values(), false);
         }
+    }
+
+    /** Skips sessions of hosts outside Zoom_Config Allowed_Host_Ids__c (none configured = every host allowed). */
+    private static Boolean isAllowedHost(String hostId) {
+        Set<String> allowedHostIds = ZoomConfig.allowedHostIds();
+        return allowedHostIds.isEmpty() || hostId == null || allowedHostIds.contains(hostId);
     }
 
     /**

@@ -9,7 +9,7 @@
 
 ## 1. Business requirement
 
-Track Zoom **webinar** and **meeting** registrations and attendance in Salesforce, match each person to a Lead or Contact by email, and log activity (Task) on the matched record so admissions counsellors can see who registered and who attended.
+Track Zoom **webinar** and **meeting** registrations and attendance in Salesforce, create or update a Lead for each person (in the Department and Admission Year set on the session), and log activity (Task) on that Lead so admissions counsellors can see who registered and who attended. See "Decision — Zoom → Lead create/update (2026-11-03)" below.
 
 ## 2. Current implementation (webinars only)
 
@@ -74,11 +74,25 @@ See `docs/zoom-integration-development.md` for the full design. Summary:
 - Considered and not chosen: API-sync-only (simpler Zoom setup, but misses meetings created and ended between runs and does not record cancellations).
 - Zoom admin request: 4 meeting read scopes (+ any event scopes Zoom asks for), event subscription `Salesforce UAT`, Secret Token must match `Zoom_Config.Default.Webhook_Secret_Token__c`.
 
-### Deferred — Zoom → Lead create/update (2026-11-02, user: "skip for now")
-- Requested: on each registration/participant, create or update a Lead (match email + phone; email-only / phone-only when one is missing), fill blank fields only, attach to `Zoom_Registration__c`, Lead Source "Zoom"; trigger on `Zoom_Registration__c` so webhook and sync both apply.
-- Open decisions before resuming: Lead Record Type for Zoom Leads (drives owner round-robin and duplicate rules); owner logic — AU assigns owners in Apex (`LeadCombinedTrigger` round-robin), and Lead assignment rules would override it; email-matches-but-phone-differs case.
-- Impact notes gathered: 4 active Lead duplicate rules (UG, Graduate 2, PhD, general); active Lead triggers `LeadCombinedTrigger`, `LeadTrigger`, `LeadMultiLeadSourceTrigger`, `TDTM_Lead`; phone stored as 10-digit `MobilePhone` and `91`-prefixed `Phone`.
-- Current behaviour unchanged: match existing Lead (then Contact) by email, link, add Tasks; no Lead created or updated.
+### Decision — Zoom → Lead create/update (2026-11-03, user; replaces the 2026-11-02 deferral)
+- **Where Department and Admission Year come from:** Zoom sends neither, so they are set by hand once per session on `Zoom_Webinar__c.Department__c` (picklist; API name = Lead Record Type developer name, label = `Lead.Department__c` text) and `Zoom_Webinar__c.Admission_Year__c` (same values as `Lead.Admission_Year__c`). Departments: Undergraduation, Graduation, Masters, PhD, Executive Education, Career Development Centre, CLeF.
+- **New-session email:** Flow `Zoom Session - Notify New Session Setup` emails Custom Label `ZOOM_SESSION_SETUP_EMAIL` (salescloudsupport@ahduni.edu.in) 1 minute after a session is created, if Department or Admission Year is still blank. A scheduled path is used because webhook-created sessions are saved by the Site guest user.
+- **When Leads are created:** only in the scheduled sync (`ZoomWebinarSync` chain ends by starting `ZoomLeadQueueable`), never in the webhook (user: "dont create lead on webhook"). Schedule stays every 2 hours. Sessions without both values keep registrations in Lead Status "Pending setup"; once set, the next scheduled run processes them.
+- **Who:** all registrants and walk-ins (participants who joined without registering).
+- **Matching** (unconverted Leads, same Record Type and same Admission Year): email + phone both when both known; email only when no phone; phone only (last 10 digits) when no email; oldest match wins. No email and no phone -> Lead Status "No contact details", no Lead, no error email. A Lead with the same email but a different phone does not match (strict, as decided).
+- **New Lead:** Record Type + `Department__c` from the session, `Admission_Year__c`, first/last name (walk-in display name split: last word = last name; blank -> "Unknown"), email, mobile, **LeadSource = Zoom** (new picklist value) and `Multi_Select_Lead_Source__c` = Zoom. Duplicate rules saved with allowSave.
+- **Existing Lead:** fill blank First Name, Email, Mobile, `Department__c` only. Lead Source, Most Recent Lead Source and Admission Year are never changed (user: "dont update in existing").
+- **Owner:** set by the existing Lead trigger (`LeadCombinedTrigger` department round-robin), the same as website Leads. Assignment Rules are not run, because the active rule ("MBA Leads from Meta") would override that owner (user choice 2026-11-03, after first answering "standard").
+- **Activities:** Task "Zoom Meeting Registered: <topic>" when linked; after the session ends, "Attended: <topic>" (with minutes) or, for registered no-shows, "Did Not Attend: <topic>".
+- **Existing data:** not migrated. The user deletes all Zoom sessions and registrations in UAT (and before Production go-live) for a fresh start.
+- **Contacts:** the old email-only Lead/Contact match was removed; Zoom registrations link to Leads only.
+- **No feature flag (deviation):** the rulebook asks for a Custom Metadata flag on Medium-risk features; the user explicitly declined a `Zoom_Lead_Sync` flag. Instant off switch remains `FeatureFlag.Zoom_Integration` (stops webhook, sync and the Lead step).
+- **Known limitation:** CDC Lead validation rule `CDC_Required_Field_Validation` requires Account, Contact and Academic Year, so Zoom cannot create CDC Leads; such registrations get Lead Status "Error" and an error email.
+
+### Decision — host filter (2026-11-03, user)
+- The Zoom app receives webhook events for every meeting on the university account (seen: class EPI706, IT Helpdesk meetings). Only sessions hosted by the admissions user belong in Salesforce.
+- `Zoom_Config__mdt.Allowed_Host_Ids__c` (comma-separated Zoom host IDs) filters webhook events and synced sessions; blank = accept all. Events without host_id are applied only to sessions Salesforce already holds.
+- Admissions host `virtual.admissionsoffice@ahduni.edu.in` = host ID `Vj58A57CQtWF3eN4trJaQg` (read from the Zoom meetings API, 17 upcoming meetings). Value is entered in Setup on Zoom_Config.Default in each org (record not in source control because it holds secrets).
 
 ### Known remaining deviations from project standards
 - Zoom payloads are parsed with `JSON.deserializeUntyped`, not typed wrapper classes
@@ -87,7 +101,6 @@ See `docs/zoom-integration-development.md` for the full design. Summary:
 - Remote Site Settings `Zoom_API` / `Zoom_OAuth` kept for the legacy path
 
 ### Not yet scheduled
-- Lead creation for unmatched registrants
 - Related lists, reports, dashboards
 - Salesforce → Zoom registrant push
 - Post-webinar follow-up messages (WhatsApp / Email)

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Admission_Year__c</fullName>
+    <description>Admission Year written to Leads created from this session; also part of the Lead match. Values mirror Lead.Admission_Year__c. Set manually; Zoom does not send it.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Set this and Department so the scheduled sync can create or update Leads for this session's registrants.</inlineHelpText>
+    <label>Admission Year</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Admission Year - 2025</fullName>
+                <default>false</default>
+                <label>Admission Year - 2025</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2026</fullName>
+                <default>false</default>
+                <label>Admission Year - 2026</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2027</fullName>
+                <default>false</default>
+                <label>Admission Year - 2027</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2028</fullName>
+                <default>false</default>
+                <label>Admission Year - 2028</label>
+            </value>
+            <value>
+                <fullName>Admission Year - 2029</fullName>
+                <default>false</default>
+                <label>Admission Year - 2029</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

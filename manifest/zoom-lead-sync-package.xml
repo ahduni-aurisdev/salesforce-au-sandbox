@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ZoomEventService</members>
+        <members>ZoomIntegrationTest</members>
+        <members>ZoomLeadQueueable</members>
+        <members>ZoomLeadService</members>
+        <members>ZoomLeadServiceTest</members>
+        <members>ZoomSelector</members>
+        <members>ZoomSelectorTest</members>
+        <members>ZoomWebinarSync</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Lead.Multi_Select_Lead_Source__c</members>
+        <members>Zoom_Registration__c.Lead_Status__c</members>
+        <members>Zoom_Webinar__c.Admission_Year__c</members>
+        <members>Zoom_Webinar__c.Department__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>ZOOM_SESSION_SETUP_EMAIL</members>
+        <name>CustomLabel</name>
+    </types>
+    <types>
+        <members>API_Log_Notify_Zoom_Integration_Errors</members>
+        <members>Zoom_Session_Notify_New_Session_Setup</members>
+        <name>Flow</name>
+    </types>
+    <types>
+        <members>Zoom_Registration__c-Zoom Registration Layout</members>
+        <members>Zoom_Webinar__c-Zoom Webinar Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Zoom_Webinar_Full_Access</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Lead.CDC</members>
+        <members>Lead.CLeF</members>
+        <members>Lead.Executive_Education</members>
+        <members>Lead.Graduation</members>
+        <members>Lead.Masters</members>
+        <members>Lead.Phd</members>
+        <members>Lead.Temp</members>
+        <members>Lead.Undergraduation</members>
+        <name>RecordType</name>
+    </types>
+    <types>
+        <members>LeadSource</members>
+        <name>StandardValueSet</name>
+    </types>
+    <version>64.0</version>
+</Package>

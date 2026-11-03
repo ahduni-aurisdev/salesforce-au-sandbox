@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Department__c</fullName>
+    <description>Department whose Leads this session's registrants become. Each value's API name is the Lead Record Type developer name and its label is written to Lead.Department__c. Set manually; Zoom does not send it. Leads are created by the scheduled sync only when Department and Admission Year are both set.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Set this and Admission Year so the scheduled sync can create or update Leads for this session's registrants.</inlineHelpText>
+    <label>Department</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Undergraduation</fullName>
+                <default>false</default>
+                <label>Undergraduation</label>
+            </value>
+            <value>
+                <fullName>Graduation</fullName>
+                <default>false</default>
+                <label>Graduation</label>
+            </value>
+            <value>
+                <fullName>Masters</fullName>
+                <default>false</default>
+                <label>Masters</label>
+            </value>
+            <value>
+                <fullName>Phd</fullName>
+                <default>false</default>
+                <label>PhD</label>
+            </value>
+            <value>
+                <fullName>Executive_Education</fullName>
+                <default>false</default>
+                <label>Executive Education</label>
+            </value>
+            <value>
+                <fullName>CDC</fullName>
+                <default>false</default>
+                <label>Career Development Centre</label>
+            </value>
+            <value>
+                <fullName>CLeF</fullName>
+                <default>false</default>
+                <label>CLeF</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

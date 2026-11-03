@@ -7,6 +7,9 @@
         <members>ZoomConfig</members>
         <members>ZoomEventService</members>
         <members>ZoomIntegrationTest</members>
+        <members>ZoomLeadQueueable</members>
+        <members>ZoomLeadService</members>
+        <members>ZoomLeadServiceTest</members>
         <members>ZoomLogger</members>
         <members>ZoomLoggerTest</members>
         <members>ZoomSelector</members>
@@ -36,6 +39,11 @@
     </types>
     <types>
         <members>FeatureFlag__mdt.IsEnabled__c</members>
+        <members>Zoom_Config__mdt.Allowed_Host_Ids__c</members>
+        <members>Lead.Multi_Select_Lead_Source__c</members>
+        <members>Zoom_Registration__c.Lead_Status__c</members>
+        <members>Zoom_Webinar__c.Admission_Year__c</members>
+        <members>Zoom_Webinar__c.Department__c</members>
         <members>Zoom_Webinar__c.Type__c</members>
         <name>CustomField</name>
     </types>
@@ -75,11 +83,28 @@
     </types>
     <types>
         <members>ZOOM_ERROR_ALERT_EMAIL</members>
+        <members>ZOOM_SESSION_SETUP_EMAIL</members>
         <name>CustomLabel</name>
     </types>
     <types>
         <members>API_Log_Notify_Zoom_Integration_Errors</members>
+        <members>Zoom_Session_Notify_New_Session_Setup</members>
         <name>Flow</name>
+    </types>
+    <types>
+        <members>Lead.CDC</members>
+        <members>Lead.CLeF</members>
+        <members>Lead.Executive_Education</members>
+        <members>Lead.Graduation</members>
+        <members>Lead.Masters</members>
+        <members>Lead.Phd</members>
+        <members>Lead.Temp</members>
+        <members>Lead.Undergraduation</members>
+        <name>RecordType</name>
+    </types>
+    <types>
+        <members>LeadSource</members>
+        <name>StandardValueSet</name>
     </types>
     <version>64.0</version>
 </Package>

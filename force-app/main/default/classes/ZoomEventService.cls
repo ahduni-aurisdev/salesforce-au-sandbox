@@ -1,16 +1,16 @@
 /**
  * @description Applies Zoom webinar and meeting events (webhook payloads or API data) to Zoom_Webinar__c
- *              ("Zoom Session") and Zoom_Registration__c, matches each person to a Lead or Contact by email
- *              and logs a completed Task on that record ("Zoom Webinar Registered" / "Zoom Meeting Attended" ...).
- *              Webinar events are ignored unless FeatureFlag Zoom_Webinars is enabled, and meeting events unless
- *              FeatureFlag Zoom_Meetings is enabled.
+ *              ("Zoom Session") and Zoom_Registration__c. New registrations and walk-ins start in Lead Status
+ *              "Pending setup"; Leads and Tasks are created later by the scheduled sync (ZoomLeadQueueable /
+ *              ZoomLeadService), never here. Webinar events are ignored unless FeatureFlag Zoom_Webinars is
+ *              enabled, and meeting events unless FeatureFlag Zoom_Meetings is enabled.
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.3
- * @lastModified 2026-11-02
+ * @version 1.4
+ * @lastModified 2026-11-03
  */
 // System mode is intentional: events arrive through the Zoom webhook, which runs as the Site guest user
-// with no access to Zoom, Lead, Contact or Task records, and through the scheduled sync. Callers are
+// with no access to Zoom records, and through the scheduled sync. Callers are
 // authenticated by the Zoom HMAC signature (ZoomWebhook) and no record data is returned to them.
 public without sharing class ZoomEventService {
     public static final String TYPE_WEBINAR = 'Webinar';
@@ -44,13 +44,10 @@ public without sharing class ZoomEventService {
     private static final String ACTION_PARTICIPANT_JOINED = 'participant_joined';
     private static final String ACTION_PARTICIPANT_LEFT = 'participant_left';
 
-    private static final String TASK_STATUS_COMPLETED = 'Completed';
-    private static final String TASK_PRIORITY_NORMAL = 'Normal';
-    private static final String DISPLAY_DATE_FORMAT = 'dd MMM yyyy hh:mm a';
-    private static final String USER_ID_PREFIX = '005';
     private static final String UNKNOWN_PERSON = 'unknown';
     private static final Integer MAX_NAME_LENGTH = 80;
     private static final Integer MAX_TEXT_LENGTH = 255;
+    private static final Integer MAX_NAME_PART_LENGTH = 120;
     private static final Integer MAX_ANSWERS_LENGTH = 32768;
     private static final Long MILLIS_PER_MINUTE = 60000;
     private static final String DUPLICATE_VALUE = 'DUPLICATE_VALUE';
@@ -85,7 +82,7 @@ public without sharing class ZoomEventService {
         if (type == null || obj == null) {
             return;
         }
-        if (!isTypeEnabled(type)) {
+        if (!isTypeEnabled(type) || !isAllowedHost(obj)) {
             return;
         }
         String action = event.substringAfter('.');
@@ -120,6 +117,26 @@ public without sharing class ZoomEventService {
                 applyLeft(session, person);
             }
         }
+    }
+
+    /**
+     * @description True when the event's host is in Zoom_Config Allowed_Host_Ids__c (or no hosts are configured).
+     *              The Zoom app receives events for every meeting on the university account (classes, IT Helpdesk ...);
+     *              only the admissions host's sessions belong in Salesforce. An event without host_id is accepted only
+     *              for a session Salesforce already holds, which was itself accepted by host.
+     */
+    @TestVisible
+    private static Boolean isAllowedHost(Map<String, Object> obj) {
+        Set<String> allowedHostIds = ZoomConfig.allowedHostIds();
+        if (allowedHostIds.isEmpty()) {
+            return true;
+        }
+        String hostId = str(obj.get('host_id'));
+        if (hostId != null) {
+            return allowedHostIds.contains(hostId);
+        }
+        String zoomId = str(obj.get('id'));
+        return zoomId != null && ZoomSelector.selectSessionsByZoomIds(new Set<String>{ zoomId }).containsKey(zoomId);
     }
 
     /** True when the feature flag for this session type (Webinar or Meeting) is enabled. */
@@ -204,10 +221,9 @@ public without sharing class ZoomEventService {
 
     /**
      * @description Registers or marks attendance for a batch of people on one saved session.
-     *              Bulk-safe: 3 SOQL (registrations, Leads, Contacts) and 2 DML (Tasks, registrations) per call.
+     *              Bulk-safe: 1 SOQL (registrations) and 1 DML (registrations) per call.
      *              A DUPLICATE_VALUE on the registration key (a concurrent event inserted the same person) rolls back
-     *              this attempt, Tasks included, and retries once against the now-existing rows, so Tasks are never
-     *              created twice.
+     *              this attempt and retries once against the now-existing rows.
      */
     public static void applyPeople(Zoom_Webinar__c session, List<Person> people, Boolean fromRegistration) {
         Savepoint beforeApply = Database.setSavepoint();
@@ -245,22 +261,17 @@ public without sharing class ZoomEventService {
 
     private static void applyPeopleOnce(Zoom_Webinar__c session, List<Person> people, Boolean fromRegistration) {
         Set<String> keys = new Set<String>();
-        Set<String> emails = new Set<String>();
         for (Person person : people) {
             keys.add(keyOf(session.Webinar_Id__c, person));
-            if (person.email != null) {
-                emails.add(person.email.toLowerCase());
-            }
         }
         Map<String, Zoom_Registration__c> byKey = ZoomSelector.selectRegistrationsByKeys(keys);
-        Map<String, SObject> matches = ZoomSelector.selectPeopleByEmail(emails);
-        Map<Id, Id> ownerByPersonId = new Map<Id, Id>();
 
         for (Person person : people) {
             String key = keyOf(session.Webinar_Id__c, person);
             Zoom_Registration__c registration = byKey.get(key);
             if (registration == null) {
-                registration = new Zoom_Registration__c(Registration_Key__c = key, Webinar__c = session.Id, Is_Registered__c = false);
+                registration = new Zoom_Registration__c(Registration_Key__c = key, Webinar__c = session.Id, Is_Registered__c = false,
+                    Lead_Status__c = ZoomLeadService.LEAD_STATUS_PENDING);
                 byKey.put(key, registration);
             }
             copyContactDetails(person, registration);
@@ -269,22 +280,11 @@ public without sharing class ZoomEventService {
             } else {
                 applyAttendance(person, registration);
             }
-            SObject match = person.email == null ? null : matches.get(person.email.toLowerCase());
-            if (match != null) {
-                registration.Is_Matched__c = true;
-                if (match instanceof Lead) {
-                    registration.Lead__c = match.Id;
-                } else {
-                    registration.Contact__c = match.Id;
-                }
-                ownerByPersonId.put(match.Id, (Id) match.get('OwnerId'));
-            }
         }
         List<Zoom_Registration__c> registrations = new List<Zoom_Registration__c>();
         for (String key : keys) {
             registrations.add(byKey.get(key));
         }
-        createActivities(session, registrations, ownerByPersonId);
         simulateDuplicateForTest();
         upsert registrations Registration_Key__c;
     }
@@ -310,6 +310,12 @@ public without sharing class ZoomEventService {
         }
         if (person.registrantId != null) {
             registration.Registrant_Id__c = person.registrantId;
+        }
+        // Walk-ins only have a display name: the last word becomes the last name, the rest the first name.
+        if (registration.First_Name__c == null && registration.Last_Name__c == null && String.isNotBlank(person.participantName)) {
+            List<String> parts = ZoomLeadService.splitName(person.participantName);
+            registration.First_Name__c = parts[0] == null ? null : parts[0].left(MAX_NAME_PART_LENGTH);
+            registration.Last_Name__c = parts[1].left(MAX_NAME_PART_LENGTH);
         }
     }
 
@@ -363,59 +369,6 @@ public without sharing class ZoomEventService {
         }
         registration.Last_Left_At__c = person.leftAt;
         update registration;
-    }
-
-    /** Inserts one Task per new registration / attendance and stores its ID so repeated events never duplicate it. */
-    private static void createActivities(Zoom_Webinar__c session, List<Zoom_Registration__c> registrations, Map<Id, Id> ownerByPersonId) {
-        if (ZoomConfig.get().Create_Activities__c != true) {
-            return;
-        }
-        String label = 'Zoom ' + (session.Type__c == null ? TYPE_WEBINAR : session.Type__c);
-        String topic = session.Name == null ? session.Webinar_Id__c : session.Name;
-        List<Task> tasks = new List<Task>();
-        List<Zoom_Registration__c> taskRegistrations = new List<Zoom_Registration__c>();
-        List<Boolean> isAttendanceTask = new List<Boolean>();
-        for (Zoom_Registration__c registration : registrations) {
-            Id whoId = registration.Lead__c != null ? registration.Lead__c : registration.Contact__c;
-            if (whoId == null) {
-                continue;
-            }
-            if (registration.Is_Registered__c == true && registration.Registration_Task_Id__c == null) {
-                tasks.add(newTask(whoId, ownerByPersonId.get(whoId), label + ' Registered: ' + topic,
-                    'Registered for ' + label + ' "' + topic + '"'
-                    + (session.Start_Time__c == null ? '' : ' scheduled on ' + session.Start_Time__c.format(DISPLAY_DATE_FORMAT)) + '.'));
-                taskRegistrations.add(registration);
-                isAttendanceTask.add(false);
-            }
-            if (registration.Attended__c == true && registration.Attendance_Task_Id__c == null) {
-                tasks.add(newTask(whoId, ownerByPersonId.get(whoId), label + ' Attended: ' + topic,
-                    'Joined ' + label + ' "' + topic + '"'
-                    + (registration.First_Joined_At__c == null ? '' : ' at ' + registration.First_Joined_At__c.format(DISPLAY_DATE_FORMAT)) + '.'));
-                taskRegistrations.add(registration);
-                isAttendanceTask.add(true);
-            }
-        }
-        if (tasks.isEmpty()) {
-            return;
-        }
-        insert tasks;
-        for (Integer i = 0; i < tasks.size(); i++) {
-            if (isAttendanceTask[i]) {
-                taskRegistrations[i].Attendance_Task_Id__c = tasks[i].Id;
-            } else {
-                taskRegistrations[i].Registration_Task_Id__c = tasks[i].Id;
-            }
-        }
-    }
-
-    /** The Task goes to the Lead / Contact owner when that owner is a user (a queue cannot own a Task). */
-    private static Task newTask(Id whoId, Id recordOwnerId, String subject, String description) {
-        Task activity = new Task(WhoId = whoId, Subject = subject.left(MAX_TEXT_LENGTH), Description = description,
-            Status = TASK_STATUS_COMPLETED, Priority = TASK_PRIORITY_NORMAL, ActivityDate = Date.today());
-        if (recordOwnerId != null && String.valueOf(recordOwnerId).startsWith(USER_ID_PREFIX)) {
-            activity.OwnerId = recordOwnerId;
-        }
-        return activity;
     }
 
     private static Person personFromRegistrant(Map<String, Object> registrant, String action, Object eventTimestamp) {

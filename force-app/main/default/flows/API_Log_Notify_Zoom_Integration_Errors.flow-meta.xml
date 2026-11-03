@@ -39,7 +39,7 @@
         <nameSegment>emailSimple</nameSegment>
     </actionCalls>
     <apiVersion>64.0</apiVersion>
-    <description>v1 (2026-11-02): Sends an email to the address in Custom Label ZOOM_ERROR_ALERT_EMAIL whenever the Zoom integration logs a failure to API_Log__c (Apex class ZoomWebhook, ZoomWebinarSync or ZoomApiService, Log Type Failed). If the email cannot be sent, the fault path logs it to API_Log__c with Log Name ZoomErrorAlert, which does not re-trigger this Flow. Logs never contain registrant personal data.</description>
+    <description>v2 (2026-11-03): adds ZoomLeadService (Lead creation step) to the filter. v1 (2026-11-02): Sends an email to the address in Custom Label ZOOM_ERROR_ALERT_EMAIL whenever the Zoom integration logs a failure to API_Log__c (Apex class ZoomWebhook, ZoomWebinarSync, ZoomApiService or ZoomLeadService, Log Type Failed). If the email cannot be sent, the fault path logs it to API_Log__c with Log Name ZoomErrorAlert, which does not re-trigger this Flow. Logs never contain registrant personal data.</description>
     <environments>Default</environments>
     <formulas>
         <description>Email subject naming the failing Zoom component.</description>
@@ -119,7 +119,7 @@
         <connector>
             <targetReference>Send_Zoom_Error_Email</targetReference>
         </connector>
-        <filterFormula>AND(TEXT({!$Record.Log_Type__c}) = &apos;Failed&apos;, OR({!$Record.Apex_Class_Name__c} = &apos;ZoomWebhook&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomWebinarSync&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomApiService&apos;))</filterFormula>
+        <filterFormula>AND(TEXT({!$Record.Log_Type__c}) = &apos;Failed&apos;, OR({!$Record.Apex_Class_Name__c} = &apos;ZoomWebhook&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomWebinarSync&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomApiService&apos;, {!$Record.Apex_Class_Name__c} = &apos;ZoomLeadService&apos;))</filterFormula>
         <object>API_Log__c</object>
         <recordTriggerType>Create</recordTriggerType>
         <triggerType>RecordAfterSave</triggerType>

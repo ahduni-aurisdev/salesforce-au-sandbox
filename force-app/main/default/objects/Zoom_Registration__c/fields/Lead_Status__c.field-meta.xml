@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lead_Status__c</fullName>
+    <description>Lead processing state, set by the Zoom integration. Pending setup: waiting for the session's Department and Admission Year (or the next scheduled sync). Lead created / Lead updated: linked to a Lead. No contact details: no email and no phone, so no Lead. Error: the Lead or its Task could not be saved (see API Log, Log Name ZoomLeadService); set back to Pending setup to retry.</description>
+    <externalId>false</externalId>
+    <label>Lead Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Pending setup</fullName>
+                <default>false</default>
+                <label>Pending setup</label>
+            </value>
+            <value>
+                <fullName>Lead created</fullName>
+                <default>false</default>
+                <label>Lead created</label>
+            </value>
+            <value>
+                <fullName>Lead updated</fullName>
+                <default>false</default>
+                <label>Lead updated</label>
+            </value>
+            <value>
+                <fullName>No contact details</fullName>
+                <default>false</default>
+                <label>No contact details</label>
+            </value>
+            <value>
+                <fullName>Error</fullName>
+                <default>false</default>
+                <label>Error</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

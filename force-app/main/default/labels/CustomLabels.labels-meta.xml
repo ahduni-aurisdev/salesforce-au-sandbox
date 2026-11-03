@@ -8,4 +8,12 @@
         <shortDescription>Zoom error alert recipient</shortDescription>
         <value>salescloudsupport@ahduni.edu.in</value>
     </labels>
+    <labels>
+        <fullName>ZOOM_SESSION_SETUP_EMAIL</fullName>
+        <categories>Zoom Integration</categories>
+        <language>en_US</language>
+        <protected>false</protected>
+        <shortDescription>Zoom new session setup recipient</shortDescription>
+        <value>salescloudsupport@ahduni.edu.in</value>
+    </labels>
 </CustomLabels>

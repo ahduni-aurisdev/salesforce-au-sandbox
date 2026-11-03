@@ -2,43 +2,45 @@
  * @description Tests for ZoomSelector.
  * @author AU Development Team
  * @date 2026-11-02
- * @version 1.0
- * @lastModified 2026-11-02
+ * @version 1.1
+ * @lastModified 2026-11-03
  */
 @IsTest
 private class ZoomSelectorTest {
     private static final String SHARED_EMAIL = 'shared.selector@zoomtest.com';
     private static final String VALID_MOBILE = '9876543210';
+    private static final String YEAR = 'Admission Year - 2026';
+
+    private static Id mastersRecordTypeId() {
+        return Schema.SObjectType.Lead.getRecordTypeInfosByDeveloperName().get('Masters').getRecordTypeId();
+    }
 
     @IsTest
     static void emptyInputsReturnEmptyResults() {
         System.assert(ZoomSelector.selectSessionsByZoomIds(new Set<String>()).isEmpty(), 'No IDs must return no sessions');
         System.assert(ZoomSelector.selectRegistrationsByKeys(null).isEmpty(), 'No keys must return no registrations');
-        System.assert(ZoomSelector.selectPeopleByEmail(new Set<String>()).isEmpty(), 'No emails must return no people');
+        System.assert(ZoomSelector.selectLeadOwners(null).isEmpty(), 'No Lead IDs must return no owners');
+        System.assert(ZoomSelector.selectLeadCandidates(new Set<Id>(), new Set<String>{ YEAR }, new Set<String>{ SHARED_EMAIL },
+            new Set<String>()).isEmpty(), 'No record types must return no candidates');
+        System.assert(ZoomSelector.selectLeadCandidates(new Set<Id>{ mastersRecordTypeId() }, new Set<String>{ YEAR },
+            new Set<String>(), new Set<String>()).isEmpty(), 'No email and no phone must return no candidates');
     }
 
     @IsTest
-    static void leadWinsOverContactAndOldestLeadWins() {
-        Lead newer = new Lead(LastName = 'Newer', Company = 'X', Email = SHARED_EMAIL);
-        Lead older = new Lead(LastName = 'Older', Company = 'X', Email = SHARED_EMAIL);
-        insert new List<Lead>{ newer, older };
+    static void leadCandidatesFilteredByRecordTypeYearAndContact() {
+        Id mastersRt = mastersRecordTypeId();
+        Lead older = new Lead(LastName = 'Older', Email = SHARED_EMAIL, RecordTypeId = mastersRt, Admission_Year__c = YEAR);
+        Lead newer = new Lead(LastName = 'Newer', MobilePhone = VALID_MOBILE, RecordTypeId = mastersRt, Admission_Year__c = YEAR);
+        Lead otherYear = new Lead(LastName = 'Other year', Email = SHARED_EMAIL, RecordTypeId = mastersRt,
+            Admission_Year__c = 'Admission Year - 2027');
+        insert new List<Lead>{ older, newer, otherYear };
         Test.setCreatedDate(older.Id, Datetime.now().addDays(-5));
-        Test.setCreatedDate(newer.Id, Datetime.now().addDays(-1));
-        insert new Contact(LastName = 'Contact', Email = SHARED_EMAIL, MobilePhone = VALID_MOBILE);
 
-        Map<String, SObject> matches = ZoomSelector.selectPeopleByEmail(new Set<String>{ SHARED_EMAIL });
+        List<Lead> candidates = ZoomSelector.selectLeadCandidates(new Set<Id>{ mastersRt }, new Set<String>{ YEAR },
+            new Set<String>{ SHARED_EMAIL }, new Set<String>{ VALID_MOBILE });
 
-        System.assertEquals(older.Id, matches.get(SHARED_EMAIL).Id, 'The oldest unconverted Lead must win over newer Leads and Contacts');
-    }
-
-    @IsTest
-    static void contactMatchedWhenNoLead() {
-        Contact contact = new Contact(LastName = 'Only', Email = 'only.contact@zoomtest.com', MobilePhone = VALID_MOBILE);
-        insert contact;
-
-        Map<String, SObject> matches = ZoomSelector.selectPeopleByEmail(new Set<String>{ 'only.contact@zoomtest.com' });
-
-        System.assertEquals(contact.Id, matches.get('only.contact@zoomtest.com').Id, 'A Contact must match when no Lead has the email');
+        System.assertEquals(2, candidates.size(), 'Only Leads of the same record type and year with a matching email or phone must return');
+        System.assertEquals(older.Id, candidates[0].Id, 'Candidates must be ordered oldest first');
     }
 
     @IsTest
