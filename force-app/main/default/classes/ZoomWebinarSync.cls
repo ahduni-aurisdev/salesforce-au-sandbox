@@ -11,8 +11,8 @@
  *              ZoomWebinarSyncScheduler.schedule() runs it every 2 hours.
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.2
- * @lastModified 2026-11-02
+ * @version 1.3
+ * @lastModified 2026-11-03
  */
 // System mode is intentional: a scheduled system job that syncs every Zoom session regardless of who scheduled it.
 public without sharing class ZoomWebinarSync implements Queueable, Database.AllowsCallouts {
@@ -161,10 +161,12 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         if (!ZoomEventService.isTypeEnabled(isMeeting ? ZoomEventService.TYPE_MEETING : ZoomEventService.TYPE_WEBINAR)) {
             return;
         }
-        String zoomId = EncodingUtil.urlEncode(isMeeting ? sessionKey.removeStart(MEETING_PREFIX) : sessionKey, UTF8);
+        String rawZoomId = isMeeting ? sessionKey.removeStart(MEETING_PREFIX) : sessionKey;
+        String zoomId = EncodingUtil.urlEncode(rawZoomId, UTF8);
         String resource = isMeeting ? '/meetings/' : '/webinars/';
         String pastResource = isMeeting ? '/past_meetings/' : '/past_webinars/';
 
+        Zoom_Webinar__c existing = ZoomSelector.selectSessionsByZoomIds(new Set<String>{ rawZoomId }).get(rawZoomId);
         Map<String, Object> source = ZoomApiService.get(resource + zoomId);
         if (source.isEmpty()) {
             return;
@@ -172,11 +174,7 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         Zoom_Webinar__c session = ZoomEventService.sessionFromObject(source,
             isMeeting ? ZoomEventService.TYPE_MEETING : ZoomEventService.TYPE_WEBINAR);
         session.Last_Synced_At__c = Datetime.now();
-        if (session.End_Time__c != null && session.End_Time__c < Datetime.now()) {
-            session.Status__c = ZoomEventService.STATUS_ENDED;
-        } else if (session.Status__c == null) {
-            session.Status__c = ZoomEventService.STATUS_SCHEDULED;
-        }
+        session.Status__c = resolveStatus(existing == null ? null : existing.Status__c, session.End_Time__c);
 
         List<ZoomEventService.Person> registrants = fetchRegistrants(resource + zoomId + '/registrants', isMeeting);
         Map<String, ZoomEventService.Person> participants = new Map<String, ZoomEventService.Person>();
@@ -191,6 +189,22 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         if (!participants.isEmpty()) {
             ZoomEventService.applyPeople(session, participants.values(), false);
         }
+    }
+
+    /**
+     * @description Status never moves backwards: a session the webhook already marked Started, Ended or Deleted
+     *              keeps that status even when Zoom gives no end time (instant and recurring meetings have none).
+     *              A planned end time in the past moves Scheduled / Started forward to Ended.
+     */
+    @TestVisible
+    private static String resolveStatus(String currentStatus, Datetime plannedEnd) {
+        if (currentStatus == ZoomEventService.STATUS_DELETED) {
+            return currentStatus;
+        }
+        if (plannedEnd != null && plannedEnd < Datetime.now()) {
+            return ZoomEventService.STATUS_ENDED;
+        }
+        return currentStatus == null ? ZoomEventService.STATUS_SCHEDULED : currentStatus;
     }
 
     private static List<ZoomEventService.Person> fetchRegistrants(String path, Boolean isMeeting) {

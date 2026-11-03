@@ -310,6 +310,23 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
+    static void syncNeverMovesStatusBackwards() {
+        Datetime past = Datetime.now().addHours(-1);
+        Datetime future = Datetime.now().addHours(1);
+
+        System.assertEquals('Ended', ZoomWebinarSync.resolveStatus('Ended', null),
+            'An instant meeting the webhook marked Ended must stay Ended when Zoom gives no end time');
+        System.assertEquals('Started', ZoomWebinarSync.resolveStatus('Started', null), 'A started meeting must stay Started');
+        System.assertEquals('Ended', ZoomWebinarSync.resolveStatus('Ended', future),
+            'A meeting that ended early must stay Ended even if its planned end is in the future');
+        System.assertEquals('Deleted', ZoomWebinarSync.resolveStatus('Deleted', past), 'A deleted meeting must stay Deleted');
+        System.assertEquals('Ended', ZoomWebinarSync.resolveStatus('Started', past), 'A planned end in the past must move Started to Ended');
+        System.assertEquals('Ended', ZoomWebinarSync.resolveStatus('Scheduled', past), 'A planned end in the past must move Scheduled to Ended');
+        System.assertEquals('Scheduled', ZoomWebinarSync.resolveStatus(null, future), 'A new future meeting must be Scheduled');
+        System.assertEquals('Scheduled', ZoomWebinarSync.resolveStatus(null, null), 'A new meeting with no end time must be Scheduled');
+    }
+
+    @IsTest
     static void unknownAndEmptyEventsAreIgnored() {
         configure(true);
         Test.startTest();
