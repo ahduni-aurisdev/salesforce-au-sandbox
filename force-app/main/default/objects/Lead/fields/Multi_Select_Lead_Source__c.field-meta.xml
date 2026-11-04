@@ -282,6 +282,21 @@
                 <label>Info Session</label>
             </value>
             <value>
+                <fullName>Wonderchat</fullName>
+                <default>false</default>
+                <label>Wonderchat</label>
+            </value>
+            <value>
+                <fullName>Campus Visit</fullName>
+                <default>false</default>
+                <label>Campus Visit</label>
+            </value>
+            <value>
+                <fullName>TIME MBA Fairs</fullName>
+                <default>false</default>
+                <label>TIME MBA Fairs</label>
+            </value>
+            <value>
                 <fullName>Zoom</fullName>
                 <default>false</default>
                 <label>Zoom</label>

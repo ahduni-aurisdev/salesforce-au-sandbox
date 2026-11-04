@@ -7,6 +7,16 @@
         <label>Alumni</label>
     </standardValue>
     <standardValue>
+        <fullName>AURIS</fullName>
+        <default>false</default>
+        <label>AURIS</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Campus Visit</fullName>
+        <default>false</default>
+        <label>Campus Visit</label>
+    </standardValue>
+    <standardValue>
         <fullName>Career_360PGQueries</fullName>
         <default>false</default>
         <label>Career_360PGQueries</label>
@@ -50,6 +60,11 @@
         <fullName>Corporate Partner Visit</fullName>
         <default>false</default>
         <label>Corporate Partner Visit</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Counsellor</fullName>
+        <default>false</default>
+        <label>Counsellor</label>
     </standardValue>
     <standardValue>
         <fullName>Email</fullName>
@@ -155,6 +170,11 @@
         <fullName>Shiksha</fullName>
         <default>false</default>
         <label>Shiksha</label>
+    </standardValue>
+    <standardValue>
+        <fullName>TIME MBA Fairs</fullName>
+        <default>false</default>
+        <label>TIME MBA Fairs</label>
     </standardValue>
     <standardValue>
         <fullName>Virtual Webinar</fullName>
@@ -265,6 +285,11 @@
         <fullName>Website_UGQueries</fullName>
         <default>false</default>
         <label>Website_UGQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Wonderchat</fullName>
+        <default>false</default>
+        <label>Wonderchat</label>
     </standardValue>
     <standardValue>
         <fullName>Zoom</fullName>

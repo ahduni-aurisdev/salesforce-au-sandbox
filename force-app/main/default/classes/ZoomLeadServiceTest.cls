@@ -76,7 +76,7 @@ private class ZoomLeadServiceTest {
     @IsTest
     static void matchesExistingLeadByEmailAndPhoneAndFillsBlanksOnly() {
         configure();
-        Lead existing = [SELECT Id, Department__c FROM Lead WHERE Email = :emailOf(0)];
+        Lead existing = [SELECT Id, Department__c, LastName FROM Lead WHERE Email = :emailOf(0)];
         Zoom_Registration__c reg = registration(session().Id, emailOf(0).toUpperCase(), '+91 ' + phoneOf(0), 'Asha', 'Patel', true, true);
         insert reg;
 
@@ -92,7 +92,7 @@ private class ZoomLeadServiceTest {
         System.assertNotEquals(null, after.Phone, 'A blank Phone on an existing Lead must be filled');
         System.assertEquals(ORIGINAL_SOURCE, after.LeadSource, 'Lead Source of an existing Lead must never change');
         System.assertEquals(YEAR, after.Admission_Year__c, 'Admission Year of an existing Lead must never change');
-        System.assertEquals('Existing 0', after.LastName, 'A filled field must not be overwritten');
+        System.assertEquals(existing.LastName, after.LastName, 'A filled field must not be overwritten');
         System.assertEquals(existing.Department__c == null ? 'Masters' : existing.Department__c, after.Department__c,
             'A blank Department must be filled from the session');
         System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :existing.Id AND Subject = :'Zoom Meeting Registered: ' + TOPIC],

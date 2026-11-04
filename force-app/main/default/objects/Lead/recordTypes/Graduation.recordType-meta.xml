@@ -5,192 +5,15 @@
     <businessProcess>Graduation</businessProcess>
     <label>Graduation</label>
     <picklistValues>
-        <picklist>Admission_Year__c</picklist>
-        <values>
-            <fullName>Admission Year - 2023</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2024</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2025</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2026</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2027</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2028</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Admission Year - 2029</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Not Specified</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
-        <picklist>GenderIdentity</picklist>
-        <values>
-            <fullName>Female</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Male</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Nonbinary</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Not Listed</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
-        <picklist>Industry</picklist>
-        <values>
-            <fullName>Agriculture</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Apparel</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Banking</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Biotechnology</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Chemicals</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Communications</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Construction</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Consulting</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Education</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Electronics</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Energy</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Engineering</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Entertainment</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Environmental</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Finance</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Food %26 Beverage</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Government</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Healthcare</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Hospitality</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Insurance</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Machinery</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Manufacturing</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Media</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Not For Profit</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Other</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Recreation</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Retail</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Shipping</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Technology</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Telecommunications</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Transportation</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Utilities</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
         <picklist>LeadSource</picklist>
+        <values>
+            <fullName>AURIS</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Campus Visit</fullName>
+            <default>false</default>
+        </values>
         <values>
             <fullName>Career Fair</fullName>
             <default>false</default>
@@ -209,6 +32,10 @@
         </values>
         <values>
             <fullName>Collegedunia</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Counsellor</fullName>
             <default>false</default>
         </values>
         <values>
@@ -260,6 +87,10 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>TIME MBA Fairs</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Walk-in</fullName>
             <default>false</default>
         </values>
@@ -304,6 +135,10 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>Wonderchat</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Zoom</fullName>
             <default>false</default>
         </values>
@@ -316,6 +151,10 @@
         </values>
         <values>
             <fullName>Alumni</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Campus Visit</fullName>
             <default>false</default>
         </values>
         <values>
@@ -431,6 +270,10 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>TIME MBA Fairs</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Virtual Webinar</fullName>
             <default>false</default>
         </values>
@@ -495,76 +338,15 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>Wonderchat</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>careers360</fullName>
             <default>false</default>
         </values>
         <values>
             <fullName>Zoom</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
-        <picklist>Name</picklist>
-        <values>
-            <fullName>Dr%2E</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Mr%2E</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Mrs%2E</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Ms%2E</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Prof%2E</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
-        <picklist>Pronouns</picklist>
-        <values>
-            <fullName>He%2FHim</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>He%2FThey</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Not Listed</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>She%2FHer</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>She%2FThey</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>They%2FThem</fullName>
-            <default>false</default>
-        </values>
-    </picklistValues>
-    <picklistValues>
-        <picklist>Rating</picklist>
-        <values>
-            <fullName>Cold</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Hot</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Warm</fullName>
             <default>false</default>
         </values>
     </picklistValues>

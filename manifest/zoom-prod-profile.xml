@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Zoom integration - Production step 2 of 2.
+    Guest profile of the Zoom_Webhook Site. Deploy only after step 1 created the Site
+    (Salesforce creates "Zoom Webhook Profile" together with the Site).
+-->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Zoom Webhook Profile</members>
+        <name>Profile</name>
+    </types>
+    <version>64.0</version>
+</Package>

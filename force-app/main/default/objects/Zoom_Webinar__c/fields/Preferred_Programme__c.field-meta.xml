@@ -56,7 +56,7 @@
             <value>
                 <fullName>The Entrepreneurship &amp; Family Business Programme</fullName>
                 <default>false</default>
-                <label>The Family Business and Entrepreneurship Programme</label>
+                <label>The Entrepreneurship &amp; Family Business Programme</label>
             </value>
             <value>
                 <fullName>Bachelor of Arts (Honours)</fullName>
@@ -274,14 +274,19 @@
                 <label>MTech in VLSI, Microelectronics and Semiconductors</label>
             </value>
             <value>
-                <fullName>MS in Health Data Science</fullName>
+                <fullName>Building Digital Factories</fullName>
                 <default>false</default>
-                <label>MS in Health Data Science</label>
+                <label>Building Digital Factories</label>
             </value>
             <value>
-                <fullName>Digital Marketing Online Programme</fullName>
+                <fullName>Master of Science in Health Data Science</fullName>
                 <default>false</default>
-                <label>Digital Marketing Online Programme</label>
+                <label>Master of Science in Health Data Science</label>
+            </value>
+            <value>
+                <fullName>Bachelor of Science in Economics (Honours)</fullName>
+                <default>false</default>
+                <label>Bachelor of Science in Economics (Honours)</label>
             </value>
         </valueSetDefinition>
             <valueSettings>
@@ -592,8 +597,27 @@
                 <valueName>MTech in VLSI, Microelectronics and Semiconductors</valueName>
             </valueSettings>
             <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
                 <controllingFieldValue>Masters</controllingFieldValue>
-                <valueName>MS in Health Data Science</valueName>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Building Digital Factories</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <valueName>Master of Science in Health Data Science</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Science in Economics (Honours)</valueName>
             </valueSettings>
     </valueSet>
 </CustomField>
