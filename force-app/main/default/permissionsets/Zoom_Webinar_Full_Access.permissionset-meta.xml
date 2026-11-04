@@ -187,6 +187,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Zoom_Webinar__c.Preferred_Programme__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Zoom_Webinar__c.Duration_Minutes__c</field>
         <readable>true</readable>
     </fieldPermissions>

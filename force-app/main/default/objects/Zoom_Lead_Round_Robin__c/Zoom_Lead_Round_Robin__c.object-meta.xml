@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>List</customSettingsType>
+    <description>Round-robin position for owners of new Zoom Leads (ZoomLeadService). One row per pool: ZOOM_OWNER (Zoom_Config owner users) and one per Lead record type (department users from LeadAssignmentRule__mdt). Maintained by the integration. Do not edit by hand.</description>
+    <enableFeeds>false</enableFeeds>
+    <label>Zoom Lead Round Robin</label>
+    <visibility>Protected</visibility>
+</CustomObject>

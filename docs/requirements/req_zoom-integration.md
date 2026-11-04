@@ -94,6 +94,21 @@ See `docs/zoom-integration-development.md` for the full design. Summary:
 - `Zoom_Config__mdt.Allowed_Host_Ids__c` (comma-separated Zoom host IDs) filters webhook events and synced sessions; blank = accept all. Events without host_id are applied only to sessions Salesforce already holds.
 - Admissions host `virtual.admissionsoffice@ahduni.edu.in` = host ID `Vj58A57CQtWF3eN4trJaQg` (read from the Zoom meetings API, 17 upcoming meetings). Value is entered in Setup on Zoom_Config.Default in each org (record not in source control because it holds secrets).
 
+### Decision — Zoom Lead owner and default session values (2026-11-04, user; replaces "Owner" above)
+- **Owner of new Zoom Leads:** active users whose User Department, Role and Profile match `Zoom_Config__mdt.Lead_Owner_Department__c` / `Lead_Owner_Role__c` / `Lead_Owner_Profile__c` (UAT values: Undergraduation / Associate Director of Outreach / Top Level Management = Shraddha Singaurey today). Several matches = round-robin, oldest user first; the position is kept in custom setting `Zoom_Lead_Assignment__c.Next_Index__c`. Applies to every department. Set right after insert, because `LeadCombinedTrigger` assigns the owner during insert. Existing (matched) Leads keep their owner.
+- **No matching user or blank criteria:** the trigger's owner is kept, no error email (user choice).
+- **Default Department / Admission Year:** read from `Zoom_Config__mdt.Default_Department__c` / `Default_Admission_Year__c` (not hardcoded, user: "should automatically fetch from metadata"); applied only when a session is first created (webhook or sync) and the field is blank. Invalid values are ignored. Existing sessions are not changed.
+- **New-session email:** left as is (sent only when Department or Year is still blank, i.e. defaults missing or invalid).
+- Reason: admissions staff do not set Department and Year on every session; one outreach owner handles Zoom Leads.
+
+### Decision — Zoom Lead owner by department and session Preferred Programme (2026-11-04, user; extends the decision above)
+- **Undergraduation:** Zoom_Config owner users (Shraddha Singaurey), round-robin.
+- **Other departments:** if the session's Preferred Programme has users in `LeadAssignmentRule__mdt`, the Lead trigger's programme rule keeps the owner (e.g. MBA -> Farheen / Khushi). Otherwise round-robin over all active users listed for that department in `LeadAssignmentRule__mdt` (user: "use other department assignment rule but no programme then default one"). Department with no users there (Graduation) -> Zoom_Config owner. No user at all -> trigger owner kept.
+- **`Zoom_Webinar__c.Preferred_Programme__c`:** optional, set by hand, dependent on Department with the programme lists of each Lead record type (Salesforce rejects a Lead whose programme is not allowed on its record type). Written to new Leads; filled on existing Leads only when blank. "Digital Marketing Online Programme" is on no Lead record type, so not selectable. Keep in line with `Lead.Preferred_Programme__c` when programmes change.
+- **Round-robin positions:** List custom setting `Zoom_Lead_Round_Robin__c` (row `ZOOM_OWNER` + one per department). Replaces `Zoom_Lead_Assignment__c` (unused, to be deleted later).
+- **CDC:** not used for Zoom (user confirmed).
+- **UAT note:** sandbox user emails end in `.invalid`, so department users from `LeadAssignmentRule__mdt` are not found in UAT and Leads fall back to the Zoom_Config owner.
+
 ### Known remaining deviations from project standards
 - Zoom payloads are parsed with `JSON.deserializeUntyped`, not typed wrapper classes
 - No cross-transaction token cache (Platform Cache)

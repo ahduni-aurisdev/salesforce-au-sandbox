@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lead_Owner_Department__c</fullName>
+    <description>Owner of new Zoom Leads: active users whose User Department equals this value AND whose Role and Profile match the two Lead Owner fields. Several matching users = round-robin (oldest user first). Any of the three blank, or no matching user = the owner set by the Lead trigger is kept.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>User Department, e.g. Undergraduation. All three Lead Owner fields must be filled.</inlineHelpText>
+    <label>Lead Owner Department</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

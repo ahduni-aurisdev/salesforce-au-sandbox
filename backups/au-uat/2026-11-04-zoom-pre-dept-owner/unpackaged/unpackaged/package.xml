@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ZoomLeadService</members>
+        <members>ZoomLeadServiceTest</members>
+        <members>ZoomSelector</members>
+        <members>ZoomSelectorTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Zoom_Webinar__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Zoom_Webinar__c-Zoom Webinar Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Zoom_Webinar_Full_Access</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>65.0</version>
+</Package>

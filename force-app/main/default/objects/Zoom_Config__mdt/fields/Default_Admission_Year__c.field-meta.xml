@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Default_Admission_Year__c</fullName>
+    <description>Admission Year set on every new Zoom session (created by webhook or sync) when it has none. Must be a Zoom Session Admission Year value, e.g. Admission Year - 2027. Blank or invalid = no default (the new-session setup email is sent).</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>e.g. Admission Year - 2027. Applied only to new sessions.</inlineHelpText>
+    <label>Default Admission Year</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

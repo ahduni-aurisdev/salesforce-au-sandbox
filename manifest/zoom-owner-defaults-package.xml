@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ZoomEventService</members>
+        <members>ZoomIntegrationTest</members>
+        <members>ZoomLeadService</members>
+        <members>ZoomLeadServiceTest</members>
+        <members>ZoomSelector</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Zoom_Lead_Assignment__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Zoom_Config__mdt.Default_Admission_Year__c</members>
+        <members>Zoom_Config__mdt.Default_Department__c</members>
+        <members>Zoom_Config__mdt.Lead_Owner_Department__c</members>
+        <members>Zoom_Config__mdt.Lead_Owner_Profile__c</members>
+        <members>Zoom_Config__mdt.Lead_Owner_Role__c</members>
+        <members>Zoom_Lead_Assignment__c.Next_Index__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Zoom_Config__mdt-Zoom Config Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>64.0</version>
+</Package>

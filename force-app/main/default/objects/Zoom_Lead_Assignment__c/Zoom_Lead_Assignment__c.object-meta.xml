@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>Hierarchy</customSettingsType>
+    <description>Round-robin position for the owner of new Zoom Leads (ZoomLeadService). Org default record only; maintained by the integration. Do not edit by hand.</description>
+    <enableFeeds>false</enableFeeds>
+    <label>Zoom Lead Assignment</label>
+    <visibility>Protected</visibility>
+</CustomObject>

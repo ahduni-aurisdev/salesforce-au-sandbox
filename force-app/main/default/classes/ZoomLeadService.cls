@@ -11,21 +11,25 @@
  *                neither                -> no Lead, Lead Status "No contact details"
  *              The oldest matching Lead wins.
  *
- *              New Lead: Record Type and Department__c from the session Department, Admission_Year__c, name, email,
- *              mobile, Phone in the website format (country code + number, e.g. 91 + 10 digits), LeadSource and
- *              Multi_Select_Lead_Source__c = Zoom. Phone matters: the org Flow "Automation for Unqualified Status
- *              Incorrect Details" marks a Lead Unqualified when the standard Phone field is blank or not 10-15 characters. The owner comes from the Lead trigger
- *              (department round-robin), as for website Leads; Assignment Rules are not run.
- *              Existing Lead: only blank First Name, Email, Mobile, Phone and Department__c are filled; Lead Source,
- *              Most Recent Lead Source and Admission Year are never changed.
+ *              New Lead: Record Type and Department__c from the session Department, Admission_Year__c, the session's
+ *              Preferred Programme (when set), name, email, mobile, Phone in the website format (country code + number,
+ *              e.g. 91 + 10 digits), LeadSource and Multi_Select_Lead_Source__c = Zoom. Phone matters: the org Flow
+ *              "Automation for Unqualified Status Incorrect Details" marks a Lead Unqualified when the standard Phone
+ *              field is blank or not 10-15 characters.
+ *              Owner of a new Lead (see assignOwners): Undergraduation -> Zoom_Config owner users; other departments ->
+ *              the Lead trigger's programme rule when the programme has users in LeadAssignmentRule__mdt, otherwise the
+ *              department's users in that metadata, otherwise the Zoom_Config owner users; all round-robin. When no
+ *              user is found the owner set by the Lead trigger is kept. Assignment Rules are not run.
+ *              Existing Lead: only blank First Name, Email, Mobile, Phone, Department__c and Preferred_Programme__c are
+ *              filled; owner, Lead Source, Most Recent Lead Source and Admission Year are never changed.
  *
- *              Governor use per call (up to BATCH_SIZE registrations): 2 SOQL, up to 4 DML statements + 1 log insert.
+ *              Governor use per call (up to BATCH_SIZE registrations): 4 SOQL, up to 6 DML statements + 1 log insert.
  *              Lead trigger work (owner round-robin, campaign membership) runs inside the Lead insert, so the caller keeps
  *              the batch at 100 registrations to stay well inside CPU limits.
  * @author AU Development Team
  * @date 2026-11-03
- * @version 1.1
- * @lastModified 2026-11-03
+ * @version 1.3
+ * @lastModified 2026-11-04
  */
 // System mode is intentional: a scheduled system job. Matching must see every Lead regardless of the running
 // user's sharing, otherwise it would create duplicates of Leads that user cannot see. No data is returned to a user.
@@ -58,6 +62,16 @@ public without sharing class ZoomLeadService {
     private static final Integer MAX_PHONE_LENGTH = 40;
     private static final Integer MAX_INTERNATIONAL_DIGITS = 15;
     private static final String INDIA_COUNTRY_CODE = '91';
+    private static final String UNDERGRADUATION = 'Undergraduation';
+    @TestVisible
+    private static final String POOL_ZOOM_OWNER = 'ZOOM_OWNER';
+    private static final String EMAIL_SEPARATOR = ',';
+    private static final String UNDERSCORE = '_';
+    private static final String SPACE = ' ';
+
+    /** Test hook: replaces the org's LeadAssignmentRule__mdt records so tests do not depend on org users. */
+    @TestVisible
+    private static List<LeadAssignmentRule__mdt> testAssignmentRules;
 
     /**
      * @description Creates / links Leads for registrations in Lead Status "Pending setup" whose session has a
@@ -105,6 +119,7 @@ public without sharing class ZoomLeadService {
         LeadIndex index = new LeadIndex(ZoomSelector.selectLeadCandidates(recordTypeIds, years, emails, phones));
         Map<Id, Lead> leadUpdates = new Map<Id, Lead>();
         Map<String, Lead> newLeadByKey = new Map<String, Lead>();
+        Map<String, String> departmentByKey = new Map<String, String>();
         List<Zoom_Registration__c> newLeadRegistrations = new List<Zoom_Registration__c>();
         List<String> newLeadKeys = new List<String>();
         for (Zoom_Registration__c registration : matchable) {
@@ -118,18 +133,20 @@ public without sharing class ZoomLeadService {
                 registration.Lead__c = match.Id;
                 registration.Is_Matched__c = true;
                 registration.Lead_Status__c = LEAD_STATUS_UPDATED;
-                fillBlanks(match, registration, departmentLabel, leadUpdates);
+                fillBlanks(match, registration, departmentLabel, programmeOf(registration), leadUpdates);
                 continue;
             }
             String newLeadKey = scope + KEY_SEPARATOR + email + KEY_SEPARATOR + phone;
             if (!newLeadByKey.containsKey(newLeadKey)) {
                 newLeadByKey.put(newLeadKey, newLead(registration, recordTypeId, departmentLabel));
+                departmentByKey.put(newLeadKey, registration.Webinar__r.Department__c);
             }
             newLeadRegistrations.add(registration);
             newLeadKeys.add(newLeadKey);
         }
 
         Map<String, String> insertErrorByKey = insertLeads(newLeadByKey);
+        failures.addAll(assignOwners(newLeadByKey, departmentByKey));
         for (Integer i = 0; i < newLeadRegistrations.size(); i++) {
             Zoom_Registration__c registration = newLeadRegistrations[i];
             String key = newLeadKeys[i];
@@ -215,6 +232,24 @@ public without sharing class ZoomLeadService {
         return labels;
     }
 
+    /**
+     * @description The session's Preferred Programme when it is an active Lead.Preferred_Programme__c value (the two
+     *              picklists are kept in line by hand), otherwise null so the Lead still saves.
+     */
+    @TestVisible
+    private static String programmeOf(Zoom_Registration__c registration) {
+        String programme = registration.Webinar__r == null ? null : registration.Webinar__r.Preferred_Programme__c;
+        if (String.isBlank(programme)) {
+            return null;
+        }
+        for (Schema.PicklistEntry entry : Lead.Preferred_Programme__c.getDescribe().getPicklistValues()) {
+            if (entry.isActive() && entry.getValue() == programme) {
+                return programme;
+            }
+        }
+        return null;
+    }
+
     private static Lead newLead(Zoom_Registration__c registration, Id recordTypeId, String departmentLabel) {
         Lead lead = new Lead(
             RecordTypeId = recordTypeId,
@@ -224,7 +259,8 @@ public without sharing class ZoomLeadService {
             Multi_Select_Lead_Source__c = LEAD_SOURCE_ZOOM,
             Email = String.isBlank(registration.Email__c) ? null : registration.Email__c.trim().left(MAX_EMAIL_LENGTH),
             MobilePhone = String.isBlank(registration.Phone__c) ? null : registration.Phone__c.trim().left(MAX_PHONE_LENGTH),
-            Phone = standardPhone(registration.Phone__c)
+            Phone = standardPhone(registration.Phone__c),
+            Preferred_Programme__c = programmeOf(registration)
         );
         String firstName = registration.First_Name__c;
         String lastName = registration.Last_Name__c;
@@ -263,7 +299,8 @@ public without sharing class ZoomLeadService {
     }
 
     /** Fills only blank fields on the matched Lead; records the change in leadUpdates (one update per Lead). */
-    private static void fillBlanks(Lead match, Zoom_Registration__c registration, String departmentLabel, Map<Id, Lead> leadUpdates) {
+    private static void fillBlanks(Lead match, Zoom_Registration__c registration, String departmentLabel, String programme,
+        Map<Id, Lead> leadUpdates) {
         Lead changes = leadUpdates.containsKey(match.Id) ? leadUpdates.get(match.Id) : new Lead(Id = match.Id);
         Boolean changed = false;
         if (String.isBlank(match.FirstName) && String.isNotBlank(registration.First_Name__c) && String.isNotBlank(registration.Last_Name__c)) {
@@ -290,6 +327,11 @@ public without sharing class ZoomLeadService {
         if (String.isBlank(match.Department__c) && String.isNotBlank(departmentLabel)) {
             changes.Department__c = departmentLabel;
             match.Department__c = changes.Department__c;
+            changed = true;
+        }
+        if (String.isBlank(match.Preferred_Programme__c) && programme != null) {
+            changes.Preferred_Programme__c = programme;
+            match.Preferred_Programme__c = programme;
             changed = true;
         }
         if (changed) {
@@ -322,6 +364,177 @@ public without sharing class ZoomLeadService {
             }
         }
         return errorByKey;
+    }
+
+    /**
+     * @description Sets the owner of the Leads just created, round-robin within a pool of active users:
+     *                Undergraduation                         -> pool ZOOM_OWNER (Zoom_Config Lead_Owner_Department__c /
+     *                                                           Lead_Owner_Role__c / Lead_Owner_Profile__c)
+     *                other department, programme whose LeadAssignmentRule__mdt users exist
+     *                                                        -> no change: the Lead trigger already assigned by programme
+     *                other department otherwise              -> pool = all users of that department in LeadAssignmentRule__mdt
+     *                                                           (Department__c = record type, "_" read as a space)
+     *                department pool empty                   -> pool ZOOM_OWNER
+     *              An empty pool keeps the trigger's owner, with no error. Positions are kept per pool in
+     *              Zoom_Lead_Round_Robin__c so rotations continue across sync runs. Runs after the insert because
+     *              LeadCombinedTrigger sets the owner during insert. Matched existing Leads never come here.
+     *              Governor use: 2 SOQL (users), 1 Lead update, 1 custom setting upsert; metadata via getAll (no SOQL).
+     * @return one message per Lead whose owner could not be saved
+     */
+    private static List<String> assignOwners(Map<String, Lead> newLeadByKey, Map<String, String> departmentByKey) {
+        List<String> failures = new List<String>();
+        List<String> createdKeys = new List<String>();
+        for (String key : newLeadByKey.keySet()) {
+            if (newLeadByKey.get(key).Id != null) {
+                createdKeys.add(key);
+            }
+        }
+        if (createdKeys.isEmpty()) {
+            return failures;
+        }
+        OwnerPools pools = new OwnerPools(assignmentRules());
+        Map<String, Zoom_Lead_Round_Robin__c> positions = Zoom_Lead_Round_Robin__c.getAll().clone();
+        Set<String> movedPools = new Set<String>();
+        List<Lead> ownerUpdates = new List<Lead>();
+        for (String key : createdKeys) {
+            Lead lead = newLeadByKey.get(key);
+            String poolName = pools.poolFor(departmentByKey.get(key), lead.Preferred_Programme__c);
+            List<Id> users = poolName == null ? new List<Id>() : pools.usersOf(poolName);
+            if (users.isEmpty()) {
+                continue;
+            }
+            Zoom_Lead_Round_Robin__c position = positions.get(poolName);
+            if (position == null) {
+                position = new Zoom_Lead_Round_Robin__c(Name = poolName);
+                positions.put(poolName, position);
+            }
+            Integer index = position.Next_Index__c == null ? 0 : position.Next_Index__c.intValue();
+            if (index < 0 || index >= users.size()) {
+                index = 0;
+            }
+            lead.OwnerId = users[index];
+            ownerUpdates.add(new Lead(Id = lead.Id, OwnerId = lead.OwnerId));
+            position.Next_Index__c = Math.mod(index + 1, users.size());
+            movedPools.add(poolName);
+        }
+        if (ownerUpdates.isEmpty()) {
+            return failures;
+        }
+        Database.DMLOptions options = new Database.DMLOptions();
+        options.duplicateRuleHeader.allowSave = true;
+        options.optAllOrNone = false;
+        List<Database.SaveResult> results = Database.update(ownerUpdates, options);
+        for (Integer i = 0; i < results.size(); i++) {
+            if (!results[i].isSuccess()) {
+                failures.add('Lead ' + ownerUpdates[i].Id + ' owner not set - ' + errorsOf(results[i].getErrors()));
+            }
+        }
+        List<Zoom_Lead_Round_Robin__c> changedPositions = new List<Zoom_Lead_Round_Robin__c>();
+        for (String poolName : movedPools) {
+            changedPositions.add(positions.get(poolName));
+        }
+        upsert changedPositions;
+        return failures;
+    }
+
+    private static List<LeadAssignmentRule__mdt> assignmentRules() {
+        if (Test.isRunningTest() && testAssignmentRules != null) {
+            return testAssignmentRules;
+        }
+        return LeadAssignmentRule__mdt.getAll().values();
+    }
+
+    /** Department key shared by Lead record type developer names and LeadAssignmentRule__mdt.Department__c. */
+    @TestVisible
+    private static String departmentKey(String department) {
+        return String.isBlank(department) ? null : department.replace(UNDERSCORE, SPACE).trim().toLowerCase();
+    }
+
+    private static String programmeKey(String programme) {
+        return String.isBlank(programme) ? null : programme.trim().toLowerCase();
+    }
+
+    /** Owner pools for new Zoom Leads, built once per call (2 SOQL). Users in each pool are ordered oldest first. */
+    private class OwnerPools {
+        private Map<String, List<Id>> usersByPool = new Map<String, List<Id>>();
+        private Set<String> programmesWithUsers = new Set<String>();
+
+        OwnerPools(List<LeadAssignmentRule__mdt> rules) {
+            Map<String, Set<String>> emailsByDepartment = new Map<String, Set<String>>();
+            Map<String, Set<String>> emailsByProgramme = new Map<String, Set<String>>();
+            Set<String> allEmails = new Set<String>();
+            for (LeadAssignmentRule__mdt rule : rules) {
+                Set<String> emails = emailsOf(rule.User_Email__c);
+                allEmails.addAll(emails);
+                addAll(emailsByDepartment, departmentKey(rule.Department__c), emails);
+                addAll(emailsByProgramme, programmeKey(rule.Course__c), emails);
+            }
+            List<User> activeUsers = ZoomSelector.selectActiveUsersByEmail(allEmails);
+            for (String department : emailsByDepartment.keySet()) {
+                usersByPool.put(department, usersWithEmails(activeUsers, emailsByDepartment.get(department)));
+            }
+            for (String programme : emailsByProgramme.keySet()) {
+                if (!usersWithEmails(activeUsers, emailsByProgramme.get(programme)).isEmpty()) {
+                    programmesWithUsers.add(programme);
+                }
+            }
+            Zoom_Config__mdt config = ZoomConfig.get();
+            List<Id> zoomOwners = new List<Id>();
+            for (User owner : ZoomSelector.selectLeadOwnerUsers(config.Lead_Owner_Department__c, config.Lead_Owner_Role__c,
+                config.Lead_Owner_Profile__c)) {
+                zoomOwners.add(owner.Id);
+            }
+            usersByPool.put(POOL_ZOOM_OWNER, zoomOwners);
+        }
+
+        /** Pool name for a new Lead, or null when the Lead trigger's programme owner must be kept. */
+        String poolFor(String department, String programme) {
+            String key = departmentKey(department);
+            if (key == departmentKey(UNDERGRADUATION)) {
+                return POOL_ZOOM_OWNER;
+            }
+            if (programmesWithUsers.contains(programmeKey(programme))) {
+                return null;
+            }
+            return usersOf(key).isEmpty() ? POOL_ZOOM_OWNER : key;
+        }
+
+        List<Id> usersOf(String poolName) {
+            return poolName != null && usersByPool.containsKey(poolName) ? usersByPool.get(poolName) : new List<Id>();
+        }
+
+        private Set<String> emailsOf(String commaSeparated) {
+            Set<String> emails = new Set<String>();
+            if (String.isBlank(commaSeparated)) {
+                return emails;
+            }
+            for (String email : commaSeparated.split(EMAIL_SEPARATOR)) {
+                if (String.isNotBlank(email)) {
+                    emails.add(email.trim().toLowerCase());
+                }
+            }
+            return emails;
+        }
+
+        private void addAll(Map<String, Set<String>> target, String key, Set<String> emails) {
+            if (key == null || emails.isEmpty()) {
+                return;
+            }
+            if (!target.containsKey(key)) {
+                target.put(key, new Set<String>());
+            }
+            target.get(key).addAll(emails);
+        }
+
+        private List<Id> usersWithEmails(List<User> activeUsers, Set<String> emails) {
+            List<Id> userIds = new List<Id>();
+            for (User candidate : activeUsers) {
+                if (emails.contains(candidate.Email.toLowerCase())) {
+                    userIds.add(candidate.Id);
+                }
+            }
+            return userIds;
+        }
     }
 
     /** Saves blank-field fills on existing Leads. A failure keeps the link (the Lead exists) and is reported. */

@@ -6,8 +6,9 @@
  *              "Pending setup" and the sync chain ends by starting ZoomLeadQueueable (see ZoomLeadServiceTest).
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.2
- * @lastModified 2026-11-03
+ *              Since v1.3: default Department and Admission Year from Zoom_Config on new sessions.
+ * @version 1.3
+ * @lastModified 2026-11-04
  */
 @IsTest
 private class ZoomIntegrationTest {
@@ -697,5 +698,81 @@ private class ZoomIntegrationTest {
         System.assertEquals('Zoom Webinar Sync Test', job.CronJobDetail.Name, 'The job must be scheduled under the configured name');
         System.assertEquals('0 0 0/2 * * ?', job.CronExpression, 'The job must run every 2 hours');
         System.assertEquals('Zoom Webinar Sync', ZoomWebinarSyncScheduler.JOB_NAME, 'The production job name must not change');
+    }
+
+    @IsTest
+    static void newSessionGetsDefaultDepartmentAndYear() {
+        configure(true);
+        ZoomConfig.testOverride.Default_Department__c = ' undergraduation ';
+        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
+        Test.startTest();
+        ZoomEventService.process(event('meeting.created', null));
+        ZoomEventService.process(event('meeting.started', null));
+        Test.stopTest();
+
+        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        System.assertEquals('Undergraduation', session.Department__c, 'A new session must get the default Department (matched case-insensitively)');
+        System.assertEquals('Admission Year - 2027', session.Admission_Year__c, 'A new session must get the default Admission Year');
+    }
+
+    @IsTest
+    static void existingSessionValuesAreNeverReplacedByDefaults() {
+        configure(true);
+        insert new Zoom_Webinar__c(Name = TOPIC, Webinar_Id__c = SESSION_ID, Type__c = 'Meeting', Status__c = 'Scheduled');
+        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
+        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
+        Test.startTest();
+        ZoomEventService.process(event('meeting.updated', null));
+        Test.stopTest();
+
+        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        System.assertEquals(null, session.Department__c, 'Defaults must apply only when a session is created, not to existing sessions');
+        System.assertEquals(null, session.Admission_Year__c, 'Defaults must apply only when a session is created, not to existing sessions');
+    }
+
+    @IsTest
+    static void invalidOrBlankDefaultsLeaveSessionBlank() {
+        configure(true);
+        ZoomConfig.testOverride.Default_Department__c = 'Not A Department';
+        Test.startTest();
+        ZoomEventService.process(event('meeting.created', null));
+        Test.stopTest();
+
+        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        System.assertEquals(null, session.Department__c, 'An invalid default must be ignored so the save does not fail');
+        System.assertEquals(null, session.Admission_Year__c, 'A blank default must leave the Admission Year blank');
+        System.assertEquals(0, logCount(), 'An invalid default must not cause an error');
+    }
+
+    @IsTest
+    static void sessionDefaultsKeepValuesAlreadySet() {
+        configure(true);
+        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
+        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
+        Zoom_Webinar__c session = new Zoom_Webinar__c(Department__c = 'Masters', Admission_Year__c = 'Admission Year - 2028');
+
+        Test.startTest();
+        Set<String> filled = ZoomEventService.applySessionDefaults(session);
+        Test.stopTest();
+
+        System.assert(filled.isEmpty(), 'Values already on the session must not be reported as filled');
+        System.assertEquals('Masters', session.Department__c, 'A Department already set must not be replaced');
+        System.assertEquals('Admission Year - 2028', session.Admission_Year__c, 'An Admission Year already set must not be replaced');
+    }
+
+    @IsTest
+    static void concurrentInsertRetryKeepsDefaults() {
+        configure(true);
+        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
+        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
+        ZoomEventService.simulatedDuplicateFailures = 1;
+        Test.startTest();
+        ZoomEventService.process(event('meeting.started', null));
+        Test.stopTest();
+
+        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        System.assertEquals(0, ZoomEventService.simulatedDuplicateFailures, 'The simulated concurrent insert must have been hit');
+        System.assertEquals('Undergraduation', session.Department__c, 'A session created on retry must still get the default Department');
+        System.assertEquals('Admission Year - 2027', session.Admission_Year__c, 'A session created on retry must still get the default Admission Year');
     }
 }

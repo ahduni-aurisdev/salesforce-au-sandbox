@@ -1,11 +1,11 @@
 /**
  * @description SOQL for the Zoom integration: Zoom sessions, registrations, registrations waiting for Lead
  *              processing, and the Lead candidates used to match a registrant (email / phone within one
- *              Department record type and Admission Year).
+ *              Department record type and Admission Year), and the users who own new Zoom Leads.
  * @author AU Development Team
  * @date 2026-11-02
- * @version 1.1
- * @lastModified 2026-11-03
+ * @version 1.3
+ * @lastModified 2026-11-04
  */
 // System mode is intentional: callers are the Zoom webhook (Site guest user with no object access)
 // and the scheduled sync. Lead matching must see every Lead regardless of the running user's sharing,
@@ -14,6 +14,8 @@ public without sharing class ZoomSelector {
     private static final String STATUS_DELETED = 'Deleted';
     private static final String STATUS_ENDED = 'Ended';
     private static final Integer MAX_CANDIDATES = 2000;
+    private static final Integer MAX_OWNER_USERS = 200;
+    private static final String USER_TYPE_STANDARD = 'Standard';
 
     public static Map<String, Zoom_Webinar__c> selectSessionsByZoomIds(Set<String> zoomIds) {
         Map<String, Zoom_Webinar__c> byZoomId = new Map<String, Zoom_Webinar__c>();
@@ -66,7 +68,8 @@ public without sharing class ZoomSelector {
                 First_Joined_At__c, Time_In_Session_Minutes__c, Lead__c, Lead_Status__c,
                 Registration_Task_Id__c, Attendance_Task_Id__c,
                 Webinar__c, Webinar__r.Name, Webinar__r.Webinar_Id__c, Webinar__r.Type__c, Webinar__r.Status__c,
-                Webinar__r.Start_Time__c, Webinar__r.Department__c, Webinar__r.Admission_Year__c
+                Webinar__r.Start_Time__c, Webinar__r.Department__c, Webinar__r.Admission_Year__c,
+                Webinar__r.Preferred_Programme__c
             FROM Zoom_Registration__c
             WHERE Lead_Status__c = :pendingStatus
                 AND Webinar__r.Department__c != null
@@ -119,7 +122,7 @@ public without sharing class ZoomSelector {
             contactConditions.add('MobilePhone LIKE \'%' + digits + '\'');
             contactConditions.add('Phone LIKE \'%' + digits + '\'');
         }
-        String soql = 'SELECT Id, OwnerId, RecordTypeId, Admission_Year__c, Email, MobilePhone, Phone, FirstName, Department__c'
+        String soql = 'SELECT Id, OwnerId, RecordTypeId, Admission_Year__c, Email, MobilePhone, Phone, FirstName, Department__c, Preferred_Programme__c'
             + ' FROM Lead WHERE IsConverted = false AND RecordTypeId IN :recordTypeIds AND Admission_Year__c IN :admissionYears'
             + ' AND (' + String.join(contactConditions, ' OR ') + ')'
             + ' ORDER BY CreatedDate ASC, Id ASC LIMIT ' + MAX_CANDIDATES;
@@ -135,5 +138,39 @@ public without sharing class ZoomSelector {
             return new Map<Id, Lead>();
         }
         return new Map<Id, Lead>([SELECT Id, OwnerId FROM Lead WHERE Id IN :leadIds WITH SYSTEM_MODE]);
+    }
+
+    /**
+     * @description Active standard users with the given User Department, Role name and Profile name, oldest user
+     *              first (a stable order for the Zoom Lead owner round-robin).
+     */
+    public static List<User> selectLeadOwnerUsers(String department, String roleName, String profileName) {
+        if (String.isBlank(department) || String.isBlank(roleName) || String.isBlank(profileName)) {
+            return new List<User>();
+        }
+        return [
+            SELECT Id
+            FROM User
+            WHERE IsActive = true AND UserType = :USER_TYPE_STANDARD
+                AND Department = :department.trim() AND UserRole.Name = :roleName.trim() AND Profile.Name = :profileName.trim()
+            WITH SYSTEM_MODE
+            ORDER BY CreatedDate ASC, Id ASC
+            LIMIT :MAX_OWNER_USERS
+        ];
+    }
+
+    /** Active standard users with one of the given lower-case emails, oldest user first. */
+    public static List<User> selectActiveUsersByEmail(Set<String> lowerCaseEmails) {
+        if (lowerCaseEmails == null || lowerCaseEmails.isEmpty()) {
+            return new List<User>();
+        }
+        return [
+            SELECT Id, Email
+            FROM User
+            WHERE IsActive = true AND UserType = :USER_TYPE_STANDARD AND Email IN :lowerCaseEmails
+            WITH SYSTEM_MODE
+            ORDER BY CreatedDate ASC, Id ASC
+            LIMIT :MAX_OWNER_USERS
+        ];
     }
 }

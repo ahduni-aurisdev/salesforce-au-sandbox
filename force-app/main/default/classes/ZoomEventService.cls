@@ -3,11 +3,12 @@
  *              ("Zoom Session") and Zoom_Registration__c. New registrations and walk-ins start in Lead Status
  *              "Pending setup"; Leads and Tasks are created later by the scheduled sync (ZoomLeadQueueable /
  *              ZoomLeadService), never here. Webinar events are ignored unless FeatureFlag Zoom_Webinars is
- *              enabled, and meeting events unless FeatureFlag Zoom_Meetings is enabled.
+ *              enabled, and meeting events unless FeatureFlag Zoom_Meetings is enabled. A new session gets the
+ *              default Department and Admission Year from Zoom_Config.
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.4
- * @lastModified 2026-11-03
+ * @version 1.5
+ * @lastModified 2026-11-04
  */
 // System mode is intentional: events arrive through the Zoom webhook, which runs as the Site guest user
 // with no access to Zoom records, and through the scheduled sync. Callers are
@@ -51,6 +52,10 @@ public without sharing class ZoomEventService {
     private static final Integer MAX_ANSWERS_LENGTH = 32768;
     private static final Long MILLIS_PER_MINUTE = 60000;
     private static final String DUPLICATE_VALUE = 'DUPLICATE_VALUE';
+    private static final String FIELD_ID = 'Id';
+    private static final String FIELD_NAME = 'Name';
+    private static final String FIELD_DEPARTMENT = 'Department__c';
+    private static final String FIELD_ADMISSION_YEAR = 'Admission_Year__c';
     private static final List<String> STANDARD_ANSWER_KEYS = new List<String>{
         'address', 'city', 'state', 'zip', 'country', 'org', 'job_title', 'industry', 'comments'
     };
@@ -188,17 +193,22 @@ public without sharing class ZoomEventService {
      *              Zoom often sends two events for a new meeting at the same instant (e.g. participant joined and
      *              left); both transactions then try to insert the same Zoom ID and one fails with DUPLICATE_VALUE.
      *              That one is retried once: by then the record exists, so the retry updates it.
+     *              A new session also gets Department and Admission Year from Zoom_Config (Default_Department__c,
+     *              Default_Admission_Year__c) when it has none; an existing session's values are never touched.
      */
     public static void saveSession(Zoom_Webinar__c session) {
         saveSession(session, true);
     }
 
     private static void saveSession(Zoom_Webinar__c session, Boolean retryOnDuplicate) {
-        Boolean usesPlaceholderName = false;
-        if (session.Name == null
-            && !ZoomSelector.selectSessionsByZoomIds(new Set<String>{ session.Webinar_Id__c }).containsKey(session.Webinar_Id__c)) {
-            session.Name = ('Zoom ' + session.Type__c + ' ' + session.Webinar_Id__c).left(MAX_NAME_LENGTH);
-            usesPlaceholderName = true;
+        Set<String> createOnlyFields = new Set<String>();
+        Boolean isNew = !ZoomSelector.selectSessionsByZoomIds(new Set<String>{ session.Webinar_Id__c }).containsKey(session.Webinar_Id__c);
+        if (isNew) {
+            if (session.Name == null) {
+                session.Name = ('Zoom ' + session.Type__c + ' ' + session.Webinar_Id__c).left(MAX_NAME_LENGTH);
+                createOnlyFields.add(FIELD_NAME);
+            }
+            createOnlyFields.addAll(applySessionDefaults(session));
         }
         try {
             simulateDuplicateForTest();
@@ -207,16 +217,53 @@ public without sharing class ZoomEventService {
             if (!retryOnDuplicate || !isDuplicateValue(e)) {
                 throw e;
             }
-            // Retry without the placeholder name so the concurrent insert's real topic is not overwritten.
+            // Retry without the placeholder name and defaults so the concurrent insert's values are not overwritten.
             Zoom_Webinar__c retry = new Zoom_Webinar__c();
             for (String field : session.getPopulatedFieldsAsMap().keySet()) {
-                if (field != 'Id' && !(usesPlaceholderName && field == 'Name')) {
+                if (field != FIELD_ID && !createOnlyFields.contains(field)) {
                     retry.put(field, session.get(field));
                 }
             }
             saveSession(retry, false);
             session.Id = retry.Id;
         }
+    }
+
+    /**
+     * @description Fills blank Department and Admission Year on a new session from Zoom_Config. A configured value
+     *              that is not an active picklist value is ignored (the field stays blank, so the new-session setup
+     *              email is still sent) instead of failing the save on the restricted picklist.
+     * @return the API names of the fields that were filled
+     */
+    @TestVisible
+    private static Set<String> applySessionDefaults(Zoom_Webinar__c session) {
+        Set<String> filled = new Set<String>();
+        Zoom_Config__mdt config = ZoomConfig.get();
+        String department = validPicklistValue(Zoom_Webinar__c.Department__c, config.Default_Department__c);
+        if (String.isBlank(session.Department__c) && department != null) {
+            session.Department__c = department;
+            filled.add(FIELD_DEPARTMENT);
+        }
+        String admissionYear = validPicklistValue(Zoom_Webinar__c.Admission_Year__c, config.Default_Admission_Year__c);
+        if (String.isBlank(session.Admission_Year__c) && admissionYear != null) {
+            session.Admission_Year__c = admissionYear;
+            filled.add(FIELD_ADMISSION_YEAR);
+        }
+        return filled;
+    }
+
+    /** The active picklist value equal to the configured text (trimmed, case-insensitive), or null. */
+    private static String validPicklistValue(Schema.SObjectField field, String configured) {
+        if (String.isBlank(configured)) {
+            return null;
+        }
+        String wanted = configured.trim();
+        for (Schema.PicklistEntry entry : field.getDescribe().getPicklistValues()) {
+            if (entry.isActive() && entry.getValue().equalsIgnoreCase(wanted)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     /**
