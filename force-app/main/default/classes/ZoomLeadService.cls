@@ -2,7 +2,8 @@
  * @description Creates or updates the Lead for each Zoom registration (registrants and walk-ins) once its
  *              session has a Department and Admission Year, links it to the registration and logs completed Tasks
  *              ("Zoom Meeting Registered" / "Attended" / "Did Not Attend"). Called only by ZoomLeadQueueable, which
- *              the scheduled ZoomWebinarSync starts; the webhook never creates Leads.
+ *              a user starts for one session with "Sync Leads to Salesforce" (ZoomLeadSyncController); the webhook
+ *              and the scheduled sync never create Leads.
  *
  *              Matching (unconverted Leads only, same Record Type = session Department, same Admission Year):
  *                email and phone known  -> Lead email AND Lead mobile/phone (last 10 digits) must both match
@@ -11,15 +12,15 @@
  *                neither                -> no Lead, Lead Status "No contact details"
  *              The oldest matching Lead wins.
  *
- *              New Lead: Record Type and Department__c from the session Department, Admission_Year__c, the session's
- *              Preferred Programme (when set), name, email, mobile, Phone in the website format (country code + number,
+ *              New Lead: Record Type and Department__c from the session Department, Admission_Year__c, the student's
+ *              Preferred Programme chosen in the popup (when set), name, email, mobile, Phone in the website format (country code + number,
  *              e.g. 91 + 10 digits), LeadSource and Multi_Select_Lead_Source__c = Zoom. Phone matters: the org Flow
  *              "Automation for Unqualified Status Incorrect Details" marks a Lead Unqualified when the standard Phone
  *              field is blank or not 10-15 characters.
- *              Owner of a new Lead (see assignOwners): Undergraduation -> Zoom_Config owner users; other departments ->
- *              the Lead trigger's programme rule when the programme has users in LeadAssignmentRule__mdt, otherwise the
- *              department's users in that metadata, otherwise the Zoom_Config owner users; all round-robin. When no
- *              user is found the owner set by the Lead trigger is kept. Assignment Rules are not run.
+ *              Owner of a new Lead (see assignOwners): Undergraduation -> the user in Zoom_Config
+ *              UG_Lead_Owner_Username__c; other departments -> the Lead trigger's programme rule when the programme has
+ *              users in LeadAssignmentRule__mdt, otherwise the department's users in that metadata (round-robin). When
+ *              no user is found the owner set by the Lead trigger is kept. Assignment Rules are not run.
  *              Existing Lead: only blank First Name, Email, Mobile, Phone, Department__c and Preferred_Programme__c are
  *              filled; owner, Lead Source, Most Recent Lead Source and Admission Year are never changed.
  *
@@ -28,10 +29,10 @@
  *              the batch at 100 registrations to stay well inside CPU limits.
  * @author AU Development Team
  * @date 2026-11-03
- * @version 1.3
- * @lastModified 2026-11-04
+ * @version 1.4
+ * @lastModified 2026-11-05
  */
-// System mode is intentional: a scheduled system job. Matching must see every Lead regardless of the running
+// System mode is intentional: a background job started from the sync popup. Matching must see every Lead regardless of the running
 // user's sharing, otherwise it would create duplicates of Leads that user cannot see. No data is returned to a user.
 public without sharing class ZoomLeadService {
     public static final String LEAD_STATUS_PENDING = 'Pending setup';
@@ -64,7 +65,7 @@ public without sharing class ZoomLeadService {
     private static final String INDIA_COUNTRY_CODE = '91';
     private static final String UNDERGRADUATION = 'Undergraduation';
     @TestVisible
-    private static final String POOL_ZOOM_OWNER = 'ZOOM_OWNER';
+    private static final String POOL_UG_OWNER = 'UG_OWNER';
     private static final String EMAIL_SEPARATOR = ',';
     private static final String UNDERSCORE = '_';
     private static final String SPACE = ' ';
@@ -233,21 +234,49 @@ public without sharing class ZoomLeadService {
     }
 
     /**
-     * @description The session's Preferred Programme when it is an active Lead.Preferred_Programme__c value (the two
-     *              picklists are kept in line by hand), otherwise null so the Lead still saves.
+     * @description The student's Preferred Programme (chosen in the sync popup) when it is an active
+     *              Lead.Preferred_Programme__c value, otherwise null so the Lead still saves.
      */
     @TestVisible
     private static String programmeOf(Zoom_Registration__c registration) {
-        String programme = registration.Webinar__r == null ? null : registration.Webinar__r.Preferred_Programme__c;
+        String programme = registration.Preferred_Programme__c;
+        return isActiveLeadProgramme(programme) ? programme : null;
+    }
+
+    /** True when the value is an active Lead.Preferred_Programme__c value (exact match). */
+    public static Boolean isActiveLeadProgramme(String programme) {
         if (String.isBlank(programme)) {
-            return null;
+            return false;
         }
         for (Schema.PicklistEntry entry : Lead.Preferred_Programme__c.getDescribe().getPicklistValues()) {
             if (entry.isActive() && entry.getValue() == programme) {
-                return programme;
+                return true;
             }
         }
-        return null;
+        return false;
+    }
+
+    /** True when the value is an active Lead.Admission_Year__c value (exact match). */
+    public static Boolean isActiveLeadAdmissionYear(String admissionYear) {
+        if (String.isBlank(admissionYear)) {
+            return false;
+        }
+        for (Schema.PicklistEntry entry : Lead.Admission_Year__c.getDescribe().getPicklistValues()) {
+            if (entry.isActive() && entry.getValue() == admissionYear) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True for the Undergraduation department (record type developer name or label). */
+    public static Boolean isUndergraduation(String department) {
+        return department != null && departmentKey(department) == departmentKey(UNDERGRADUATION);
+    }
+
+    /** The active user who owns new Undergraduation Leads (Zoom_Config UG_Lead_Owner_Username__c), or null. */
+    public static User undergraduationOwner() {
+        return ZoomSelector.selectActiveUserByUsername(ZoomConfig.get().UG_Lead_Owner_Username__c);
     }
 
     private static Lead newLead(Zoom_Registration__c registration, Id recordTypeId, String departmentLabel) {
@@ -368,13 +397,12 @@ public without sharing class ZoomLeadService {
 
     /**
      * @description Sets the owner of the Leads just created, round-robin within a pool of active users:
-     *                Undergraduation                         -> pool ZOOM_OWNER (Zoom_Config Lead_Owner_Department__c /
-     *                                                           Lead_Owner_Role__c / Lead_Owner_Profile__c)
+     *                Undergraduation                         -> pool UG_OWNER = the single user in Zoom_Config
+     *                                                           UG_Lead_Owner_Username__c
      *                other department, programme whose LeadAssignmentRule__mdt users exist
      *                                                        -> no change: the Lead trigger already assigned by programme
      *                other department otherwise              -> pool = all users of that department in LeadAssignmentRule__mdt
      *                                                           (Department__c = record type, "_" read as a space)
-     *                department pool empty                   -> pool ZOOM_OWNER
      *              An empty pool keeps the trigger's owner, with no error. Positions are kept per pool in
      *              Zoom_Lead_Round_Robin__c so rotations continue across sync runs. Runs after the insert because
      *              LeadCombinedTrigger sets the owner during insert. Matched existing Leads never come here.
@@ -478,25 +506,20 @@ public without sharing class ZoomLeadService {
                     programmesWithUsers.add(programme);
                 }
             }
-            Zoom_Config__mdt config = ZoomConfig.get();
-            List<Id> zoomOwners = new List<Id>();
-            for (User owner : ZoomSelector.selectLeadOwnerUsers(config.Lead_Owner_Department__c, config.Lead_Owner_Role__c,
-                config.Lead_Owner_Profile__c)) {
-                zoomOwners.add(owner.Id);
-            }
-            usersByPool.put(POOL_ZOOM_OWNER, zoomOwners);
+            User ugOwner = ZoomLeadService.undergraduationOwner();
+            usersByPool.put(POOL_UG_OWNER, ugOwner == null ? new List<Id>() : new List<Id>{ ugOwner.Id });
         }
 
         /** Pool name for a new Lead, or null when the Lead trigger's programme owner must be kept. */
         String poolFor(String department, String programme) {
             String key = departmentKey(department);
             if (key == departmentKey(UNDERGRADUATION)) {
-                return POOL_ZOOM_OWNER;
+                return POOL_UG_OWNER;
             }
             if (programmesWithUsers.contains(programmeKey(programme))) {
                 return null;
             }
-            return usersOf(key).isEmpty() ? POOL_ZOOM_OWNER : key;
+            return usersOf(key).isEmpty() ? null : key;
         }
 
         List<Id> usersOf(String poolName) {

@@ -1,0 +1,284 @@
+<template>
+    <lightning-quick-action-panel header="Sync Leads to Salesforce">
+        <div class="zls">
+            <!-- ⏳ Loading -->
+            <template lwc:if={isLoading}>
+                <div class="loading-area slds-is-relative">
+                    <lightning-spinner alternative-text="Loading session details" size="medium" variant="brand"></lightning-spinner>
+                </div>
+            </template>
+
+            <!-- ❌ Load error -->
+            <template lwc:elseif={loadError}>
+                <div class="state-panel state-panel_error slds-text-align_center" role="alert">
+                    <div class="state-icon state-icon_error slds-align_absolute-center">
+                        <lightning-icon icon-name="utility:error" alternative-text="Error" size="small"></lightning-icon>
+                    </div>
+                    <h2 class="slds-text-heading_small slds-m-top_small">The session could not be loaded</h2>
+                    <p class="slds-text-body_regular slds-text-color_weak slds-m-top_x-small">{loadError}</p>
+                    <div class="slds-m-top_medium">
+                        <lightning-button label="Try Again" icon-name="utility:refresh" variant="brand" onclick={handleRetryLoad}></lightning-button>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <!-- Hero -->
+                <div class="hero">
+                    <div class="slds-media slds-media_center">
+                        <div class="slds-media__figure">
+                            <div class="hero-icon slds-align_absolute-center">
+                                <lightning-icon icon-name="utility:video" alternative-text="Zoom session" size="small"></lightning-icon>
+                            </div>
+                        </div>
+                        <div class="slds-media__body">
+                            <p class="hero-eyebrow">Zoom {sessionTypeLabel}</p>
+                            <h2 class="hero-title slds-truncate" title={sessionNameLabel}>{sessionNameLabel}</h2>
+                        </div>
+                    </div>
+                    <div class="hero-chips">
+                        <template lwc:if={context.startTime}>
+                            <span class="chip">
+                                <lightning-icon icon-name="utility:event" alternative-text="Start time" size="xx-small" class="chip-icon"></lightning-icon>
+                                <lightning-formatted-date-time value={context.startTime} weekday="short" month="short" day="2-digit"
+                                    year="numeric" hour="2-digit" minute="2-digit"></lightning-formatted-date-time>
+                            </span>
+                        </template>
+                        <template lwc:if={context.sessionStatus}>
+                            <span class="chip">
+                                <lightning-icon icon-name={statusBadgeIcon} alternative-text="Status" size="xx-small" class="chip-icon"></lightning-icon>
+                                {context.sessionStatus}
+                            </span>
+                        </template>
+                        <template lwc:if={lastSyncText}>
+                            <span class="chip">
+                                <lightning-icon icon-name="utility:history" alternative-text="Last sync" size="xx-small" class="chip-icon"></lightning-icon>
+                                Last synced
+                                <template lwc:if={progress.lastSyncAt}>
+                                    &nbsp;<lightning-formatted-date-time value={progress.lastSyncAt} month="short" day="2-digit"
+                                        hour="2-digit" minute="2-digit"></lightning-formatted-date-time>
+                                </template>
+                                <template lwc:if={context.lastSyncByName}>&nbsp;by {context.lastSyncByName}</template>
+                            </span>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Counters -->
+                <div class="stats slds-grid slds-wrap" aria-live="polite">
+                    <template for:each={statTiles} for:item="tile">
+                        <div key={tile.key} class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4 stat-col">
+                            <div class={tile.cardClass}>
+                                <div class="stat-icon slds-align_absolute-center">
+                                    <lightning-icon icon-name={tile.icon} alternative-text={tile.label} size="x-small"></lightning-icon>
+                                </div>
+                                <p class="stat-value">
+                                    <lightning-formatted-number value={tile.value}></lightning-formatted-number>
+                                </p>
+                                <p class="stat-label slds-truncate" title={tile.label}>{tile.label}</p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Blocked: no permission or integration off -->
+                <template lwc:if={context.blockedReason}>
+                    <div class="notice notice_warning" role="status">
+                        <lightning-icon icon-name="utility:warning" alternative-text="Warning" size="x-small" class="notice-icon"></lightning-icon>
+                        <p class="slds-text-body_regular">{context.blockedReason}</p>
+                    </div>
+                </template>
+
+                <!-- Form -->
+                <template lwc:if={isFormPhase}>
+                    <!-- 1. Lead details -->
+                    <lightning-card class="section-card">
+                        <div slot="title" class="section-title">
+                            <span class="step-number">1</span>
+                            <span class="slds-text-heading_small">Lead Details</span>
+                        </div>
+                        <template lwc:if={context.isLocked}>
+                            <lightning-badge slot="actions" label="Locked" icon-name="utility:lock" class="locked-badge"></lightning-badge>
+                        </template>
+                        <div class="slds-p-horizontal_medium">
+                            <div class="slds-grid slds-wrap slds-gutters_small">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-combobox data-id="department" name="department" label="Department" placeholder="Select a department"
+                                        options={departmentOptions} value={department} onchange={handleDepartmentChange}
+                                        disabled={isDetailsDisabled} required
+                                        field-level-help="New Leads get this department's record type."></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                    <lightning-combobox data-id="admissionYear" name="admissionYear" label="Admission year" placeholder={yearPlaceholder}
+                                        options={yearOptions} value={admissionYear} onchange={handleYearChange}
+                                        disabled={isYearDisabled} required
+                                        field-level-help="Preselected from Zoom Config Default Admission Year; values come from the Lead Admission Year."></lightning-combobox>
+                                </div>
+                            </div>
+                            <template lwc:if={context.isLocked}>
+                                <p class="hint slds-m-bottom_small">
+                                    <lightning-icon icon-name="utility:info" alternative-text="Information" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                    Department and admission year stay the same for every student of this session once the first students are synced.
+                                </p>
+                            </template>
+                            <template lwc:if={picklistError}>
+                                <p class="slds-text-color_error slds-text-body_small slds-m-bottom_small" role="alert">{picklistError}</p>
+                            </template>
+
+                            <!-- Owner -->
+                            <template lwc:if={isUndergraduation}>
+                                <template lwc:if={context.undergraduationOwnerName}>
+                                    <div class="owner-card slds-m-bottom_small">
+                                        <lightning-avatar src={context.undergraduationOwnerPhoto} initials={ownerInitials}
+                                            fallback-icon-name="standard:user" alternative-text={context.undergraduationOwnerName}
+                                            variant="circle" size="medium" class="owner-avatar"></lightning-avatar>
+                                        <div class="owner-text">
+                                            <p class="owner-eyebrow">Lead owner</p>
+                                            <p class="owner-name">{context.undergraduationOwnerName}</p>
+                                            <p class="hint">Owns every new Undergraduation Lead. Existing Leads keep their owner.</p>
+                                        </div>
+                                        <lightning-icon icon-name="utility:check" alternative-text="Owner confirmed" size="x-small" class="owner-check"></lightning-icon>
+                                    </div>
+                                </template>
+                                <template lwc:else>
+                                    <div class="notice notice_error slds-m-bottom_small" role="alert">
+                                        <lightning-icon icon-name="utility:error" alternative-text="Error" size="x-small" class="notice-icon"></lightning-icon>
+                                        <p class="slds-text-body_regular">The Undergraduation Lead owner is not set up or is inactive. Ask your Salesforce admin to check Zoom Config "UG Lead Owner Username".</p>
+                                    </div>
+                                </template>
+                            </template>
+                            <template lwc:elseif={department}>
+                                <div class="owner-card slds-m-bottom_small">
+                                    <div class="owner-rule-icon slds-align_absolute-center">
+                                        <lightning-icon icon-name="utility:routing_offline" alternative-text="Assignment" size="x-small"></lightning-icon>
+                                    </div>
+                                    <div class="owner-text">
+                                        <p class="owner-eyebrow">Lead owner</p>
+                                        <p class="hint">Assigned by the programme rules; without a programme, Leads rotate among the department's users. Existing Leads keep their owner.</p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </lightning-card>
+
+                    <!-- 2. Students -->
+                    <lightning-card class="section-card">
+                        <div slot="title" class="section-title">
+                            <span class="step-number">2</span>
+                            <span class="slds-text-heading_small">{studentsHeading}</span>
+                        </div>
+                        <template lwc:if={hasStudents}>
+                            <div slot="actions" class="search-box">
+                                <lightning-input type="search" label="Search students" variant="label-hidden"
+                                    placeholder="Search name, email or phone" value={searchTerm} onchange={handleSearch}></lightning-input>
+                            </div>
+                        </template>
+                        <div class="slds-p-horizontal_medium">
+                            <template lwc:if={hasStudents}>
+                                <template lwc:if={showProgrammeTools}>
+                                    <div class="programme-bar slds-m-bottom_small">
+                                        <div class="slds-grid slds-wrap slds-gutters_x-small slds-grid_vertical-align-end">
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_7-of-12 slds-m-bottom_x-small">
+                                                <lightning-combobox data-id="bulkProgramme" name="bulkProgramme" label="Preferred programme for selected students"
+                                                    placeholder="Select a programme" options={programmeOptions} value={bulkProgramme}
+                                                    onchange={handleBulkProgrammeChange} disabled={isProgrammeToolsDisabled}></lightning-combobox>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 slds-m-bottom_x-small">
+                                                <lightning-button-group>
+                                                    <lightning-button label={applyLabel} icon-name="utility:check" variant="brand"
+                                                        onclick={handleApplyProgramme} disabled={isApplyDisabled}></lightning-button>
+                                                    <lightning-button label="Clear Programme" icon-name="utility:clear"
+                                                        onclick={handleClearProgramme} disabled={isClearDisabled}></lightning-button>
+                                                </lightning-button-group>
+                                            </div>
+                                        </div>
+                                        <p class="hint" aria-live="polite">{selectionText}</p>
+                                    </div>
+                                </template>
+
+                                <template lwc:if={hasVisibleRows}>
+                                    <div class="student-table slds-scrollable_y">
+                                        <lightning-datatable key-field="registrationId" data={visibleRows} columns={columns}
+                                            selected-rows={visibleSelectedIds} onrowselection={handleRowSelection}
+                                            hide-checkbox-column={hideCheckboxes} resize-column-disabled
+                                            aria-label="Students to sync"></lightning-datatable>
+                                    </div>
+                                </template>
+                                <template lwc:else>
+                                    <p class="hint slds-p-around_medium slds-text-align_center">
+                                        No students match "{searchTerm}". Clear the search to see everyone.
+                                    </p>
+                                </template>
+                            </template>
+
+                            <!-- 📭 Empty state -->
+                            <template lwc:else>
+                                <div class="state-panel slds-text-align_center">
+                                    <div class="state-icon state-icon_success slds-align_absolute-center">
+                                        <lightning-icon icon-name={emptyIcon} alternative-text={emptyTitle} size="small"></lightning-icon>
+                                    </div>
+                                    <h3 class="slds-text-heading_small slds-m-top_small">{emptyTitle}</h3>
+                                    <p class="slds-text-body_regular slds-text-color_weak slds-m-top_x-small">{emptyMessage}</p>
+                                </div>
+                            </template>
+                        </div>
+                    </lightning-card>
+                </template>
+
+                <!-- Running -->
+                <template lwc:elseif={isRunningPhase}>
+                    <div class="state-panel slds-text-align_center" aria-live="polite">
+                        <div class="ring-wrap slds-align_absolute-center">
+                            <lightning-progress-ring value={progressPercent} size="large" variant="base-autocomplete"
+                                aria-label="Lead sync progress"></lightning-progress-ring>
+                        </div>
+                        <p class="ring-percent">{progressPercent}%</p>
+                        <h3 class="slds-text-heading_medium">Syncing Leads…</h3>
+                        <p class="slds-text-body_regular slds-text-color_weak slds-m-top_xx-small">{progressText}</p>
+                        <div class="slds-m-top_medium">
+                            <lightning-progress-bar value={progressPercent} size="medium" aria-label="Lead sync progress bar"></lightning-progress-bar>
+                        </div>
+                        <p class="hint slds-m-top_small">
+                            This runs in the background. You can close this window; the session updates when the sync finishes.
+                        </p>
+                        <template lwc:if={pollWarning}>
+                            <p class="slds-text-body_small slds-text-color_error slds-m-top_x-small" role="alert">{pollWarning}</p>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- ✅ Done -->
+                <template lwc:elseif={isDonePhase}>
+                    <div class="state-panel slds-text-align_center" aria-live="polite">
+                        <div class={doneIconClass}>
+                            <lightning-icon icon-name={doneIcon} alternative-text={doneTitle} size="small"></lightning-icon>
+                        </div>
+                        <h3 class="slds-text-heading_medium slds-m-top_small">{doneTitle}</h3>
+                        <p class="slds-text-body_regular slds-text-color_weak slds-m-top_x-small">{doneMessage}</p>
+                    </div>
+                </template>
+            </template>
+        </div>
+
+        <div slot="footer" class="footer slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+            <div class="footer-summary slds-text-align_left">
+                <template lwc:if={footerSummary}>
+                    <span class="summary-pill">
+                        <lightning-icon icon-name="utility:target" alternative-text="Selection" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                        {footerSummary}
+                    </span>
+                </template>
+            </div>
+            <div>
+                <template lwc:if={isFormPhase}>
+                    <lightning-button label="Cancel" onclick={handleClose} class="slds-m-right_x-small"></lightning-button>
+                    <lightning-button variant="brand" label={submitLabel} icon-name="utility:sync" onclick={handleSync}
+                        disabled={isSubmitDisabled}></lightning-button>
+                </template>
+                <template lwc:else>
+                    <lightning-button variant="brand" label={closeLabel} onclick={handleClose}></lightning-button>
+                </template>
+            </div>
+        </div>
+    </lightning-quick-action-panel>
+</template>

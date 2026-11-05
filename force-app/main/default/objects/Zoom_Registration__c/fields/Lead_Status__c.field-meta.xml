@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Lead_Status__c</fullName>
-    <description>Lead processing state, set by the Zoom integration. Pending setup: waiting for the session's Department and Admission Year (or the next scheduled sync). Lead created / Lead updated: linked to a Lead. No contact details: no email and no phone, so no Lead. Error: the Lead or its Task could not be saved (see API Log, Log Name ZoomLeadService); set back to Pending setup to retry.</description>
+    <description>Lead processing state, set by the Zoom integration. Not synced (API value Pending setup): waiting for someone to run "Sync Leads to Salesforce" on the session. Lead created / Lead updated: linked to a Lead. No contact details: no email and no phone, so no Lead. Error: the Lead or its Task could not be saved (see API Log, Log Name ZoomLeadService); the next sync of the session retries it.</description>
     <externalId>false</externalId>
     <label>Lead Status</label>
     <required>false</required>
@@ -14,7 +14,7 @@
             <value>
                 <fullName>Pending setup</fullName>
                 <default>false</default>
-                <label>Pending setup</label>
+                <label>Not synced</label>
             </value>
             <value>
                 <fullName>Lead created</fullName>

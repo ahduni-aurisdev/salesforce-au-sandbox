@@ -1,0 +1,28 @@
+.loading-area {
+    min-height: 12rem;
+}
+
+.badge-column {
+    white-space: nowrap;
+}
+
+.stat-tile {
+    height: 100%;
+    border-radius: var(--slds-g-radius-border-2, var(--lwc-borderRadiusMedium));
+}
+
+.stat-success {
+    border-color: var(--slds-g-color-border-success-1, var(--lwc-colorBorderSuccess));
+}
+
+.stat-info {
+    border-color: var(--slds-g-color-border-accent-1, var(--lwc-brandAccessible));
+}
+
+.stat-warning {
+    border-color: var(--slds-g-color-border-warning-1, var(--lwc-colorBorderWarning));
+}
+
+.student-table {
+    max-height: 20rem;
+}

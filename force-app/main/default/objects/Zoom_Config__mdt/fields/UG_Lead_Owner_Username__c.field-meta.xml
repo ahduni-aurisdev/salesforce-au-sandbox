@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>UG_Lead_Owner_Username__c</fullName>
+    <description>Username of the user who owns every new Undergraduation Lead created by "Sync Leads to Salesforce" (Shraddha Singaurey). Each org has its own username (sandbox usernames carry the sandbox suffix). When blank, unknown or inactive, Undergraduation sync is blocked with a message instead of assigning someone else.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <inlineHelpText>Salesforce username of the Undergraduation Zoom Lead owner.</inlineHelpText>
+    <label>UG Lead Owner Username</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

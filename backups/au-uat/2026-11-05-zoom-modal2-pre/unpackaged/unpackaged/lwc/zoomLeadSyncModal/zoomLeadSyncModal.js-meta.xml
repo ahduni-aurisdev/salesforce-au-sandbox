@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <description>Large modal for Sync Leads to Salesforce on a Zoom Session; opened by the zoomLeadSync quick action.</description>
+    <isExposed>false</isExposed>
+    <masterLabel>Zoom Lead Sync Modal</masterLabel>
+</LightningComponentBundle>

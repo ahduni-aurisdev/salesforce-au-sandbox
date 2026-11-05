@@ -1,20 +1,24 @@
 /**
- * @description SOQL for the Zoom integration: Zoom sessions, registrations, registrations waiting for Lead
- *              processing, and the Lead candidates used to match a registrant (email / phone within one
- *              Department record type and Admission Year), and the users who own new Zoom Leads.
+ * @description SOQL for the Zoom integration: Zoom sessions, registrations, registrations of one session waiting
+ *              for Lead processing, the Lead candidates used to match a registrant (email / phone within one
+ *              Department record type and Admission Year), the Undergraduation Lead owner, and the user-mode
+ *              queries behind the "Sync Leads to Salesforce" popup (ZoomLeadSyncController).
  * @author AU Development Team
  * @date 2026-11-02
- * @version 1.3
- * @lastModified 2026-11-04
+ * @version 1.4
+ * @lastModified 2026-11-05
  */
-// System mode is intentional: callers are the Zoom webhook (Site guest user with no object access)
-// and the scheduled sync. Lead matching must see every Lead regardless of the running user's sharing,
-// otherwise it would create duplicates of Leads the user cannot see. No record data is returned to a user.
+// System mode is intentional for the integration queries: callers are the Zoom webhook (Site guest user with no
+// object access), the scheduled sync and the background Lead sync. Lead matching must see every Lead regardless of the running user's sharing,
+// otherwise it would create duplicates of Leads the user cannot see. No record data from these is returned to a user.
+// The popup queries (selectSessionForLeadSync*, selectRegistrationsForLeadSync, countRegistrations*) run in
+// USER_MODE because their results are shown to, or changed by, the user.
 public without sharing class ZoomSelector {
     private static final String STATUS_DELETED = 'Deleted';
     private static final String STATUS_ENDED = 'Ended';
     private static final Integer MAX_CANDIDATES = 2000;
     private static final Integer MAX_OWNER_USERS = 200;
+    private static final Integer MAX_SYNC_REGISTRATIONS = 2000;
     private static final String USER_TYPE_STANDARD = 'Standard';
 
     public static Map<String, Zoom_Webinar__c> selectSessionsByZoomIds(Set<String> zoomIds) {
@@ -61,17 +65,17 @@ public without sharing class ZoomSelector {
         return byKey;
     }
 
-    /** Registrations waiting for a Lead whose session has both Department and Admission Year set; oldest first. */
-    public static List<Zoom_Registration__c> selectPendingLeadRegistrations(String pendingStatus, Integer maxRows) {
+    /** Registrations of one session waiting for a Lead, when the session has Department and Admission Year; oldest first. */
+    public static List<Zoom_Registration__c> selectPendingLeadRegistrations(Id sessionId, String pendingStatus, Integer maxRows) {
         return [
             SELECT Id, Name, Email__c, Phone__c, First_Name__c, Last_Name__c, Is_Registered__c, Attended__c,
-                First_Joined_At__c, Time_In_Session_Minutes__c, Lead__c, Lead_Status__c,
+                First_Joined_At__c, Time_In_Session_Minutes__c, Lead__c, Lead_Status__c, Preferred_Programme__c,
                 Registration_Task_Id__c, Attendance_Task_Id__c,
                 Webinar__c, Webinar__r.Name, Webinar__r.Webinar_Id__c, Webinar__r.Type__c, Webinar__r.Status__c,
-                Webinar__r.Start_Time__c, Webinar__r.Department__c, Webinar__r.Admission_Year__c,
-                Webinar__r.Preferred_Programme__c
+                Webinar__r.Start_Time__c, Webinar__r.Department__c, Webinar__r.Admission_Year__c
             FROM Zoom_Registration__c
-            WHERE Lead_Status__c = :pendingStatus
+            WHERE Webinar__c = :sessionId
+                AND Lead_Status__c = :pendingStatus
                 AND Webinar__r.Department__c != null
                 AND Webinar__r.Admission_Year__c != null
             WITH SYSTEM_MODE
@@ -81,18 +85,20 @@ public without sharing class ZoomSelector {
     }
 
     /**
-     * @description Linked registrations of ended sessions that still need their attendance Task
+     * @description Linked registrations of one ended session that still need their attendance Task
      *              ("Attended" or, for registered people who never joined, "Did not attend").
      */
-    public static List<Zoom_Registration__c> selectRegistrationsAwaitingAttendanceTask(Set<String> linkedStatuses, Integer maxRows) {
+    public static List<Zoom_Registration__c> selectRegistrationsAwaitingAttendanceTask(Id sessionId, Set<String> linkedStatuses,
+        Integer maxRows) {
         return [
             SELECT Id, Name, Email__c, Phone__c, First_Name__c, Last_Name__c, Is_Registered__c, Attended__c,
-                First_Joined_At__c, Time_In_Session_Minutes__c, Lead__c, Lead_Status__c,
+                First_Joined_At__c, Time_In_Session_Minutes__c, Lead__c, Lead_Status__c, Preferred_Programme__c,
                 Registration_Task_Id__c, Attendance_Task_Id__c,
                 Webinar__c, Webinar__r.Name, Webinar__r.Webinar_Id__c, Webinar__r.Type__c, Webinar__r.Status__c,
                 Webinar__r.Start_Time__c, Webinar__r.Department__c, Webinar__r.Admission_Year__c
             FROM Zoom_Registration__c
-            WHERE Lead__c != null
+            WHERE Webinar__c = :sessionId
+                AND Lead__c != null
                 AND Attendance_Task_Id__c = null
                 AND Lead_Status__c IN :linkedStatuses
                 AND Webinar__r.Status__c = :STATUS_ENDED
@@ -140,22 +146,121 @@ public without sharing class ZoomSelector {
         return new Map<Id, Lead>([SELECT Id, OwnerId FROM Lead WHERE Id IN :leadIds WITH SYSTEM_MODE]);
     }
 
-    /**
-     * @description Active standard users with the given User Department, Role name and Profile name, oldest user
-     *              first (a stable order for the Zoom Lead owner round-robin).
-     */
-    public static List<User> selectLeadOwnerUsers(String department, String roleName, String profileName) {
-        if (String.isBlank(department) || String.isBlank(roleName) || String.isBlank(profileName)) {
-            return new List<User>();
+    /** The active standard user with this username (Undergraduation Lead owner), or null. */
+    public static User selectActiveUserByUsername(String username) {
+        if (String.isBlank(username)) {
+            return null;
         }
-        return [
-            SELECT Id
+        String trimmed = username.trim();
+        List<User> users = [
+            SELECT Id, Name, SmallPhotoUrl
             FROM User
-            WHERE IsActive = true AND UserType = :USER_TYPE_STANDARD
-                AND Department = :department.trim() AND UserRole.Name = :roleName.trim() AND Profile.Name = :profileName.trim()
+            WHERE IsActive = true AND UserType = :USER_TYPE_STANDARD AND Username = :trimmed
             WITH SYSTEM_MODE
-            ORDER BY CreatedDate ASC, Id ASC
-            LIMIT :MAX_OWNER_USERS
+            LIMIT 1
+        ];
+        return users.isEmpty() ? null : users[0];
+    }
+
+    /** The session for the sync popup, in the running user's access. */
+    public static List<Zoom_Webinar__c> selectSessionForLeadSync(Id sessionId) {
+        return [
+            SELECT Id, Name, Type__c, Status__c, Start_Time__c, Department__c, Admission_Year__c,
+                Lead_Sync_Started_At__c, Last_Lead_Sync_At__c, Last_Lead_Sync_By__r.Name
+            FROM Zoom_Webinar__c
+            WHERE Id = :sessionId
+            WITH USER_MODE
+            LIMIT 1
+        ];
+    }
+
+    /** The session row locked while a sync starts, so two users cannot start the same sync at once. */
+    public static List<Zoom_Webinar__c> selectSessionForLeadSyncUpdate(Id sessionId) {
+        return [
+            SELECT Id, Name, Status__c, Department__c, Admission_Year__c, Lead_Sync_Started_At__c, Last_Lead_Sync_At__c
+            FROM Zoom_Webinar__c
+            WHERE Id = :sessionId
+            WITH USER_MODE
+            LIMIT 1
+            FOR UPDATE
+        ];
+    }
+
+    /** Registrations of the session with the given Lead Statuses, for the sync popup; in the running user's access. */
+    public static List<Zoom_Registration__c> selectRegistrationsForLeadSync(Id sessionId, Set<String> leadStatuses) {
+        return [
+            SELECT Id, Name, First_Name__c, Last_Name__c, Email__c, Phone__c, Is_Registered__c, Attended__c,
+                Lead_Status__c, Preferred_Programme__c
+            FROM Zoom_Registration__c
+            WHERE Webinar__c = :sessionId AND Lead_Status__c IN :leadStatuses
+            WITH USER_MODE
+            ORDER BY Last_Name__c ASC NULLS LAST, First_Name__c ASC NULLS LAST, Id ASC
+            LIMIT :MAX_SYNC_REGISTRATIONS
+        ];
+    }
+
+    /** Registration count per Lead Status for the session; in the running user's access. */
+    public static Map<String, Integer> countRegistrationsByLeadStatus(Id sessionId) {
+        Map<String, Integer> counts = new Map<String, Integer>();
+        for (AggregateResult row : [
+            SELECT Lead_Status__c leadStatus, COUNT(Id) total
+            FROM Zoom_Registration__c
+            WHERE Webinar__c = :sessionId
+            WITH USER_MODE
+            GROUP BY Lead_Status__c
+        ]) {
+            counts.put((String) row.get('leadStatus'), (Integer) row.get('total'));
+        }
+        return counts;
+    }
+
+    /**
+     * @description Registrations of the session that left "Not synced", changed on or after since (all of them when
+     *              since is null), with their Lead; for the after-sync summary in the running user's access.
+     */
+    public static List<Zoom_Registration__c> selectSyncedRegistrations(Id sessionId, Datetime since) {
+        String pendingStatus = ZoomLeadService.LEAD_STATUS_PENDING;
+        Datetime changedSince = since == null ? Datetime.newInstanceGmt(1970, 1, 1) : since;
+        return [
+            SELECT Id, First_Name__c, Last_Name__c, Email__c, Phone__c, Is_Registered__c, Lead_Status__c,
+                Lead__c, Lead__r.Name, Lead__r.Status, Lead__r.OwnerId, Lead__r.Preferred_Programme__c
+            FROM Zoom_Registration__c
+            WHERE Webinar__c = :sessionId AND Lead_Status__c != :pendingStatus AND LastModifiedDate >= :changedSince
+            WITH USER_MODE
+            ORDER BY Last_Name__c ASC NULLS LAST, First_Name__c ASC NULLS LAST, Id ASC
+            LIMIT :MAX_SYNC_REGISTRATIONS
+        ];
+    }
+
+    /**
+     * @description Display names of Lead owners (users and queues) for the after-sync summary. Only names are read,
+     *              in system mode, because a user may lack read access to another user's or a queue's record.
+     */
+    public static Map<Id, String> selectOwnerNames(Set<Id> ownerIds) {
+        Map<Id, String> names = new Map<Id, String>();
+        if (ownerIds == null || ownerIds.isEmpty()) {
+            return names;
+        }
+        for (User owner : [SELECT Id, Name FROM User WHERE Id IN :ownerIds WITH SYSTEM_MODE]) {
+            names.put(owner.Id, owner.Name);
+        }
+        for (Group queue : [SELECT Id, Name FROM Group WHERE Id IN :ownerIds WITH SYSTEM_MODE]) {
+            names.put(queue.Id, queue.Name);
+        }
+        return names;
+    }
+
+    /** Linked registrations of the session still without an attendance Task (counts once it has ended); user access. */
+    public static Integer countRegistrationsAwaitingAttendance(Id sessionId, Set<String> linkedStatuses) {
+        return [
+            SELECT COUNT()
+            FROM Zoom_Registration__c
+            WHERE Webinar__c = :sessionId
+                AND Lead__c != null
+                AND Attendance_Task_Id__c = null
+                AND Lead_Status__c IN :linkedStatuses
+                AND (Attended__c = true OR Is_Registered__c = true)
+            WITH USER_MODE
         ];
     }
 

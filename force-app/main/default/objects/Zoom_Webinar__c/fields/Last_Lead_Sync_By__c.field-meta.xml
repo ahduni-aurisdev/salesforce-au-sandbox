@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Lead_Sync_By__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>User who last started "Sync Leads to Salesforce" for this session. Maintained by the integration.</description>
+    <externalId>false</externalId>
+    <label>Last Lead Sync By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipName>Zoom_Sessions_Lead_Synced</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

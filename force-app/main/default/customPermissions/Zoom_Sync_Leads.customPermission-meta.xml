@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Allows the user to run "Sync Leads to Salesforce" on a Zoom Session (creates and updates Leads and Tasks). Granted by permission set Zoom_Webinar_Full_Access.</description>
+    <isLicensed>false</isLicensed>
+    <label>Zoom Sync Leads</label>
+</CustomPermission>

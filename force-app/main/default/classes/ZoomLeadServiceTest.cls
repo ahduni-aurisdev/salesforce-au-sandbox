@@ -1,18 +1,21 @@
 /**
  * @description Tests for ZoomLeadService and ZoomLeadQueueable: Lead matching (email + phone + Department record
  *              type + Admission Year), new Lead creation, blank-only updates, Tasks, error handling, a 200-record
- *              bulk run and queueable chaining.
+ *              bulk run, queueable chaining per session and the session lock release.
  * @author AU Development Team
  * @date 2026-11-03
  *              Since v1.1: owner round-robin from Zoom_Config (User Department + Role + Profile).
  *              Since v1.2: department owner pools from LeadAssignmentRule__mdt and session Preferred Programme.
- * @version 1.2
- * @lastModified 2026-11-04
+ *              Since v2.0: Lead sync per session from "Sync Leads to Salesforce"; programme per student;
+ *              Undergraduation owner from Zoom_Config UG_Lead_Owner_Username__c.
+ * @version 2.0
+ * @lastModified 2026-11-05
  */
 @IsTest
 private class ZoomLeadServiceTest {
     private static final Integer BULK_SIZE = 200;
     private static final String DEPARTMENT = 'Masters';
+    private static final String UNDERGRADUATION = 'Undergraduation';
     private static final String YEAR = 'Admission Year - 2026';
     private static final String OTHER_YEAR = 'Admission Year - 2027';
     private static final String ZOOM_ID = '777000777';
@@ -23,7 +26,8 @@ private class ZoomLeadServiceTest {
     private static final String OWNER_DEPARTMENT = 'Zoom Owner Test Dept';
     private static final String OWNER_ROLE = 'Zoom Owner Test Role';
     private static final String NEW_EMAIL_DOMAIN = '@zoomowner.test';
-    private static final Integer OWNER_BATCH = 99;
+    private static final String MBA = 'Master of Business Administration';
+    private static final String ECONOMICS = 'Master of Science in Economics';
 
     @TestSetup
     static void createData() {
@@ -64,8 +68,12 @@ private class ZoomLeadServiceTest {
             Lead_Status__c = PENDING, Time_In_Session_Minutes__c = attended ? 42 : null);
     }
 
+    private static void runPending(Id sessionId) {
+        ZoomLeadService.processPending(ZoomSelector.selectPendingLeadRegistrations(sessionId, PENDING, BULK_SIZE));
+    }
+
     private static void runPending() {
-        ZoomLeadService.processPending(ZoomSelector.selectPendingLeadRegistrations(PENDING, BULK_SIZE));
+        runPending(session().Id);
     }
 
     private static Zoom_Registration__c reload(Id registrationId) {
@@ -115,7 +123,7 @@ private class ZoomLeadServiceTest {
         Zoom_Registration__c result = reload(reg.Id);
         System.assertEquals('Lead created', result.Lead_Status__c, 'An unknown person must get a new Lead');
         Lead created = [SELECT FirstName, LastName, Email, Phone, Status, LeadSource, Multi_Select_Lead_Source__c, Admission_Year__c,
-            Department__c, RecordType.DeveloperName FROM Lead WHERE Id = :result.Lead__c];
+            Department__c, Preferred_Programme__c, RecordType.DeveloperName FROM Lead WHERE Id = :result.Lead__c];
         System.assertEquals('919123456780', created.Phone, 'Phone must be set like website Leads: 91 + 10-digit number');
         System.assertNotEquals('Unqualified', created.Status, 'A Zoom Lead with valid email and phone must not be marked Unqualified');
         System.assertEquals('Zoom', created.LeadSource, 'A new Lead must have Lead Source Zoom');
@@ -123,6 +131,7 @@ private class ZoomLeadServiceTest {
         System.assertEquals(DEPARTMENT, created.RecordType.DeveloperName, 'The record type must come from the session Department');
         System.assertEquals('Masters', created.Department__c, 'Department__c must be the Department label');
         System.assertEquals(YEAR, created.Admission_Year__c, 'Admission Year must come from the session');
+        System.assertEquals(null, created.Preferred_Programme__c, 'Without a chosen programme the Lead must have none');
         System.assertEquals('Ravi', created.FirstName, 'First name must come from the registration');
         System.assertEquals('Shah', created.LastName, 'Last name must come from the registration');
         System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :created.Id AND Subject = :'Zoom Meeting Did Not Attend: ' + TOPIC],
@@ -153,7 +162,7 @@ private class ZoomLeadServiceTest {
         insert reg;
 
         Test.startTest();
-        runPending();
+        runPending(otherYear.Id);
         Test.stopTest();
 
         Zoom_Registration__c result = reload(reg.Id);
@@ -212,11 +221,9 @@ private class ZoomLeadServiceTest {
     @IsTest
     static void samePersonTwiceInBatchCreatesOneLead() {
         configure();
-        Zoom_Webinar__c second = new Zoom_Webinar__c(Name = 'Second', Webinar_Id__c = '999', Type__c = 'Meeting',
-            Status__c = 'Scheduled', Department__c = DEPARTMENT, Admission_Year__c = YEAR);
-        insert second;
-        Zoom_Registration__c first = registration(session().Id, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', true, false);
-        Zoom_Registration__c again = registration(second.Id, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', true, false);
+        Id sessionId = session().Id;
+        Zoom_Registration__c first = registration(sessionId, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', true, false);
+        Zoom_Registration__c again = registration(sessionId, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', false, true);
         insert new List<Zoom_Registration__c>{ first, again };
 
         Test.startTest();
@@ -228,20 +235,61 @@ private class ZoomLeadServiceTest {
     }
 
     @IsTest
+    static void samePersonInSecondSessionMatchesLeadFromFirstSync() {
+        configure();
+        Zoom_Webinar__c second = new Zoom_Webinar__c(Name = 'Second', Webinar_Id__c = '999', Type__c = 'Meeting',
+            Status__c = 'Scheduled', Department__c = DEPARTMENT, Admission_Year__c = YEAR);
+        insert second;
+        Zoom_Registration__c first = registration(session().Id, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', true, false);
+        Zoom_Registration__c again = registration(second.Id, 'twice' + EMAIL_DOMAIN, '9111111111', 'T', 'W', true, false);
+        insert new List<Zoom_Registration__c>{ first, again };
+
+        Test.startTest();
+        runPending();
+        runPending(second.Id);
+        Test.stopTest();
+
+        System.assertEquals(reload(first.Id).Lead__c, reload(again.Id).Lead__c, 'The second session must link the Lead from the first sync');
+        System.assertEquals('Lead updated', reload(again.Id).Lead_Status__c, 'The second sync must match, not create');
+        System.assertEquals(1, [SELECT COUNT() FROM Lead WHERE Email = :'twice' + EMAIL_DOMAIN], 'Exactly one Lead must exist');
+    }
+
+    @IsTest
+    static void syncOfOneSessionLeavesOtherSessionsAlone() {
+        configure();
+        Zoom_Webinar__c other = new Zoom_Webinar__c(Name = 'Other', Webinar_Id__c = '123', Type__c = 'Meeting',
+            Status__c = 'Scheduled', Department__c = DEPARTMENT, Admission_Year__c = YEAR);
+        insert other;
+        Zoom_Registration__c untouched = registration(other.Id, emailOf(9), phoneOf(9), 'U', 'V', true, false);
+        insert untouched;
+
+        Test.startTest();
+        new ZoomLeadQueueable(session().Id).execute(null);
+        Test.stopTest();
+
+        System.assertEquals(PENDING, reload(untouched.Id).Lead_Status__c, 'Another session must stay Not synced until its own sync');
+    }
+
+    @IsTest
     static void sessionWithoutDepartmentStaysPending() {
         configure();
-        Zoom_Webinar__c unset = new Zoom_Webinar__c(Name = 'Unset', Webinar_Id__c = '555', Type__c = 'Meeting', Status__c = 'Scheduled');
+        Zoom_Webinar__c unset = new Zoom_Webinar__c(Name = 'Unset', Webinar_Id__c = '555', Type__c = 'Meeting', Status__c = 'Scheduled',
+            Lead_Sync_Started_At__c = Datetime.now());
         insert unset;
         Zoom_Registration__c reg = registration(unset.Id, emailOf(5), phoneOf(5), 'E', 'F', true, false);
         insert reg;
 
         Test.startTest();
-        new ZoomLeadQueueable().execute(null);
+        ZoomLeadQueueable job = new ZoomLeadQueueable(unset.Id);
+        job.execute(null);
+        ZoomLeadQueueable.enqueuedJobs[0].execute(null);
         Test.stopTest();
 
         Zoom_Registration__c result = reload(reg.Id);
         System.assertEquals(PENDING, result.Lead_Status__c, 'A session without Department and Admission Year must keep its registrations pending');
         System.assertEquals(null, result.Lead__c, 'No Lead may be linked before the session is set up');
+        System.assertEquals(null, [SELECT Lead_Sync_Started_At__c FROM Zoom_Webinar__c WHERE Id = :unset.Id].Lead_Sync_Started_At__c,
+            'The end of the chain must release the session lock');
     }
 
     @IsTest
@@ -293,19 +341,23 @@ private class ZoomLeadServiceTest {
         insert later;
         Zoom_Registration__c reg = registration(later.Id, emailOf(6), phoneOf(6), 'K', 'L', true, false);
         insert reg;
-        runPending();
+        runPending(later.Id);
         System.assertEquals(null, reload(reg.Id).Attendance_Task_Id__c, 'No attendance Task before the session ends');
         later.Status__c = 'Ended';
+        later.Lead_Sync_Started_At__c = Datetime.now();
         update later;
 
         Test.startTest();
-        new ZoomLeadQueueable().execute(null);
+        new ZoomLeadQueueable(later.Id).execute(null);
         ZoomLeadQueueable.enqueuedJobs[0].execute(null);
         Test.stopTest();
 
         System.assertNotEquals(null, reload(reg.Id).Attendance_Task_Id__c, 'The attendance phase must log the Task once the session ended');
         System.assertEquals(1, [SELECT COUNT() FROM Task WHERE Subject = 'Zoom Meeting Did Not Attend: Later'],
             'The registered no-show must get one Did Not Attend Task');
+        Zoom_Webinar__c after = [SELECT Lead_Sync_Started_At__c, Last_Lead_Sync_At__c FROM Zoom_Webinar__c WHERE Id = :later.Id];
+        System.assertEquals(null, after.Lead_Sync_Started_At__c, 'The finished sync must release the session lock');
+        System.assertNotEquals(null, after.Last_Lead_Sync_At__c, 'The finished sync must record when it ended');
     }
 
     @IsTest
@@ -319,11 +371,13 @@ private class ZoomLeadServiceTest {
         insert registrations;
 
         Test.startTest();
-        new ZoomLeadQueueable().execute(null);
+        new ZoomLeadQueueable(sessionId).execute(null);
         Test.stopTest();
 
         System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'A full batch must chain another job');
-        System.assertEquals('pending', ZoomLeadQueueable.enqueuedJobs[0].phase, 'A full pending batch must chain the pending phase again');
+        System.assertEquals(ZoomLeadQueueable.PHASE_PENDING, ZoomLeadQueueable.enqueuedJobs[0].phase,
+            'A full pending batch must chain the pending phase again');
+        System.assertEquals(sessionId, ZoomLeadQueueable.enqueuedJobs[0].sessionId, 'The chained job must stay on the same session');
         System.assertEquals(0, [SELECT COUNT() FROM Zoom_Registration__c WHERE Lead_Status__c = :PENDING],
             'Every processed registration must leave Pending setup, so the chain ends');
     }
@@ -341,31 +395,37 @@ private class ZoomLeadServiceTest {
             registrations.add(reg);
         }
         insert registrations;
-        ZoomLeadQueueable job = new ZoomLeadQueueable();
-        job.phase = 'attendance';
+        ZoomLeadQueueable job = new ZoomLeadQueueable(sessionId);
+        job.phase = ZoomLeadQueueable.PHASE_ATTENDANCE;
 
         Test.startTest();
         job.execute(null);
         Test.stopTest();
 
         System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'A full attendance batch must chain another job');
-        System.assertEquals('attendance', ZoomLeadQueueable.enqueuedJobs[0].phase, 'The chained job must continue the attendance phase');
+        System.assertEquals(ZoomLeadQueueable.PHASE_ATTENDANCE, ZoomLeadQueueable.enqueuedJobs[0].phase,
+            'The chained job must continue the attendance phase');
         System.assertEquals(ZoomLeadQueueable.BATCH_SIZE, [SELECT COUNT() FROM Task WHERE Subject LIKE 'Zoom Meeting Did Not Attend%'],
             'Every registered no-show in the batch must get a Did Not Attend Task');
     }
 
     @IsTest
-    static void queueableFailureIsLoggedAndNotChained() {
+    static void queueableFailureIsLoggedReleasesLockAndIsNotChained() {
         configure();
+        Zoom_Webinar__c target = session();
+        target.Lead_Sync_Started_At__c = Datetime.now();
+        update target;
         ZoomLeadQueueable.simulateFailure = true;
 
         Test.startTest();
-        new ZoomLeadQueueable().execute(null);
+        new ZoomLeadQueueable(target.Id).execute(null);
         Test.stopTest();
 
         System.assertEquals(1, [SELECT COUNT() FROM API_Log__c WHERE Apex_Class_Name__c = 'ZoomLeadService' AND Registration_Number__c = 'pending'],
             'A failed Lead step must be logged with its phase so the error alert fires');
-        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'A failed job must not chain; the next scheduled run retries');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'A failed job must not chain; the user retries from the popup');
+        System.assertEquals(null, [SELECT Lead_Sync_Started_At__c FROM Zoom_Webinar__c WHERE Id = :target.Id].Lead_Sync_Started_At__c,
+            'A failed sync must release the session lock so the user can retry');
     }
 
     @IsTest
@@ -376,11 +436,25 @@ private class ZoomLeadServiceTest {
         insert reg;
 
         Test.startTest();
-        new ZoomLeadQueueable().execute(null);
+        new ZoomLeadQueueable(session().Id).execute(null);
+        new ZoomLeadQueueable(null).execute(null);
         Test.stopTest();
 
         System.assertEquals(PENDING, reload(reg.Id).Lead_Status__c, 'Nothing may be processed while Zoom_Integration is off');
         System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'No job may be chained while Zoom_Integration is off');
+    }
+
+    @IsTest
+    static void startEnqueuesOneJobForTheSession() {
+        Id sessionId = session().Id;
+
+        Test.startTest();
+        ZoomLeadQueueable.start(sessionId);
+        Test.stopTest();
+
+        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'start must enqueue exactly one job');
+        System.assertEquals(sessionId, ZoomLeadQueueable.enqueuedJobs[0].sessionId, 'The job must be for the given session');
+        System.assertEquals(ZoomLeadQueueable.PHASE_PENDING, ZoomLeadQueueable.enqueuedJobs[0].phase, 'A new sync must start with Leads');
     }
 
     @IsTest
@@ -415,6 +489,8 @@ private class ZoomLeadServiceTest {
         System.assertEquals(null, ZoomLeadService.lastTen(null), 'A null phone must give null');
     }
 
+    // ── Owners ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
     /** Creates owner users (setup DML isolated in runAs to avoid mixed DML); the last inactiveCount are inactive. */
     private static List<User> createOwnerUsers(Integer activeCount, Integer inactiveCount) {
         List<User> users = new List<User>();
@@ -433,35 +509,25 @@ private class ZoomLeadServiceTest {
         return users;
     }
 
-    private static void configureOwners() {
-        configure();
-        ZoomConfig.testOverride.Lead_Owner_Department__c = ' ' + OWNER_DEPARTMENT + ' ';
-        ZoomConfig.testOverride.Lead_Owner_Role__c = OWNER_ROLE;
-        ZoomConfig.testOverride.Lead_Owner_Profile__c = [SELECT Name FROM Profile WHERE Id = :UserInfo.getProfileId()].Name;
-    }
-
-    private static List<Zoom_Registration__c> newPeople(Integer count) {
+    private static List<Zoom_Registration__c> newPeople(Integer count, String programme) {
         Id sessionId = session().Id;
         List<Zoom_Registration__c> registrations = new List<Zoom_Registration__c>();
         for (Integer i = 0; i < count; i++) {
-            registrations.add(registration(sessionId, 'owner' + i + NEW_EMAIL_DOMAIN, '97' + String.valueOf(10000000 + i),
-                'New', 'Person ' + i, true, false));
+            Zoom_Registration__c reg = registration(sessionId, 'owner' + i + NEW_EMAIL_DOMAIN, '97' + String.valueOf(10000000 + i),
+                'New', 'Person ' + i, true, false);
+            reg.Preferred_Programme__c = programme;
+            registrations.add(reg);
         }
         return registrations;
-    }
-
-    private static Decimal zoomOwnerPosition() {
-        return Zoom_Lead_Round_Robin__c.getInstance(ZoomLeadService.POOL_ZOOM_OWNER).Next_Index__c;
     }
 
     private static LeadAssignmentRule__mdt rule(String department, String course, String emails) {
         return new LeadAssignmentRule__mdt(Department__c = department, Course__c = course, User_Email__c = emails);
     }
 
-    private static void setSession(String department, String programme) {
+    private static void setSessionDepartment(String department) {
         Zoom_Webinar__c target = session();
         target.Department__c = department;
-        target.Preferred_Programme__c = programme;
         update target;
     }
 
@@ -469,118 +535,84 @@ private class ZoomLeadServiceTest {
         return new Map<Id, User>(users).keySet();
     }
 
+    private static Map<Id, Integer> newLeadCountByOwner() {
+        Map<Id, Integer> countByOwner = new Map<Id, Integer>();
+        for (AggregateResult row : [SELECT OwnerId owner, COUNT(Id) total FROM Lead WHERE Email LIKE :'%' + NEW_EMAIL_DOMAIN GROUP BY OwnerId]) {
+            countByOwner.put((Id) row.get('owner'), (Integer) row.get('total'));
+        }
+        return countByOwner;
+    }
+
     @IsTest
-    static void newLeadsAreSharedRoundRobinAmongActiveMatchingUsers() {
-        List<User> owners = createOwnerUsers(3, 1);
-        configureOwners();
-        List<Zoom_Registration__c> registrations = newPeople(OWNER_BATCH);
-        registrations.add(registration(session().Id, emailOf(5), phoneOf(5), 'Old', 'Person', true, false));
-        insert registrations;
-        Lead existing = [SELECT OwnerId FROM Lead WHERE Email = :emailOf(5)];
+    static void undergraduationLeadsAllGoToConfiguredOwner() {
+        List<User> users = createOwnerUsers(3, 0);
+        configure();
+        ZoomConfig.testOverride.UG_Lead_Owner_Username__c = ' ' + users[1].Username + ' ';
+        ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
+            rule(UNDERGRADUATION, 'Test Course', users[0].Email)
+        };
+        setSessionDepartment(UNDERGRADUATION);
+        insert newPeople(10, null);
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
-        Map<Id, Integer> countByOwner = new Map<Id, Integer>();
-        for (AggregateResult row : [SELECT OwnerId owner, COUNT(Id) total FROM Lead WHERE Email LIKE :'%' + NEW_EMAIL_DOMAIN GROUP BY OwnerId]) {
-            countByOwner.put((Id) row.get('owner'), (Integer) row.get('total'));
-        }
-        System.assertEquals(3, countByOwner.size(), 'New Leads must go only to the 3 active matching users');
-        for (Integer i = 0; i < 3; i++) {
-            System.assertEquals(OWNER_BATCH / 3, countByOwner.get(owners[i].Id), 'Each active matching user must get an equal share');
-        }
-        System.assert(!countByOwner.containsKey(owners[3].Id), 'An inactive user must never receive Leads');
-        System.assertEquals(existing.OwnerId, [SELECT OwnerId FROM Lead WHERE Email = :emailOf(5)].OwnerId,
-            'The owner of an existing (matched) Lead must never change');
-        System.assertEquals(0, zoomOwnerPosition(), 'After 99 Leads for 3 users the next Lead must go to the first user again');
-        Lead sample = [SELECT Id, OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
+        Map<Id, Integer> countByOwner = newLeadCountByOwner();
+        System.assertEquals(1, countByOwner.size(), 'Every new Undergraduation Lead must have the same owner');
+        System.assertEquals(10, countByOwner.get(users[1].Id), 'The configured Undergraduation owner must own every new Lead');
+        Lead sample = [SELECT Id, OwnerId, RecordType.DeveloperName FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
+        System.assertEquals(UNDERGRADUATION, sample.RecordType.DeveloperName, 'The Lead must be an Undergraduation Lead');
         System.assertEquals(sample.OwnerId, [SELECT OwnerId FROM Task WHERE WhoId = :sample.Id LIMIT 1].OwnerId,
             'The Registered Task must belong to the new Lead owner');
     }
 
     @IsTest
-    static void roundRobinContinuesFromSavedPosition() {
-        List<User> owners = createOwnerUsers(2, 0);
-        configureOwners();
-        insert new Zoom_Lead_Round_Robin__c(Name = ZoomLeadService.POOL_ZOOM_OWNER, Next_Index__c = 1);
-        insert newPeople(1);
-
-        Test.startTest();
-        runPending();
-        Test.stopTest();
-
-        System.assertEquals(owners[1].Id, [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN].OwnerId,
-            'The next Lead must go to the user at the saved position');
-        System.assertEquals(0, zoomOwnerPosition(), 'The position must wrap to the first user');
-    }
-
-    @IsTest
-    static void savedPositionOutOfRangeRestartsAtFirstUser() {
-        List<User> owners = createOwnerUsers(2, 0);
-        configureOwners();
-        insert new Zoom_Lead_Round_Robin__c(Name = ZoomLeadService.POOL_ZOOM_OWNER, Next_Index__c = 7);
-        insert newPeople(1);
-
-        Test.startTest();
-        runPending();
-        Test.stopTest();
-
-        System.assertEquals(owners[0].Id, [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN].OwnerId,
-            'A saved position beyond the user list (a user left) must restart at the first user');
-    }
-
-    @IsTest
-    static void noMatchingUserKeepsTriggerOwnerWithoutError() {
-        createOwnerUsers(1, 0);
-        configureOwners();
-        ZoomConfig.testOverride.Lead_Owner_Role__c = 'No Such Role';
-        insert newPeople(1);
+    static void inactiveUndergraduationOwnerKeepsTriggerOwnerWithoutError() {
+        List<User> users = createOwnerUsers(0, 1);
+        configure();
+        ZoomConfig.testOverride.UG_Lead_Owner_Username__c = users[0].Username;
+        setSessionDepartment(UNDERGRADUATION);
+        insert newPeople(1, null);
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
         Lead created = [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
-        System.assertNotEquals(null, created.OwnerId, 'The Lead must still be created with the trigger owner');
-        System.assertEquals(0, [SELECT COUNT() FROM User WHERE Id = :created.OwnerId AND Department = :OWNER_DEPARTMENT],
-            'No configured owner must be used when the Role does not match');
+        System.assertNotEquals(users[0].Id, created.OwnerId, 'An inactive user must never receive Leads');
         System.assertEquals('Lead created', [SELECT Lead_Status__c FROM Zoom_Registration__c WHERE Email__c = :'owner0' + NEW_EMAIL_DOMAIN].Lead_Status__c,
             'A missing owner must not mark the registration as an error');
         System.assertEquals(0, [SELECT COUNT() FROM API_Log__c WHERE Log_Name__c = :ZoomLeadService.LOG_NAME],
             'A missing owner must not log an error');
-        System.assertEquals(null, Zoom_Lead_Round_Robin__c.getInstance(ZoomLeadService.POOL_ZOOM_OWNER),
-            'The position must not move when no owner is used');
     }
 
     @IsTest
-    static void blankOwnerCriteriaFindNoUsers() {
-        System.assert(ZoomSelector.selectLeadOwnerUsers(OWNER_DEPARTMENT, null, 'Profile').isEmpty(),
-            'A blank Role must switch the owner rule off');
-        System.assert(ZoomSelector.selectLeadOwnerUsers(' ', OWNER_ROLE, 'Profile').isEmpty(),
-            'A blank Department must switch the owner rule off');
-        System.assert(ZoomSelector.selectLeadOwnerUsers(OWNER_DEPARTMENT, OWNER_ROLE, '').isEmpty(),
-            'A blank Profile must switch the owner rule off');
+    static void ownerLookupByUsername() {
+        List<User> users = createOwnerUsers(1, 0);
+        configure();
+        System.assertEquals(null, ZoomSelector.selectActiveUserByUsername(null), 'A null username must find nobody');
+        System.assertEquals(null, ZoomSelector.selectActiveUserByUsername(' '), 'A blank username must find nobody');
+        System.assertEquals(null, ZoomSelector.selectActiveUserByUsername('nobody' + NEW_EMAIL_DOMAIN), 'An unknown username must find nobody');
+        System.assertEquals(users[0].Id, ZoomSelector.selectActiveUserByUsername(users[0].Username).Id, 'An active username must be found');
+        System.assertEquals(null, ZoomLeadService.undergraduationOwner(), 'Without configuration there is no Undergraduation owner');
     }
 
     @IsTest
     static void otherDepartmentWithoutProgrammeUsesDepartmentUsers() {
         List<User> users = createOwnerUsers(3, 0);
-        configureOwners();
+        configure();
         ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
             rule('Masters', 'Test Course', users[0].Email + ', ' + users[1].Email.toUpperCase()),
             rule('Phd', 'Other Course', users[2].Email)
         };
-        insert newPeople(4);
+        insert newPeople(4, null);
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
-        Map<Id, Integer> countByOwner = new Map<Id, Integer>();
-        for (AggregateResult row : [SELECT OwnerId owner, COUNT(Id) total FROM Lead WHERE Email LIKE :'%' + NEW_EMAIL_DOMAIN GROUP BY OwnerId]) {
-            countByOwner.put((Id) row.get('owner'), (Integer) row.get('total'));
-        }
+        Map<Id, Integer> countByOwner = newLeadCountByOwner();
         System.assertEquals(2, countByOwner.get(users[0].Id), 'Masters Leads without a programme must rotate over the Masters users');
         System.assertEquals(2, countByOwner.get(users[1].Id), 'Masters Leads without a programme must rotate over the Masters users');
         System.assert(!countByOwner.containsKey(users[2].Id), 'Users of another department must not receive Masters Leads');
@@ -588,22 +620,73 @@ private class ZoomLeadServiceTest {
     }
 
     @IsTest
+    static void departmentRoundRobinContinuesFromSavedPosition() {
+        List<User> users = createOwnerUsers(2, 0);
+        configure();
+        ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
+            rule('Masters', 'Test Course', users[0].Email + ',' + users[1].Email)
+        };
+        insert new Zoom_Lead_Round_Robin__c(Name = 'masters', Next_Index__c = 1);
+        insert newPeople(1, null);
+
+        Test.startTest();
+        runPending();
+        Test.stopTest();
+
+        System.assertEquals(users[1].Id, [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN].OwnerId,
+            'The next Lead must go to the user at the saved position');
+        System.assertEquals(0, Zoom_Lead_Round_Robin__c.getInstance('masters').Next_Index__c, 'The position must wrap to the first user');
+    }
+
+    @IsTest
+    static void savedPositionOutOfRangeRestartsAtFirstUser() {
+        List<User> users = createOwnerUsers(2, 0);
+        configure();
+        ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
+            rule('Masters', 'Test Course', users[0].Email + ',' + users[1].Email)
+        };
+        insert new Zoom_Lead_Round_Robin__c(Name = 'masters', Next_Index__c = 7);
+        insert newPeople(1, null);
+
+        Test.startTest();
+        runPending();
+        Test.stopTest();
+
+        System.assertEquals(users[0].Id, [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN].OwnerId,
+            'A saved position beyond the user list (a user left) must restart at the first user');
+    }
+
+    @IsTest
+    static void departmentWithoutUsersKeepsTriggerOwner() {
+        List<User> users = createOwnerUsers(1, 0);
+        configure();
+        ZoomConfig.testOverride.UG_Lead_Owner_Username__c = users[0].Username;
+        insert newPeople(1, null);
+
+        Test.startTest();
+        runPending();
+        Test.stopTest();
+
+        Lead created = [SELECT OwnerId FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
+        System.assertNotEquals(users[0].Id, created.OwnerId, 'Leads of other departments must never fall back to the Undergraduation owner');
+        System.assertEquals(null, Zoom_Lead_Round_Robin__c.getInstance('masters'), 'No position may be saved when no owner is used');
+    }
+
+    @IsTest
     static void programmeWithRuleUsersKeepsTriggerOwner() {
         List<User> users = createOwnerUsers(2, 0);
-        configureOwners();
-        String programme = 'Master of Business Administration';
+        configure();
         ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
-            rule('Masters', programme, users[0].Email)
+            rule('Masters', MBA, users[0].Email)
         };
-        setSession(DEPARTMENT, programme);
-        insert newPeople(1);
+        insert newPeople(1, MBA);
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
         Lead created = [SELECT OwnerId, Preferred_Programme__c FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
-        System.assertEquals(programme, created.Preferred_Programme__c, 'A new Lead must get the session programme');
+        System.assertEquals(MBA, created.Preferred_Programme__c, 'A new Lead must get the student programme');
         System.assert(!idsOf(users).contains(created.OwnerId),
             'When the programme has users, the owner set by the Lead trigger programme rule must be kept');
     }
@@ -611,12 +694,11 @@ private class ZoomLeadServiceTest {
     @IsTest
     static void programmeWithoutRuleUsesDepartmentUsers() {
         List<User> users = createOwnerUsers(2, 0);
-        configureOwners();
+        configure();
         ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
             rule('Masters', 'Test Course', users[1].Email)
         };
-        setSession(DEPARTMENT, 'Master of Science in Economics');
-        insert newPeople(1);
+        insert newPeople(1, ECONOMICS);
 
         Test.startTest();
         runPending();
@@ -627,57 +709,58 @@ private class ZoomLeadServiceTest {
     }
 
     @IsTest
-    static void undergraduationIgnoresDepartmentRules() {
-        List<User> users = createOwnerUsers(1, 0);
-        configureOwners();
-        ZoomConfig.testOverride.Lead_Owner_Role__c = 'No Such Role';
-        ZoomLeadService.testAssignmentRules = new List<LeadAssignmentRule__mdt>{
-            rule('Undergraduation', 'Test Course', users[0].Email)
-        };
-        setSession('Undergraduation', null);
-        insert newPeople(1);
+    static void studentsOfOneSessionCanHaveDifferentProgrammes() {
+        configure();
+        List<Zoom_Registration__c> people = newPeople(2, MBA);
+        people[1].Preferred_Programme__c = ECONOMICS;
+        insert people;
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
-        Lead created = [SELECT OwnerId, RecordType.DeveloperName FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN];
-        System.assertEquals('Undergraduation', created.RecordType.DeveloperName, 'The Lead must be an Undergraduation Lead');
-        System.assertNotEquals(users[0].Id, created.OwnerId, 'Undergraduation Leads must only use the Zoom_Config owner users');
+        System.assertEquals(MBA, [SELECT Preferred_Programme__c FROM Lead WHERE Email = :'owner0' + NEW_EMAIL_DOMAIN].Preferred_Programme__c,
+            'The first student must get their own programme');
+        System.assertEquals(ECONOMICS, [SELECT Preferred_Programme__c FROM Lead WHERE Email = :'owner1' + NEW_EMAIL_DOMAIN].Preferred_Programme__c,
+            'The second student must get their own programme');
     }
 
     @IsTest
     static void existingLeadProgrammeFilledOnlyWhenBlank() {
         configure();
-        String programme = 'Master of Business Administration';
-        String kept = 'Master of Science in Economics';
         Lead withProgramme = [SELECT Id FROM Lead WHERE Email = :emailOf(3)];
-        withProgramme.Preferred_Programme__c = kept;
+        withProgramme.Preferred_Programme__c = ECONOMICS;
         update withProgramme;
-        setSession(DEPARTMENT, programme);
-        insert new List<Zoom_Registration__c>{
-            registration(session().Id, emailOf(2), phoneOf(2), 'A', 'B', true, false),
-            registration(session().Id, emailOf(3), phoneOf(3), 'C', 'D', true, false)
-        };
+        Zoom_Registration__c blankLead = registration(session().Id, emailOf(2), phoneOf(2), 'A', 'B', true, false);
+        Zoom_Registration__c filledLead = registration(session().Id, emailOf(3), phoneOf(3), 'C', 'D', true, false);
+        blankLead.Preferred_Programme__c = MBA;
+        filledLead.Preferred_Programme__c = MBA;
+        insert new List<Zoom_Registration__c>{ blankLead, filledLead };
 
         Test.startTest();
         runPending();
         Test.stopTest();
 
-        System.assertEquals(programme, [SELECT Preferred_Programme__c FROM Lead WHERE Email = :emailOf(2)].Preferred_Programme__c,
-            'A blank programme on an existing Lead must be filled from the session');
-        System.assertEquals(kept, [SELECT Preferred_Programme__c FROM Lead WHERE Id = :withProgramme.Id].Preferred_Programme__c,
+        System.assertEquals(MBA, [SELECT Preferred_Programme__c FROM Lead WHERE Email = :emailOf(2)].Preferred_Programme__c,
+            'A blank programme on an existing Lead must be filled from the student choice');
+        System.assertEquals(ECONOMICS, [SELECT Preferred_Programme__c FROM Lead WHERE Id = :withProgramme.Id].Preferred_Programme__c,
             'A programme already on an existing Lead must never change');
     }
 
     @IsTest
-    static void programmeAndDepartmentHelpers() {
+    static void programmeYearAndDepartmentHelpers() {
         Zoom_Registration__c registration = new Zoom_Registration__c();
-        System.assertEquals(null, ZoomLeadService.programmeOf(registration), 'No session must give no programme');
-        registration.Webinar__r = new Zoom_Webinar__c(Preferred_Programme__c = 'Not A Programme');
+        System.assertEquals(null, ZoomLeadService.programmeOf(registration), 'No programme must give no programme');
+        registration.Preferred_Programme__c = 'Not A Programme';
         System.assertEquals(null, ZoomLeadService.programmeOf(registration), 'A value not on Lead must be ignored');
-        registration.Webinar__r = new Zoom_Webinar__c(Preferred_Programme__c = 'Gemba');
+        registration.Preferred_Programme__c = 'Gemba';
         System.assertEquals('Gemba', ZoomLeadService.programmeOf(registration), 'A valid Lead programme must be used');
+        System.assert(ZoomLeadService.isActiveLeadAdmissionYear(YEAR), 'An active Lead admission year must be accepted');
+        System.assert(!ZoomLeadService.isActiveLeadAdmissionYear('Admission Year - 1999'), 'An unknown year must be rejected');
+        System.assert(!ZoomLeadService.isActiveLeadAdmissionYear(null), 'A blank year must be rejected');
+        System.assert(ZoomLeadService.isUndergraduation('Undergraduation'), 'The record type name must be Undergraduation');
+        System.assert(!ZoomLeadService.isUndergraduation('Masters'), 'Masters is not Undergraduation');
+        System.assert(!ZoomLeadService.isUndergraduation(null), 'No department is not Undergraduation');
         System.assertEquals(ZoomLeadService.departmentKey('Executive Education '), ZoomLeadService.departmentKey('Executive_Education'),
             'Record type names and metadata departments must give the same key');
         System.assertEquals(null, ZoomLeadService.departmentKey(' '), 'A blank department must give no key');

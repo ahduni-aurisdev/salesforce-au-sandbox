@@ -3,12 +3,13 @@
  *              ZoomWebinarSyncScheduler and ZoomConfig. Covers webinars and meetings, a 200-person bulk sync,
  *              Zoom failures (401, 429, 5xx, timeout), retries, feature flags and webhook rejection paths.
  *              Since v1.2 the webhook and the session sync never create Leads or Tasks: registrations are saved as
- *              "Pending setup" and the sync chain ends by starting ZoomLeadQueueable (see ZoomLeadServiceTest).
+ *              "Not synced" (Pending setup) for the "Sync Leads to Salesforce" button (see ZoomLeadSyncControllerTest).
  * @author AU Development Team
  * @date 2026-10-21
- *              Since v1.3: default Department and Admission Year from Zoom_Config on new sessions.
- * @version 1.3
- * @lastModified 2026-11-04
+ *              Since v1.4: the sync no longer starts the Lead step and new sessions get no default Department or
+ *              Admission Year.
+ * @version 1.4
+ * @lastModified 2026-11-05
  */
 @IsTest
 private class ZoomIntegrationTest {
@@ -479,7 +480,7 @@ private class ZoomIntegrationTest {
         System.assertEquals(BULK_SIZE, [SELECT COUNT() FROM Zoom_Registration__c WHERE Lead_Status__c = 'Pending setup' AND Attended__c = true],
             'All 200 registrants must be stored, marked attended and left for the Lead step');
         System.assertEquals(0, [SELECT COUNT() FROM Task WHERE Subject LIKE 'Zoom Webinar%'], 'The session sync must not create Tasks');
-        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'The end of the sync chain must start the Lead step');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'The session sync must never start the Lead step');
         Zoom_Webinar__c session = [SELECT Registered_Count__c, Attended_Count__c FROM Zoom_Webinar__c];
         System.assertEquals(BULK_SIZE, session.Registered_Count__c, 'Roll-up must count 200 registered');
         System.assertEquals(BULK_SIZE, session.Attended_Count__c, 'Roll-up must count 200 attended');
@@ -529,7 +530,6 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs.size(), 'A rate-limited call must be retried once');
-        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'A retry carries the chain, so the Lead step must not start yet');
         System.assertEquals(1, ZoomWebinarSync.enqueuedDelays[0], 'The first retry must wait 1 minute');
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs[0].attempt, 'The retry must carry the attempt number');
         System.assertEquals(new List<String>{ SESSION_ID, '111' }, ZoomWebinarSync.enqueuedJobs[0].sessionKeys,
@@ -553,7 +553,6 @@ private class ZoomIntegrationTest {
         System.assertEquals(1, ZoomWebinarSync.enqueuedJobs.size(), 'The chain must continue with the next session');
         System.assertEquals(0, ZoomWebinarSync.enqueuedDelays[0], 'The next session must run without delay');
         System.assertEquals(new List<String>{ '111' }, ZoomWebinarSync.enqueuedJobs[0].sessionKeys, 'Only the remaining session must be queued');
-        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'The Lead step must wait until the last session is synced');
     }
 
     @IsTest
@@ -565,7 +564,7 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assert(ZoomWebinarSync.enqueuedJobs.isEmpty(), 'A 401 must not be retried');
-        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'The Lead step must still run after the last session failed');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'A failed sync must not start the Lead step');
         API_Log__c log = [SELECT Response__c FROM API_Log__c WHERE Log_Name__c = 'ZoomWebinarSync'];
         System.assert(log.Response__c.contains('HTTP 401'), 'The log must contain the HTTP status');
     }
@@ -597,7 +596,7 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
-    static void emptyDiscoveryStartsLeadStep() {
+    static void emptyDiscoveryEndsChain() {
         configure(false);
         Test.setMock(HttpCalloutMock.class, new ZoomMock()
             .respondTo('/oauth/token', 200, '{"access_token":"tok"}')
@@ -607,11 +606,11 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assert(ZoomWebinarSync.enqueuedJobs.isEmpty(), 'Nothing to sync means no further sync job');
-        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'Pending registrations must still be processed when Zoom has no sessions');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'The session sync must never start the Lead step');
     }
 
     @IsTest
-    static void failedDiscoveryStillStartsLeadStep() {
+    static void failedDiscoveryIsLoggedAndEndsChain() {
         configure(false);
         Test.setMock(HttpCalloutMock.class, new ZoomMock().respondTo('/oauth/token', 401, '{"reason":"Invalid client"}'));
         Test.startTest();
@@ -619,7 +618,8 @@ private class ZoomIntegrationTest {
         Test.stopTest();
 
         System.assertEquals(1, logCount(), 'The discovery failure must be logged');
-        System.assertEquals(1, ZoomLeadQueueable.enqueuedJobs.size(), 'A failed discovery must not block the Lead step');
+        System.assert(ZoomWebinarSync.enqueuedJobs.isEmpty(), 'A non-retryable discovery failure must end the chain');
+        System.assert(ZoomLeadQueueable.enqueuedJobs.isEmpty(), 'The session sync must never start the Lead step');
     }
 
     @IsTest
@@ -701,78 +701,42 @@ private class ZoomIntegrationTest {
     }
 
     @IsTest
-    static void newSessionGetsDefaultDepartmentAndYear() {
+    static void newSessionStartsWithoutDepartmentAndYear() {
         configure(true);
-        ZoomConfig.testOverride.Default_Department__c = ' undergraduation ';
-        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
         Test.startTest();
         ZoomEventService.process(event('meeting.created', null));
         ZoomEventService.process(event('meeting.started', null));
         Test.stopTest();
 
         Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
-        System.assertEquals('Undergraduation', session.Department__c, 'A new session must get the default Department (matched case-insensitively)');
-        System.assertEquals('Admission Year - 2027', session.Admission_Year__c, 'A new session must get the default Admission Year');
+        System.assertEquals(null, session.Department__c, 'A new session must start without Department; it is set in the sync popup');
+        System.assertEquals(null, session.Admission_Year__c, 'A new session must start without Admission Year; it is set in the sync popup');
     }
 
     @IsTest
-    static void existingSessionValuesAreNeverReplacedByDefaults() {
+    static void eventsNeverChangeDepartmentAndYearSetBySync() {
         configure(true);
-        insert new Zoom_Webinar__c(Name = TOPIC, Webinar_Id__c = SESSION_ID, Type__c = 'Meeting', Status__c = 'Scheduled');
-        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
-        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
+        insert new Zoom_Webinar__c(Name = TOPIC, Webinar_Id__c = SESSION_ID, Type__c = 'Meeting', Status__c = 'Scheduled',
+            Department__c = 'Masters', Admission_Year__c = 'Admission Year - 2027');
         Test.startTest();
         ZoomEventService.process(event('meeting.updated', null));
         Test.stopTest();
 
         Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
-        System.assertEquals(null, session.Department__c, 'Defaults must apply only when a session is created, not to existing sessions');
-        System.assertEquals(null, session.Admission_Year__c, 'Defaults must apply only when a session is created, not to existing sessions');
+        System.assertEquals('Masters', session.Department__c, 'A Zoom event must not change the Department chosen at sync');
+        System.assertEquals('Admission Year - 2027', session.Admission_Year__c, 'A Zoom event must not change the Admission Year chosen at sync');
     }
 
     @IsTest
-    static void invalidOrBlankDefaultsLeaveSessionBlank() {
+    static void concurrentInsertIsRetriedWithoutDefaults() {
         configure(true);
-        ZoomConfig.testOverride.Default_Department__c = 'Not A Department';
-        Test.startTest();
-        ZoomEventService.process(event('meeting.created', null));
-        Test.stopTest();
-
-        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
-        System.assertEquals(null, session.Department__c, 'An invalid default must be ignored so the save does not fail');
-        System.assertEquals(null, session.Admission_Year__c, 'A blank default must leave the Admission Year blank');
-        System.assertEquals(0, logCount(), 'An invalid default must not cause an error');
-    }
-
-    @IsTest
-    static void sessionDefaultsKeepValuesAlreadySet() {
-        configure(true);
-        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
-        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
-        Zoom_Webinar__c session = new Zoom_Webinar__c(Department__c = 'Masters', Admission_Year__c = 'Admission Year - 2028');
-
-        Test.startTest();
-        Set<String> filled = ZoomEventService.applySessionDefaults(session);
-        Test.stopTest();
-
-        System.assert(filled.isEmpty(), 'Values already on the session must not be reported as filled');
-        System.assertEquals('Masters', session.Department__c, 'A Department already set must not be replaced');
-        System.assertEquals('Admission Year - 2028', session.Admission_Year__c, 'An Admission Year already set must not be replaced');
-    }
-
-    @IsTest
-    static void concurrentInsertRetryKeepsDefaults() {
-        configure(true);
-        ZoomConfig.testOverride.Default_Department__c = 'Undergraduation';
-        ZoomConfig.testOverride.Default_Admission_Year__c = 'Admission Year - 2027';
         ZoomEventService.simulatedDuplicateFailures = 1;
         Test.startTest();
         ZoomEventService.process(event('meeting.started', null));
         Test.stopTest();
 
-        Zoom_Webinar__c session = [SELECT Department__c, Admission_Year__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
+        Zoom_Webinar__c session = [SELECT Department__c FROM Zoom_Webinar__c WHERE Webinar_Id__c = :SESSION_ID];
         System.assertEquals(0, ZoomEventService.simulatedDuplicateFailures, 'The simulated concurrent insert must have been hit');
-        System.assertEquals('Undergraduation', session.Department__c, 'A session created on retry must still get the default Department');
-        System.assertEquals('Admission Year - 2027', session.Admission_Year__c, 'A session created on retry must still get the default Admission Year');
+        System.assertEquals(null, session.Department__c, 'A session created on retry must also start without Department');
     }
 }

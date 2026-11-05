@@ -36,6 +36,14 @@
         <apexClass>ZoomWebinarSyncScheduler</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>ZoomLeadSyncController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>Zoom_Sync_Leads</name>
+    </customPermissions>
     <description>Access to Zoom webinar and meeting registrations and attendance (objects, fields, tabs, Apex, Zoom OAuth credential).</description>
     <externalCredentialPrincipalAccesses>
         <enabled>true</enabled>
@@ -248,6 +256,26 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Zoom_Webinar__c.Webinar_Id__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Zoom_Registration__c.Preferred_Programme__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Zoom_Webinar__c.Last_Lead_Sync_At__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Zoom_Webinar__c.Last_Lead_Sync_By__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Zoom_Webinar__c.Lead_Sync_Started_At__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>

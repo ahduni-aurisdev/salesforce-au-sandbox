@@ -109,6 +109,22 @@ See `docs/zoom-integration-development.md` for the full design. Summary:
 - **CDC:** not used for Zoom (user confirmed).
 - **UAT note:** sandbox user emails end in `.invalid`, so department users from `LeadAssignmentRule__mdt` are not found in UAT and Leads fall back to the Zoom_Config owner.
 
+### Decision — manual "Sync Leads to Salesforce" per session (2026-11-05, user; replaces automatic Lead creation and the default/owner decisions above)
+- **Background:** the first Production run (2026-11-05 06:00 IST) created 174 Leads, including from non-admissions meetings. Those Leads, 21 sessions and 281 registrations were deleted (YES-DELETE, see changelog). The scheduled job was removed and `Zoom_Integration` switched off in Production.
+- **Scheduled job and webhook:** only fetch sessions and registrations (a safety net for missed webhook events). They never create Leads or Tasks. `ZoomWebinarSync` no longer starts `ZoomLeadQueueable`.
+- **New sessions start blank:** no default Department / Admission Year (Zoom_Config `Default_Department__c` / `Default_Admission_Year__c` no longer used). The "Zoom Session - Notify New Session Setup" email flow is deactivated (user: "remove mail").
+- **Button "Sync Leads to Salesforce"** (LWC quick action `zoomLeadSync` on Zoom Session), for users with the Zoom permission set (custom permission `Zoom_Sync_Leads`):
+  - **Department** and **Admission Year** are required and set once per session. They are locked once any registration of the session has been synced.
+  - **Admission Year options** come from `Lead.Admission_Year__c` for the chosen department's record type, with that picklist's default preselected (user). Because Production has years the session picklist did not (2023/2024/2030/2031/Not Specified), `Zoom_Webinar__c.Admission_Year__c` becomes unrestricted and Apex validates against the Lead values.
+  - **Undergraduation:** no programme. Every new Lead is owned by the user in `Zoom_Config__mdt.UG_Lead_Owner_Username__c` (Shraddha Singaurey). Sync is blocked when that user is missing or inactive.
+  - **Other departments:** each student can get a Preferred Programme (optional) from the Lead record type's programme list, one by one or "apply to selected" in bulk. It is stored on `Zoom_Registration__c.Preferred_Programme__c`. Owner: the Lead trigger's programme rule when that programme has users in `LeadAssignmentRule__mdt`; otherwise department users round-robin; otherwise the trigger's owner.
+  - **Who is synced:** every registrant and walk-in of the session not yet synced (user chose "All not-yet-synced"). Registrations in Error are retried on the next click.
+  - **Any time, repeatable:** each click syncs the students not synced yet. When the session has ended, the same click also adds the Attended / Did Not Attend Task to synced Leads without one. Attendance Tasks are created **only** through the button (user).
+  - Runs in the background in batches of 100 (`ZoomLeadQueueable` scoped to the session). The popup shows progress; a second sync of the same session cannot start while one is running (`Lead_Sync_Status__c`; a run older than 30 minutes counts as stale).
+- **Unchanged:** Lead matching (email/phone within record type + Admission Year, fill blanks only, owner never changed), "Zoom Meeting Registered" Task at sync, host filter, webhook security.
+- **Popup default year (2026-11-05, user):** preselected from `Zoom_Config__mdt.Default_Admission_Year__c` (2027 in both orgs; UAT Lead picklist default is 2026), falling back to the Lead default.
+- **No longer used, to be deleted later (YES-DELETE):** `Zoom_Config__mdt.Default_Department__c`, `Lead_Owner_Department__c`, `Lead_Owner_Role__c`, `Lead_Owner_Profile__c`; `Zoom_Webinar__c.Preferred_Programme__c`.
+
 ### Known remaining deviations from project standards
 - Zoom payloads are parsed with `JSON.deserializeUntyped`, not typed wrapper classes
 - No cross-transaction token cache (Platform Cache)

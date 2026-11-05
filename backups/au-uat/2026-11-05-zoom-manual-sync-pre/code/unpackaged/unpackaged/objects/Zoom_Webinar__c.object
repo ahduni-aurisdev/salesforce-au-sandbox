@@ -1,0 +1,690 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fields>
+        <fullName>Admission_Year__c</fullName>
+        <description>Admission Year written to Leads created from this session; also part of the Lead match. Values mirror Lead.Admission_Year__c. Set manually; Zoom does not send it.</description>
+        <inlineHelpText>Set this and Department so the scheduled sync can create or update Leads for this session&apos;s registrants.</inlineHelpText>
+        <label>Admission Year</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Admission Year - 2025</fullName>
+                    <default>false</default>
+                    <label>Admission Year - 2025</label>
+                </value>
+                <value>
+                    <fullName>Admission Year - 2026</fullName>
+                    <default>false</default>
+                    <label>Admission Year - 2026</label>
+                </value>
+                <value>
+                    <fullName>Admission Year - 2027</fullName>
+                    <default>false</default>
+                    <label>Admission Year - 2027</label>
+                </value>
+                <value>
+                    <fullName>Admission Year - 2028</fullName>
+                    <default>false</default>
+                    <label>Admission Year - 2028</label>
+                </value>
+                <value>
+                    <fullName>Admission Year - 2029</fullName>
+                    <default>false</default>
+                    <label>Admission Year - 2029</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Department__c</fullName>
+        <description>Department whose Leads this session&apos;s registrants become. Each value&apos;s API name is the Lead Record Type developer name and its label is written to Lead.Department__c. Set manually; Zoom does not send it. Leads are created by the scheduled sync only when Department and Admission Year are both set.</description>
+        <inlineHelpText>Set this and Admission Year so the scheduled sync can create or update Leads for this session&apos;s registrants.</inlineHelpText>
+        <label>Department</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Undergraduation</fullName>
+                    <default>false</default>
+                    <label>Undergraduation</label>
+                </value>
+                <value>
+                    <fullName>Graduation</fullName>
+                    <default>false</default>
+                    <label>Graduation</label>
+                </value>
+                <value>
+                    <fullName>Masters</fullName>
+                    <default>false</default>
+                    <label>Masters</label>
+                </value>
+                <value>
+                    <fullName>Phd</fullName>
+                    <default>false</default>
+                    <label>PhD</label>
+                </value>
+                <value>
+                    <fullName>Executive_Education</fullName>
+                    <default>false</default>
+                    <label>Executive Education</label>
+                </value>
+                <value>
+                    <fullName>CDC</fullName>
+                    <default>false</default>
+                    <label>Career Development Centre</label>
+                </value>
+                <value>
+                    <fullName>CLeF</fullName>
+                    <default>false</default>
+                    <label>CLeF</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Preferred_Programme__c</fullName>
+        <description>Optional. Programme written to new Leads of this session (Lead.Preferred_Programme__c, same values). Depends on Department: only the programmes allowed on that Lead record type can be chosen. For departments other than Undergraduation the existing Lead programme rule (LeadAssignmentRule__mdt) then picks the owner; when blank, Zoom Leads go round-robin to the department&apos;s users in that metadata. Existing Leads only get it when theirs is blank. Keep the values in line with Lead.Preferred_Programme__c.</description>
+        <inlineHelpText>Optional. New Leads get this programme and are assigned by the programme rule. Blank = department round-robin.</inlineHelpText>
+        <label>Preferred Programme</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <controllingField>Department__c</controllingField>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Master of Business Administration</fullName>
+                    <default>false</default>
+                    <label>Master of Business Administration</label>
+                </value>
+                <value>
+                    <fullName>Master of Science in Economics</fullName>
+                    <default>false</default>
+                    <label>Master of Science in Economics</label>
+                </value>
+                <value>
+                    <fullName>Master of Management Studies in Heritage Management</fullName>
+                    <default>false</default>
+                    <label>Master of Management Studies in Heritage Management</label>
+                </value>
+                <value>
+                    <fullName>Master of Science in Quantitative Finance</fullName>
+                    <default>false</default>
+                    <label>Master of Science in Quantitative Finance</label>
+                </value>
+                <value>
+                    <fullName>Master of Technology in Composites</fullName>
+                    <default>false</default>
+                    <label>Master of Technology in Composites</label>
+                </value>
+                <value>
+                    <fullName>Master of Technology in Computer Science and Engineering</fullName>
+                    <default>false</default>
+                    <label>Master of Technology in Computer Science and Engineering</label>
+                </value>
+                <value>
+                    <fullName>Master of Technology in Microelectronics and Semiconductors</fullName>
+                    <default>false</default>
+                    <label>Master of Technology in Microelectronics and Semiconductors</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Science In Management (Honours)</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Science In Management (Honours)</label>
+                </value>
+                <value>
+                    <fullName>The Entrepreneurship &amp; Family Business Programme</fullName>
+                    <default>false</default>
+                    <label>The Family Business and Entrepreneurship Programme</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Arts (Honours)</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Arts (Honours)</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Science (Honours)</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Science (Honours)</label>
+                </value>
+                <value>
+                    <fullName>Integrated Master of Science</fullName>
+                    <default>false</default>
+                    <label>Integrated Master of Science</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Technology in Chemical and Environmental Engineering</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Technology in Chemical and Environmental Engineering</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Technology in Electrical and Electronics Engineering</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Technology in Electrical and Electronics Engineering</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Technology in Computer Science and  Engineering</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Technology in Computer Science and  Engineering</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Technology in Mechanical Engineering</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Technology in Mechanical Engineering</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of  Commerce (Honours)</fullName>
+                    <default>false</default>
+                    <label>Bachelor of  Commerce (Honours)</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Commerce (Professional)</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Commerce (Professional)</label>
+                </value>
+                <value>
+                    <fullName>Integrated Arts Dual Degree Programme</fullName>
+                    <default>false</default>
+                    <label>Integrated Arts Dual Degree Programme</label>
+                </value>
+                <value>
+                    <fullName>The BxMx Programme Dual Degree: BA - MBA</fullName>
+                    <default>false</default>
+                    <label>The BxMx Programme Dual Degree: BA - MBA</label>
+                </value>
+                <value>
+                    <fullName>The BxMx Programme Dual Degree: BS - MS in Quantitative Finance</fullName>
+                    <default>false</default>
+                    <label>The BxMx Programme Dual Degree: BS - MS in Quantitative Finance</label>
+                </value>
+                <value>
+                    <fullName>The BxMx Programme Dual Degree: BTech - MBA</fullName>
+                    <default>false</default>
+                    <label>The BxMx Programme Dual Degree: BTech - MBA</label>
+                </value>
+                <value>
+                    <fullName>PhD at Amrut Mody School Of Management</fullName>
+                    <default>false</default>
+                    <label>PhD at Amrut Mody School Of Management</label>
+                </value>
+                <value>
+                    <fullName>PhD at Bagchi School Of Public Health</fullName>
+                    <default>false</default>
+                    <label>PhD at Bagchi School Of Public Health</label>
+                </value>
+                <value>
+                    <fullName>PhD at School Of Arts and Sciences</fullName>
+                    <default>false</default>
+                    <label>PhD at School Of Arts and Sciences</label>
+                </value>
+                <value>
+                    <fullName>PhD at School Of Engineering and Applied Science</fullName>
+                    <default>false</default>
+                    <label>PhD at School Of Engineering and Applied Science</label>
+                </value>
+                <value>
+                    <fullName>PhD in Life Sciences</fullName>
+                    <default>false</default>
+                    <label>PhD in Life Sciences</label>
+                </value>
+                <value>
+                    <fullName>PhD in Management</fullName>
+                    <default>false</default>
+                    <label>PhD in Management</label>
+                </value>
+                <value>
+                    <fullName>PhD in Engineering</fullName>
+                    <default>false</default>
+                    <label>PhD in Engineering</label>
+                </value>
+                <value>
+                    <fullName>PhD in Physics</fullName>
+                    <default>false</default>
+                    <label>PhD in Physics</label>
+                </value>
+                <value>
+                    <fullName>PhD in Interdisciplinary Humanities and Social Sciences</fullName>
+                    <default>false</default>
+                    <label>PhD in Interdisciplinary Humanities and Social Sciences</label>
+                </value>
+                <value>
+                    <fullName>PhD in Mathematical and Computational Sciences</fullName>
+                    <default>false</default>
+                    <label>PhD in Mathematical and Computational Sciences</label>
+                </value>
+                <value>
+                    <fullName>PhD in Biological and Life Sciences</fullName>
+                    <default>false</default>
+                    <label>PhD in Biological and Life Sciences</label>
+                </value>
+                <value>
+                    <fullName>PhD in Epidemiology</fullName>
+                    <default>false</default>
+                    <label>PhD in Epidemiology</label>
+                </value>
+                <value>
+                    <fullName>Gemba</fullName>
+                    <default>false</default>
+                    <label>Gemba</label>
+                </value>
+                <value>
+                    <fullName>Diploma in Business Analytics</fullName>
+                    <default>false</default>
+                    <label>Diploma in Business Analytics</label>
+                </value>
+                <value>
+                    <fullName>Certificate in Business Analytics</fullName>
+                    <default>false</default>
+                    <label>Certificate in Business Analytics</label>
+                </value>
+                <value>
+                    <fullName>Diploma in Financial Analysis</fullName>
+                    <default>false</default>
+                    <label>Diploma in Financial Analysis</label>
+                </value>
+                <value>
+                    <fullName>Certificate in Financial Analysis</fullName>
+                    <default>false</default>
+                    <label>Certificate in Financial Analysis</label>
+                </value>
+                <value>
+                    <fullName>Certificate in Strategic Digital Marketing</fullName>
+                    <default>false</default>
+                    <label>Certificate in Strategic Digital Marketing</label>
+                </value>
+                <value>
+                    <fullName>Transforming R&amp;D in Indian Firms</fullName>
+                    <default>false</default>
+                    <label>Transforming R&amp;D in Indian Firms</label>
+                </value>
+                <value>
+                    <fullName>Grow - Executive General Management</fullName>
+                    <default>false</default>
+                    <label>Grow - Executive General Management</label>
+                </value>
+                <value>
+                    <fullName>Diploma in Translation and Creative Writing</fullName>
+                    <default>false</default>
+                    <label>Diploma in Translation and Creative Writing</label>
+                </value>
+                <value>
+                    <fullName>Ahmedabad Grand Challenge Programme</fullName>
+                    <default>false</default>
+                    <label>Ahmedabad Grand Challenge Programme</label>
+                </value>
+                <value>
+                    <fullName>Finance for Non-Finance Professionals</fullName>
+                    <default>false</default>
+                    <label>Finance for Non-Finance Professionals</label>
+                </value>
+                <value>
+                    <fullName>Fin4NonFin</fullName>
+                    <default>false</default>
+                    <label>Fin4NonFin</label>
+                </value>
+                <value>
+                    <fullName>Bachelor of Technology</fullName>
+                    <default>false</default>
+                    <label>Bachelor of Technology</label>
+                </value>
+                <value>
+                    <fullName>Integrated Programme in Technology and Management</fullName>
+                    <default>false</default>
+                    <label>Integrated Programme in Technology and Management</label>
+                </value>
+                <value>
+                    <fullName>The BxMx Programme</fullName>
+                    <default>false</default>
+                    <label>The BxMx Programme</label>
+                </value>
+                <value>
+                    <fullName>Programme in Integrated Arts</fullName>
+                    <default>false</default>
+                    <label>Programme in Integrated Arts</label>
+                </value>
+                <value>
+                    <fullName>AGCP</fullName>
+                    <default>false</default>
+                    <label>AGCP</label>
+                </value>
+                <value>
+                    <fullName>MTech in VLSI, Microelectronics and Semiconductors</fullName>
+                    <default>false</default>
+                    <label>MTech in VLSI, Microelectronics and Semiconductors</label>
+                </value>
+                <value>
+                    <fullName>MS in Health Data Science</fullName>
+                    <default>false</default>
+                    <label>MS in Health Data Science</label>
+                </value>
+                <value>
+                    <fullName>Digital Marketing Online Programme</fullName>
+                    <default>false</default>
+                    <label>Digital Marketing Online Programme</label>
+                </value>
+            </valueSetDefinition>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Science In Management (Honours)</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>The Entrepreneurship &amp; Family Business Programme</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Arts (Honours)</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Science (Honours)</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Integrated Master of Science</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Technology in Chemical and Environmental Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Technology in Electrical and Electronics Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Technology in Computer Science and  Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Technology in Mechanical Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of  Commerce (Honours)</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Bachelor of Commerce (Professional)</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Integrated Arts Dual Degree Programme</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>The BxMx Programme Dual Degree: BA - MBA</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>The BxMx Programme Dual Degree: BS - MS in Quantitative Finance</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>The BxMx Programme Dual Degree: BTech - MBA</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Diploma in Translation and Creative Writing</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>Ahmedabad Grand Challenge Programme</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Bachelor of Technology</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Integrated Programme in Technology and Management</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>The BxMx Programme</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Programme in Integrated Arts</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>AGCP</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Undergraduation</controllingFieldValue>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <controllingFieldValue>CLeF</controllingFieldValue>
+                <valueName>MTech in VLSI, Microelectronics and Semiconductors</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Business Administration</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Science in Economics</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Management Studies in Heritage Management</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Science in Quantitative Finance</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Technology in Composites</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Graduation</controllingFieldValue>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Technology in Computer Science and Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Master of Technology in Microelectronics and Semiconductors</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Diploma in Business Analytics</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Certificate in Business Analytics</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Diploma in Financial Analysis</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Certificate in Financial Analysis</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Certificate in Strategic Digital Marketing</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Masters</controllingFieldValue>
+                <valueName>MS in Health Data Science</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD at Amrut Mody School Of Management</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD at Bagchi School Of Public Health</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD at School Of Arts and Sciences</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD at School Of Engineering and Applied Science</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Life Sciences</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Management</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Engineering</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Physics</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Interdisciplinary Humanities and Social Sciences</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Mathematical and Computational Sciences</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Biological and Life Sciences</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Phd</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>PhD in Epidemiology</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Gemba</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Transforming R&amp;D in Indian Firms</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Grow - Executive General Management</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Finance for Non-Finance Professionals</valueName>
+            </valueSettings>
+            <valueSettings>
+                <controllingFieldValue>Executive_Education</controllingFieldValue>
+                <controllingFieldValue>CDC</controllingFieldValue>
+                <valueName>Fin4NonFin</valueName>
+            </valueSettings>
+        </valueSet>
+    </fields>
+</CustomObject>

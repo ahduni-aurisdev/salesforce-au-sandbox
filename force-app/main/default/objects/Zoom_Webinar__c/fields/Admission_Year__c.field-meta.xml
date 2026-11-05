@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Admission_Year__c</fullName>
-    <description>Admission Year written to Leads created from this session; also part of the Lead match. Values mirror Lead.Admission_Year__c. Set manually; Zoom does not send it.</description>
+    <description>Admission Year written to Leads created from this session; also part of the Lead match. Set through "Sync Leads to Salesforce" from the Lead Admission Year values of the chosen department (unrestricted here because each org has its own Lead years; ZoomLeadSyncController validates against Lead.Admission_Year__c). Locked once a registration of the session is synced.</description>
     <externalId>false</externalId>
-    <inlineHelpText>Set this and Department so the scheduled sync can create or update Leads for this session's registrants.</inlineHelpText>
+    <inlineHelpText>Set through the Sync Leads to Salesforce button.</inlineHelpText>
     <label>Admission Year</label>
     <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
-        <restricted>true</restricted>
+        <restricted>false</restricted>
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>

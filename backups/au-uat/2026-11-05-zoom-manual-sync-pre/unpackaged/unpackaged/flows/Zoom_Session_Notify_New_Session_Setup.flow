@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <description>Emails the session setup recipient (Custom Label ZOOM_SESSION_SETUP_EMAIL) asking for Department and Admission Year.</description>
+        <name>Send_Session_Setup_Email</name>
+        <label>Send Session Setup Email</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>emailSimple</actionName>
+        <actionType>emailSimple</actionType>
+        <faultConnector>
+            <targetReference>Log_Email_Failure</targetReference>
+        </faultConnector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>emailAddresses</name>
+            <value>
+                <elementReference>$Label.ZOOM_SESSION_SETUP_EMAIL</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailSubject</name>
+            <value>
+                <elementReference>EmailSubject</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>emailBody</name>
+            <value>
+                <elementReference>EmailBody</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>sendRichBody</name>
+            <value>
+                <booleanValue>false</booleanValue>
+            </value>
+        </inputParameters>
+        <nameSegment>emailSimple</nameSegment>
+    </actionCalls>
+    <apiVersion>64.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <decisions>
+        <description>The scheduled path sees the record as it is when the path runs: no email if Department and Admission Year were already set.</description>
+        <name>Needs_Setup</name>
+        <label>Needs Setup?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnectorLabel>Already Set Up</defaultConnectorLabel>
+        <rules>
+            <name>Department_Or_Year_Missing</name>
+            <conditionLogic>or</conditionLogic>
+            <conditions>
+                <leftValueReference>$Record.Department__c</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>$Record.Admission_Year__c</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Send_Session_Setup_Email</targetReference>
+            </connector>
+            <label>Department Or Year Missing</label>
+        </rules>
+    </decisions>
+    <description>v1 (2026-11-03): When a new Zoom Session is created (by the Zoom webhook or the scheduled sync), waits 1 minute and, if Department or Admission Year is still blank, emails the address in Custom Label ZOOM_SESSION_SETUP_EMAIL with a link to set them. Leads are only created for sessions with both values. A scheduled path is used because webhook-created sessions are saved by the Site guest user; scheduled paths run as the Automated Process user. If the email cannot be sent, the fault path logs it to API_Log__c with Log Name ZoomSessionSetupAlert. The email contains no registrant personal data.</description>
+    <environments>Default</environments>
+    <formulas>
+        <description>Email subject naming the session.</description>
+        <name>EmailSubject</name>
+        <dataType>String</dataType>
+        <expression>&apos;Zoom session needs Department and Admission Year - &apos; &amp; {!$Record.Name}</expression>
+    </formulas>
+    <formulas>
+        <description>Link to the Zoom Session record.</description>
+        <name>SessionRecordUrl</name>
+        <dataType>String</dataType>
+        <expression>LEFT({!$Api.Partner_Server_URL_260}, FIND(&apos;/services&apos;, {!$Api.Partner_Server_URL_260})) &amp; {!$Record.Id}</expression>
+    </formulas>
+    <formulas>
+        <description>Session start time as text, or a note when Zoom gave none (recurring meetings without a fixed time).</description>
+        <name>StartTimeText</name>
+        <dataType>String</dataType>
+        <expression>IF(ISBLANK({!$Record.Start_Time__c}), &apos;Not set in Zoom&apos;, TEXT({!$Record.Start_Time__c}) &amp; &apos; (GMT)&apos;)</expression>
+    </formulas>
+    <interviewLabel>Zoom Session - Notify New Session Setup {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Zoom Session - Notify New Session Setup</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <description>Fault handler: records why the setup email could not be sent. Its class name is outside the Zoom error alert filter, so it does not trigger another email.</description>
+        <name>Log_Email_Failure</name>
+        <label>Log Email Failure</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <inputAssignments>
+            <field>Apex_Class_Name__c</field>
+            <value>
+                <stringValue>Flow: Zoom Session - Notify New Session Setup</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Log_Name__c</field>
+            <value>
+                <stringValue>ZoomSessionSetupAlert</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Log_Type__c</field>
+            <value>
+                <stringValue>Failed</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Registration_Number__c</field>
+            <value>
+                <elementReference>$Record.Webinar_Id__c</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Response__c</field>
+            <value>
+                <elementReference>$Flow.FaultMessage</elementReference>
+            </value>
+        </inputAssignments>
+        <object>API_Log__c</object>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <object>Zoom_Webinar__c</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <scheduledPaths>
+            <name>One_Minute_After_Create</name>
+            <connector>
+                <targetReference>Needs_Setup</targetReference>
+            </connector>
+            <label>1 Minute After Create</label>
+            <offsetNumber>1</offsetNumber>
+            <offsetUnit>Minutes</offsetUnit>
+            <recordField>CreatedDate</recordField>
+            <timeSource>RecordField</timeSource>
+        </scheduledPaths>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+    <textTemplates>
+        <description>Plain-text email body. Contains no registrant personal data.</description>
+        <name>EmailBody</name>
+        <isViewedAsPlainText>true</isViewedAsPlainText>
+        <text>A new Zoom session was added to Salesforce and needs its Department and Admission Year.
+
+Session: {!$Record.Name}
+Type: {!$Record.Type__c}
+Zoom ID: {!$Record.Webinar_Id__c}
+Start: {!StartTimeText}
+
+Open the session and set Department and Admission Year: {!SessionRecordUrl}
+
+Until both are set, registrants of this session are kept as &quot;Pending setup&quot; and no Leads are created. After you set them, the next scheduled Zoom sync creates or updates the Leads.</text>
+    </textTemplates>
+</Flow>

@@ -5,15 +5,15 @@
  *              to import sessions that already exist in Zoom. One session per Queueable job; jobs are chained.
  *              Rate limits, Zoom 5xx and timeouts are retried up to MAX_RETRIES times with 1, 2, 4 minute delays;
  *              every other failure is logged to API_Log__c and the chain moves on to the next session.
- *              When the chain finishes it starts ZoomLeadQueueable, which creates / links Leads and logs Tasks.
+ *              It never creates Leads or Tasks: that happens only through "Sync Leads to Salesforce" on a session.
  *                System.enqueueJob(new ZoomWebinarSync());                                // discover + sync all
  *                System.enqueueJob(new ZoomWebinarSync(new List<String>{'123456789'}));    // one webinar
  *                System.enqueueJob(new ZoomWebinarSync(new List<String>{'M:123456789'}));  // one meeting
- *              ZoomWebinarSyncScheduler.schedule() runs it every 2 hours.
+ *              ZoomWebinarSyncScheduler.schedule() runs it every 2 hours (Production: scheduled by the admin).
  * @author AU Development Team
  * @date 2026-10-21
- * @version 1.4
- * @lastModified 2026-11-03
+ * @version 1.5
+ * @lastModified 2026-11-05
  */
 // System mode is intentional: a scheduled system job that syncs every Zoom session regardless of who scheduled it.
 public without sharing class ZoomWebinarSync implements Queueable, Database.AllowsCallouts {
@@ -66,15 +66,12 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
             try {
                 sessionKeys = discover();
             } catch (ZoomApiService.ZoomApiException e) {
-                if (!handleFailure(null, DISCOVER_REFERENCE, e)) {
-                    ZoomLeadQueueable.start();
-                }
+                handleFailure(null, DISCOVER_REFERENCE, e);
                 return;
             }
             attempt = 0;
         }
         if (sessionKeys.isEmpty()) {
-            ZoomLeadQueueable.start();
             return;
         }
         String current = sessionKeys.remove(0);
@@ -91,8 +88,6 @@ public without sharing class ZoomWebinarSync implements Queueable, Database.Allo
         }
         if (!sessionKeys.isEmpty()) {
             enqueue(new ZoomWebinarSync(sessionKeys, 0), 0);
-        } else {
-            ZoomLeadQueueable.start();
         }
     }
 

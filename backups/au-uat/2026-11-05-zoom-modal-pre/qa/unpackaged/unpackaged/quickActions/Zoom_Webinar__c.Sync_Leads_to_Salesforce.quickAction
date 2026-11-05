@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QuickAction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionSubtype>ScreenAction</actionSubtype>
+    <description>Opens the Zoom Lead sync popup: choose Department, Admission Year and (outside Undergraduation) each student&apos;s programme, then create or update the Leads for this session.</description>
+    <label>Sync Leads to Salesforce</label>
+    <lightningWebComponent>zoomLeadSync</lightningWebComponent>
+    <optionsCreateFeedItem>false</optionsCreateFeedItem>
+    <type>LightningWebComponent</type>
+</QuickAction>
