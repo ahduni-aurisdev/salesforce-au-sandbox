@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<StandardValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sorted>true</sorted>
+    <standardValue>
+        <fullName>Alumni</fullName>
+        <default>false</default>
+        <label>Alumni</label>
+    </standardValue>
+    <standardValue>
+        <fullName>AURIS</fullName>
+        <default>false</default>
+        <label>AURIS</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Campus Visit</fullName>
+        <default>false</default>
+        <label>Campus Visit</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Career_360PGQueries</fullName>
+        <default>false</default>
+        <label>Career_360PGQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Career_360UGQueries</fullName>
+        <default>false</default>
+        <label>Career_360UGQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Career Fair</fullName>
+        <default>false</default>
+        <label>Career Fair</label>
+    </standardValue>
+    <standardValue>
+        <fullName>careers360</fullName>
+        <default>false</default>
+        <label>careers360</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Careers 360</fullName>
+        <default>false</default>
+        <label>Careers 360</label>
+    </standardValue>
+    <standardValue>
+        <fullName>College Board/SAT</fullName>
+        <default>false</default>
+        <label>College Board/SAT</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Collegedunia</fullName>
+        <default>false</default>
+        <label>Collegedunia</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Colloquiums</fullName>
+        <default>false</default>
+        <label>Colloquiums</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Corporate Partner Visit</fullName>
+        <default>false</default>
+        <label>Corporate Partner Visit</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Counsellor</fullName>
+        <default>false</default>
+        <label>Counsellor</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Email</fullName>
+        <default>false</default>
+        <label>Email</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Event</fullName>
+        <default>false</default>
+        <label>Event</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Facebook</fullName>
+        <default>false</default>
+        <label>Facebook</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Fair</fullName>
+        <default>false</default>
+        <label>Fair</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Google_ads</fullName>
+        <default>false</default>
+        <label>Google_ads</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Inbound Call(mcube)</fullName>
+        <default>false</default>
+        <label>Inbound Call(mcube)</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Info Session</fullName>
+        <default>false</default>
+        <label>Info Session</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Inquiry Form</fullName>
+        <default>false</default>
+        <label>Inquiry Form</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Instagram</fullName>
+        <default>false</default>
+        <label>Instagram</label>
+    </standardValue>
+    <standardValue>
+        <fullName>KollegeApply</fullName>
+        <default>false</default>
+        <label>KollegeApply</label>
+    </standardValue>
+    <standardValue>
+        <fullName>LinkedIn Ads</fullName>
+        <default>false</default>
+        <label>LinkedIn Ads</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Meta_Ads</fullName>
+        <default>false</default>
+        <label>Meta Ads</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Newsletter</fullName>
+        <default>false</default>
+        <label>Newsletter</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Open House</fullName>
+        <default>false</default>
+        <label>Open House</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Outreach Event</fullName>
+        <default>false</default>
+        <label>Outreach Event</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Partner</fullName>
+        <default>false</default>
+        <label>Partner</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Partners</fullName>
+        <default>false</default>
+        <label>Partners</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Phone</fullName>
+        <default>false</default>
+        <label>Phone</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Referral</fullName>
+        <default>false</default>
+        <label>Referral</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Roadshow Event</fullName>
+        <default>false</default>
+        <label>Roadshow Event</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Shiksha</fullName>
+        <default>false</default>
+        <label>Shiksha</label>
+    </standardValue>
+    <standardValue>
+        <fullName>TIME MBA Fairs</fullName>
+        <default>false</default>
+        <label>TIME MBA Fairs</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Virtual Webinar</fullName>
+        <default>false</default>
+        <label>Virtual Webinar</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Walk-in</fullName>
+        <default>false</default>
+        <label>Walk-in</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website</fullName>
+        <default>false</default>
+        <label>Website</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_CLeFBrochures</fullName>
+        <default>false</default>
+        <label>Website_CLeFBrochures</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_CLeFConnect</fullName>
+        <default>false</default>
+        <label>Website_CLeFConnect</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_ExecEDBrochures</fullName>
+        <default>false</default>
+        <label>Website_ExecEDBrochures</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_ExecEDConnect</fullName>
+        <default>false</default>
+        <label>Website_ExecEDConnect</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_ExecEDQueries</fullName>
+        <default>false</default>
+        <label>Website_ExecEDQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MasterConnect</fullName>
+        <default>false</default>
+        <label>Website_MasterConnect</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersBrochures</fullName>
+        <default>false</default>
+        <label>Website_MastersBrochures</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersConnect</fullName>
+        <default>false</default>
+        <label>Website_MastersConnect</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersEconomicsLanding</fullName>
+        <default>false</default>
+        <label>Website_MastersEconomicsLanding</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersHeritageLanding</fullName>
+        <default>false</default>
+        <label>Website_MastersHeritageLanding</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersMBALanding</fullName>
+        <default>false</default>
+        <label>Website_MastersMBALanding</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersMSQFLanding</fullName>
+        <default>false</default>
+        <label>Website_MastersMSQFLanding</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_MastersQueries</fullName>
+        <default>false</default>
+        <label>Website_MastersQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_PhDBrochures</fullName>
+        <default>false</default>
+        <label>Website_PhDBrochures</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_PhDConnect</fullName>
+        <default>false</default>
+        <label>Website_PhDConnect</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_PhDQueries</fullName>
+        <default>false</default>
+        <label>Website_PhDQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_ShikshaQueries</fullName>
+        <default>false</default>
+        <label>Website_ShikshaQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_UGBrochures</fullName>
+        <default>false</default>
+        <label>Website_UGBrochures</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Website_UGQueries</fullName>
+        <default>false</default>
+        <label>Website_UGQueries</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Wonderchat</fullName>
+        <default>false</default>
+        <label>Wonderchat</label>
+    </standardValue>
+    <standardValue>
+        <fullName>Zoom</fullName>
+        <default>false</default>
+        <label>Zoom</label>
+    </standardValue>
+</StandardValueSet>

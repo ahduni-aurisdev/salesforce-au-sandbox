@@ -299,7 +299,7 @@
             <value>
                 <fullName>Zoom</fullName>
                 <default>false</default>
-                <label>Zoom</label>
+                <label>Zoom Webinar</label>
             </value>
         </valueSetDefinition>
     </valueSet>

@@ -294,6 +294,6 @@
     <standardValue>
         <fullName>Zoom</fullName>
         <default>false</default>
-        <label>Zoom</label>
+        <label>Zoom Webinar</label>
     </standardValue>
 </StandardValueSet>
