@@ -1,5 +1,5 @@
 /**
- * @description Controller for the "Sync Leads to Salesforce" quick action (LWC zoomLeadSyncAction, which opens zoomLeadSyncModal) on a Zoom Session.
+ * @description Controller for the "Sync Leads to Salesforce" quick action (LWC zoomLeadSync) on a Zoom Session.
  *              getSyncContext loads the session, its students that are not synced yet (and those in Error, which
  *              are retried), the department list and the sync status. startSync validates the user's choices
  *              (Department, Admission Year, per-student Preferred Programme), saves them, locks the session and

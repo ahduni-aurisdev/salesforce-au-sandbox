@@ -84,7 +84,7 @@ function messageOf(error) {
 }
 
 /**
- * Large modal for "Sync Leads to Salesforce", opened by the zoomLeadSyncAction quick action.
+ * Large modal for "Sync Leads to Salesforce", opened by the zoomLeadSync quick action.
  * Closes with 'synced' when a sync was started, so the launcher refreshes the record page.
  */
 export default class ZoomLeadSyncModal extends LightningModal {

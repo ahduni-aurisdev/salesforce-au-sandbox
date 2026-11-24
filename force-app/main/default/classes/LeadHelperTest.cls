@@ -101,7 +101,7 @@ public class LeadHelperTest {
         Test.stopTest();
 
         Lead insertedLead = [SELECT Phone FROM Lead WHERE Id = :lead.Id];
-        System.assertEquals('911234567890', insertedLead.Phone, 'The phone number should be updated with the country code for India.');
+        System.assertEquals('+911234567890', insertedLead.Phone, 'The phone number should be saved as +91 followed by the number for India.');
     }
 
     /**
@@ -116,13 +116,75 @@ public class LeadHelperTest {
         Lead plusOnly    = new Lead(LastName = 'Plus Only', Phone = '+', Country = 'India');
 
         Test.startTest();
-        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ indianPlus, foreignPlus, noPlus, plusOnly }, 'insert');
+        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ indianPlus, foreignPlus, noPlus, plusOnly }, null);
         Test.stopTest();
 
         System.assertEquals('+919876543210', indianPlus.Phone, 'Indian number with + should be kept, spaces/dashes removed');
         System.assertEquals('+447887139054', foreignPlus.Phone, 'Foreign number with + must not get the lead country code added');
-        System.assertEquals('919876543210', noPlus.Phone, 'Number without + should still get the lead country code');
-        System.assertEquals('91+', plusOnly.Phone, 'A + with no digits falls back to the existing behaviour');
+        System.assertEquals('+919876543210', noPlus.Phone, 'Number without + should get + and the lead country code');
+        System.assertEquals('+', plusOnly.Phone, 'A phone with no digits cannot be formatted and must be left unchanged');
+    }
+
+    /**
+    * @description Numbers without '+' get '+' + country code: already-prefixed numbers only get
+    *              the '+', other countries use their own code, dashes in codes are dropped.
+    */
+    @isTest
+    static void testPhoneWithoutPlusGetsPlusCountryCode() {
+        Lead withCode   = new Lead(LastName = 'With Code', Phone = '919876543210', Country = 'India');
+        Lead spaced     = new Lead(LastName = 'Spaced', Phone = ' 98765 43210 ', Country = null);
+        Lead uk         = new Lead(LastName = 'UK', Phone = '7887139054', Country = 'United Kingdom');
+        Lead jamaica    = new Lead(LastName = 'Jamaica', Phone = '5551234', Country = 'Jamaica');
+        Lead noCode     = new Lead(LastName = 'No Code', Phone = '5551234', Country = 'Antarctica');
+
+        Test.startTest();
+        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ withCode, spaced, uk, jamaica, noCode }, null);
+        Test.stopTest();
+
+        System.assertEquals('+919876543210', withCode.Phone, 'A number already starting with 91 should only get the +');
+        System.assertEquals('+919876543210', spaced.Phone, 'Spaces should be removed and +91 added when country is blank');
+        System.assertEquals('+447887139054', uk.Phone, 'A UK number should get +44');
+        System.assertEquals('+18765551234', jamaica.Phone, 'A dashed dialing code (1-876) should be added as digits only');
+        System.assertEquals('5551234', noCode.Phone, 'A country without a dialing code must leave the phone unchanged');
+    }
+
+    /**
+    * @description On update, Phone is formatted only when it changed: Leads saved earlier as
+    *              '91XXXXXXXXXX' are left as they are.
+    */
+    @isTest
+    static void testPhoneFormattedOnUpdateOnlyWhenChanged() {
+        Lead existing = new Lead(LastName = 'Existing', Phone = '9876543210', Country = 'India');
+        insert existing;
+
+        Lead unchangedOld = new Lead(Id = existing.Id, Phone = '919876543210', Country = 'India');
+        Lead unchangedNew = new Lead(Id = existing.Id, Phone = '919876543210', Country = 'India');
+        Lead changedOld   = new Lead(Id = existing.Id, Phone = '919876543210', Country = 'India');
+        Lead changedNew   = new Lead(Id = existing.Id, Phone = '9876543211', Country = 'India');
+
+        Test.startTest();
+        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ unchangedNew }, new Map<Id, Lead>{ existing.Id => unchangedOld });
+        LeadHelper.updatePhoneWithCountryCode(new List<Lead>{ changedNew }, new Map<Id, Lead>{ existing.Id => changedOld });
+        Test.stopTest();
+
+        System.assertEquals('919876543210', unchangedNew.Phone, 'An unchanged old-format phone must not be touched on update');
+        System.assertEquals('+919876543211', changedNew.Phone, 'A changed phone must be formatted as +91 on update');
+    }
+
+    /**
+    * @description Through the trigger: editing another field keeps the Phone; editing Phone formats it.
+    */
+    @isTest
+    static void testPhoneFormatViaTriggerUpdate() {
+        Lead lead = new Lead(LastName = 'Trigger Update', Phone = '9876543210', Country = 'India');
+        insert lead;
+        System.assertEquals('+919876543210', [SELECT Phone FROM Lead WHERE Id = :lead.Id].Phone, 'Insert should save +91 format');
+
+        Test.startTest();
+        update new Lead(Id = lead.Id, Phone = '9876543299');
+        Test.stopTest();
+
+        System.assertEquals('+919876543299', [SELECT Phone FROM Lead WHERE Id = :lead.Id].Phone, 'Changing Phone on update should save +91 format');
     }
 
     /**

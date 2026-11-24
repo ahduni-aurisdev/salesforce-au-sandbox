@@ -760,40 +760,59 @@ public without sharing class LeadHelper {
 
     /**
      * @description
-     * @param newLeads List of Leads
-     * @param context String context
+     * @param newLeads    List of Leads (Trigger.new)
+     * @param oldLeadsMap Trigger.oldMap on update, null on insert
      * Method Name     : updatePhoneWithCountryCode
      * Created By      : Preksha Chauhan
      * Created Date    : 07/18/2024
-     * Description     : This method updates the phone numbers of leads in the provided 
-     *                   list by appending the appropriate country code, if not already 
-     *                   present. It checks each lead's phone number and ensures it starts 
-     *                   with the correct country code based on the lead's country.
+     * Modified By     : Jitendra Varma | 16-Nov-2026
+     * Description     : Saves Lead Phone as '+' + country code + digits (e.g. '+919876543210').
+     *                   Runs on insert, and on update only when Phone changed, so existing
+     *                   Leads saved earlier as '91XXXXXXXXXX' are left as they are.
     *******************************************************************************************/
-    public static void updatePhoneWithCountryCode(List<Lead> newLeads, String context) {
+    public static void updatePhoneWithCountryCode(List<Lead> newLeads, Map<Id, Lead> oldLeadsMap) {
         for (Lead lead : newLeads) {
-            if (lead.Phone != null) {
-                String phoneNumber = lead.Phone.trim();
-
-                // Modified By : Jitendra Varma | 29-Oct-2026
-                // A number starting with '+' already has its country code (e.g.
-                // '+447887139054'). Keep it, only removing spaces/dashes - adding the
-                // lead's country code here saved it as '91+447887139054'.
-                String digits = phoneNumber.replaceAll('\\D', '');
-                if (phoneNumber.startsWith('+') && String.isNotBlank(digits)) {
-                    lead.Phone = '+' + digits;
-                    continue;
-                }
-
-                String countryCode = getCountryCodeForLead(lead);
-                
-                // Check if the number already starts with the country code
-                if (!phoneNumber.startsWith(countryCode)) {
-                    lead.Phone = countryCode + phoneNumber;
-                }
-                // If it starts with the country code, do nothing
+            if (lead.Phone == null) {
+                continue;
+            }
+            if (oldLeadsMap != null && oldLeadsMap.containsKey(lead.Id)
+                    && oldLeadsMap.get(lead.Id).Phone == lead.Phone) {
+                continue;
+            }
+            String formattedPhone = formatPhoneWithCountryCode(lead.Phone, getCountryCodeForLead(lead));
+            if (formattedPhone != null) {
+                lead.Phone = formattedPhone;
             }
         }
+    }
+
+    /**
+     * @description Formats a phone as '+' + country code + digits.
+     *              - Starts with '+': already has its own country code, kept ('+44 7887-139054' -> '+447887139054').
+     *              - Starts with the country code: only '+' added ('919876543210' -> '+919876543210').
+     *              - Otherwise: '+' + country code added ('98765 43210' -> '+919876543210').
+     * @param phone       Phone as entered
+     * @param countryCode Dialing code from countryCodeMap (may contain '-', e.g. '1-268')
+     * @return Formatted phone, or null when it cannot be formatted (no digits, or no usable
+     *         country code) - the caller then leaves the Phone unchanged.
+     */
+    public static String formatPhoneWithCountryCode(String phone, String countryCode) {
+        String phoneNumber = phone.trim();
+        String digits = phoneNumber.replaceAll('\\D', '');
+        if (String.isBlank(digits)) {
+            return null;
+        }
+        if (phoneNumber.startsWith('+')) {
+            return '+' + digits;
+        }
+        String codeDigits = countryCode == null ? '' : countryCode.replaceAll('\\D', '');
+        if (String.isBlank(codeDigits)) {
+            return null;
+        }
+        if (digits.startsWith(codeDigits)) {
+            return '+' + digits;
+        }
+        return '+' + codeDigits + digits;
     }
 
    /**

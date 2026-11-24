@@ -120,19 +120,19 @@ public class LeadTriggerHandler {
     /**
     * @description
     * @param newLeads The list of Lead records that are being inserted
-    * @param operation The type of operation ('insert' or 'update')
+    * @param oldLeadsMap Trigger.oldMap on update, null on insert
     * Method Name       : handlePhoneNumberUpdates
     * Created By        : Preksha Chauhan
     * Created Date      : 13/10/2024
-    * Description       : This method processes lead phone number updates. It ensures phone
-    *                     numbers are updated with the appropriate country code during insert 
-    *                     and update operations.
+    * Modified By       : Jitendra Varma | 16-Nov-2026 - passes Trigger.oldMap so Phone is
+    *                     formatted only on insert or when Phone changed on update.
+    * Description       : Formats Lead Phone as '+' + country code + number.
     * Parameters        : List<Lead> newLeads - The list of Lead records being processed.
-    *                     String operation - The type of operation ('insert' or 'update').
+    *                     Map<Id, Lead> oldLeadsMap - Trigger.oldMap (null on insert).
     * Return Type       : void
     ******************************************************************************************/
-    public static void handlePhoneNumberUpdates(List<Lead> newLeads, String operation) {
-        LeadHelper.updatePhoneWithCountryCode(newLeads, operation);  
+    public static void handlePhoneNumberUpdates(List<Lead> newLeads, Map<Id, Lead> oldLeadsMap) {
+        LeadHelper.updatePhoneWithCountryCode(newLeads, oldLeadsMap);
     }
     
     /**

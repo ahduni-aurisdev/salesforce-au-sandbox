@@ -805,11 +805,13 @@ global without sharing class AU_EnquiryFormController {
             if (rtMap.containsKey(rtName)) rtId = rtMap.get(rtName).getRecordTypeId();
         }
 
-        phoneVal = '91'+phoneVal;
+        // Modified By : Jitendra Varma | 16-Nov-2026
+        // New Leads are saved as '+91XXXXXXXXXX'; older Leads as '91XXXXXXXXXX'. Match both.
+        List<String> phoneVals = new List<String>{ '91' + phoneVal, '+91' + phoneVal };
 
         List<String> conditions = new List<String>{
             'Email       = :emailVal',
-            'Phone       = :phoneVal'
+            'Phone       IN :phoneVals'
         };
         if (rtId != null) conditions.add('RecordTypeId = :rtId');
         if (deptCode != 'UG' && String.isNotBlank(programVal)) {
