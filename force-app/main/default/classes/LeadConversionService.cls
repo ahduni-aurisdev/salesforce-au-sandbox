@@ -17,6 +17,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Author            Date            Description
 // ─────────────────────────────────────────────────────────────────────────────
+// Jitendra Varma    27-Nov-2026     Existing Opportunity with a blank
+//                                  Application_Number__c gets the number when a
+//                                  later payload for that group sends it (Branch B
+//                                  and personAccountId route); a number already on
+//                                  the Opportunity is never overwritten.
+// Jitendra Varma    27-Nov-2026     UG returning students (new admission year):
+//                                  a new-year Lead is converted into the student's
+//                                  existing person Account (one Account per student);
+//                                  existing-Opportunity matching by group tag only
+//                                  uses Opportunities of the same admission year, so
+//                                  an earlier year's Opportunity is no longer reused
+//                                  or overwritten; personAccountId route picks the
+//                                  converted Lead with the payload Registration Number.
 // Mihir Ramoliya    28-Mar-2026     Full rewrite of UG group storage model.
 //                                  Groups now stored in dedicated Lead slot
 //                                  fields (Group_1__c … Group_4__c) instead
@@ -36,6 +49,11 @@
 // =============================================================================
 @RestResource(urlMapping='/LeadConversion')
 global with sharing class LeadConversionService {
+
+    // Trailing phone digits compared when matching a returning student's earlier Lead.
+    private static final Integer RETURNING_STUDENT_PHONE_DIGITS = 10;
+    // Max converted Leads read for one Account when picking the Lead a payload belongs to.
+    private static final Integer CONVERTED_LEADS_PER_ACCOUNT_LIMIT = 20;
 
     /**
     * @description
@@ -1223,7 +1241,7 @@ global with sharing class LeadConversionService {
                         // Query existing opportunities on this account with all programme fields
                         // needed to detect duplicates and to update programme slots
                         List<Opportunity> existingOpps = [
-                            SELECT Id, Program_Group_Tag__c,
+                            SELECT Id, Program_Group_Tag__c, Admission_Year__c, Application_Number__c,
                                 Primary_Preferred_Program__c,    Primary_Preferred_Major__c,
                                 Secondary_Preferred_Programme__c, Secondary_Preferred_Major__c,
                                 Ternary_Preferred_Programme__c,   Ternary_Preferred_Major__c
@@ -1255,11 +1273,39 @@ global with sharing class LeadConversionService {
                             '       My_Highest_Qualification__c, Engagement_Score__c, ' +
                             '       Total_Work_Experience_Year_s__c, Call_Log_Comment__c' +
                             groupFieldsSoql() +
-                            ' FROM Lead WHERE ConvertedAccountId = \'' + personAccountId + '\' LIMIT 1';
+                            ' FROM Lead WHERE ConvertedAccountId = \'' + personAccountId + '\'';
+                        // Modified By : Jitendra Varma | 27-Nov-2026
+                        // One Account can hold a converted Lead per admission year. Use the Lead
+                        // with the payload's Registration Number, else the most recently converted one.
+                        convertedLeadSoql += ' ORDER BY ConvertedDate DESC, CreatedDate DESC LIMIT '
+                            + CONVERTED_LEADS_PER_ACCOUNT_LIMIT;
                         List<Lead> convertedLeads = Database.query(convertedLeadSoql);
                         if (!convertedLeads.isEmpty()) convertedLead = convertedLeads[0];
+                        String payloadRegistrationNumber = (String) payloadMap.get('registrationNumber');
+                        if (String.isNotBlank(payloadRegistrationNumber)) {
+                            for (Lead candidate : convertedLeads) {
+                                if (payloadRegistrationNumber.trim().equalsIgnoreCase(candidate.Registration_Number__c)) {
+                                    convertedLead = candidate;
+                                    break;
+                                }
+                            }
+                        }
                         if (convertedLead == null)
                             throw new CustomException('No converted lead found for account ' + personAccountId + '.');
+                        // The same query is re-run below to reload this Lead after slot updates, so
+                        // it is narrowed to the chosen Lead (one row) from here on.
+                        convertedLeadSoql = convertedLeadSoql.substringBefore(' FROM Lead WHERE ')
+                            + ' FROM Lead WHERE Id = \'' + convertedLead.Id + '\' LIMIT 1';
+
+                        // Added By : Jitendra Varma | 27-Nov-2026
+                        // Only the converted Lead's admission-year opportunities are matched by
+                        // group tag, so an earlier-year opportunity is never overwritten.
+                        existingOpps = filterOppsByAdmissionYear(existingOpps, resolveAdmissionYear(convertedLead, payloadMap));
+                        existingOppByTag.clear();
+                        for (Opportunity o : existingOpps) {
+                            if (o.Program_Group_Tag__c != null)
+                                existingOppByTag.put(o.Program_Group_Tag__c, o);
+                        }
 
                         // Count occupied lead slots (not opportunity count)
                         Integer existingGroupCount = 0;
@@ -1350,6 +1396,8 @@ global with sharing class LeadConversionService {
                             if (existingOppByTag.containsKey(grpTag)) {
                                 // ── EXISTING GROUP: overwrite programmes with incoming payload ──────
                                 Opportunity existingOpp = existingOppByTag.get(grpTag);
+                                // Modified By : Jitendra Varma | 27-Nov-2026 - fill a blank application number
+                                Boolean appNumberFilled = fillBlankApplicationNumber(existingOpp, grpMap);
 
                                 if (incomingProgObjs.size() > maxPrograms) {
                                     throw new CustomException(
@@ -1371,6 +1419,7 @@ global with sharing class LeadConversionService {
                                 }
 
                                 if (newProgs.isEmpty()) {
+                                    if (appNumberFilled) oppsToUpdate.add(existingOpp);
                                     System.debug('No valid programmes in payload for group "' + grpTag + '" — skipping.');
                                     continue;
                                 }
@@ -1597,6 +1646,75 @@ global with sharing class LeadConversionService {
             return String.valueOf(payloadMap.get('admissionYear'));
         }
         return lead.Admission_Year__c;
+    }
+
+    // Added By : Jitendra Varma | 27-Nov-2026
+    // An Opportunity created while Auris had not yet sent an application number keeps a blank
+    // Application_Number__c. When a later payload for that group carries the number, it is filled
+    // in. An Opportunity that already has a number is never changed. Returns true when filled.
+    @TestVisible
+    private static Boolean fillBlankApplicationNumber(Opportunity opp, Map<String, Object> grpMap) {
+        Object incoming = (grpMap == null) ? null : grpMap.get('applicationNumber');
+        if (String.isNotBlank(opp.Application_Number__c) || incoming == null
+                || String.isBlank(String.valueOf(incoming))) {
+            return false;
+        }
+        opp.Application_Number__c = String.valueOf(incoming).trim();
+        return true;
+    }
+
+    // Added By : Jitendra Varma | 27-Nov-2026
+    // Keeps only the Opportunities of the given admission year, so a returning student's
+    // earlier-year Opportunity is never reused (or overwritten) for a new admission year.
+    @TestVisible
+    private static List<Opportunity> filterOppsByAdmissionYear(List<Opportunity> opps, String admissionYear) {
+        List<Opportunity> sameYear = new List<Opportunity>();
+        for (Opportunity o : opps) {
+            if (o.Admission_Year__c == admissionYear) {
+                sameYear.add(o);
+            }
+        }
+        return sameYear;
+    }
+
+    // Added By : Jitendra Varma | 27-Nov-2026
+    // A UG student always has one person Account. When a new-admission-year Lead is converted,
+    // this returns the person Account of the student's earlier converted Lead (same record type,
+    // same Email and same last 10 phone digits - the UG duplicate rule), or null when there is
+    // none, the Lead has no Email / Phone, or the Account no longer exists.
+    @TestVisible
+    private static Id findReturningStudentAccountId(Lead lead) {
+        if (String.isBlank(lead.Email)) {
+            return null;
+        }
+        String phoneDigits = (lead.Phone == null) ? '' : lead.Phone.replaceAll('\\D', '');
+        if (String.isBlank(phoneDigits)) {
+            return null;
+        }
+        String phonePattern = (phoneDigits.length() > RETURNING_STUDENT_PHONE_DIGITS)
+            ? '%' + phoneDigits.right(RETURNING_STUDENT_PHONE_DIGITS)
+            : '%' + phoneDigits;
+        List<Lead> earlierLeads = [
+            SELECT ConvertedAccountId
+            FROM   Lead
+            WHERE  IsConverted = true
+            AND    Id != :lead.Id
+            AND    RecordTypeId = :lead.RecordTypeId
+            AND    Email = :lead.Email
+            AND    Phone LIKE :phonePattern
+            AND    ConvertedAccountId != null
+            ORDER BY ConvertedDate DESC
+            LIMIT  1
+        ];
+        if (earlierLeads.isEmpty()) {
+            return null;
+        }
+        List<Account> accounts = [
+            SELECT Id FROM Account
+            WHERE  Id = :earlierLeads[0].ConvertedAccountId AND IsPersonAccount = true
+            LIMIT  1
+        ];
+        return accounts.isEmpty() ? null : accounts[0].Id;
     }
 
     /**
@@ -2437,6 +2555,15 @@ global with sharing class LeadConversionService {
             lc.setOwnerId(lead.OwnerId);
             lc.setDoNotCreateOpportunity(true);
             lc.setConvertedStatus(System.label.LeadToOppootunityConversionStage);
+            // Added By : Jitendra Varma | 27-Nov-2026
+            // Returning student (new admission year Lead): convert into the student's existing
+            // person Account so the student keeps one Account. Only the Account Id is set - a
+            // person Account conversion must not set a Contact Id.
+            Id returningStudentAccountId = findReturningStudentAccountId(lead);
+            if (returningStudentAccountId != null) {
+                lc.setAccountId(returningStudentAccountId);
+                System.debug('Returning student - converting into existing Account: ' + returningStudentAccountId);
+            }
             Database.LeadConvertResult lcr = Database.convertLead(lc, true);
             if (!lcr.isSuccess()) throw new CustomException('Lead conversion failed: ' + lcr.getErrors());
 
@@ -2466,14 +2593,16 @@ global with sharing class LeadConversionService {
                 if (!contacts.isEmpty()) contactId = contacts[0].Id;
             }
 
-            // Query existing opportunities to know which groups already have one
-            List<Opportunity> existingOpps = [
-                SELECT Id, Program_Group_Tag__c,
+            // Query existing opportunities to know which groups already have one.
+            // Modified By : Jitendra Varma | 27-Nov-2026 - only this admission year's
+            // opportunities count (see filterOppsByAdmissionYear).
+            List<Opportunity> existingOpps = filterOppsByAdmissionYear([
+                SELECT Id, Program_Group_Tag__c, Admission_Year__c, Application_Number__c,
                     Primary_Preferred_Program__c,     Primary_Preferred_Major__c,
                     Secondary_Preferred_Programme__c, Secondary_Preferred_Major__c,
                     Ternary_Preferred_Programme__c,   Ternary_Preferred_Major__c
                 FROM Opportunity WHERE AccountId = :accountId
-            ];
+            ], resolveAdmissionYear(lead, payloadMap));
             Set<String> existingGroupTags = new Set<String>();
             Map<String, Opportunity> existingOppByTag = new Map<String, Opportunity>();
             for (Opportunity o : existingOpps) {
@@ -2500,6 +2629,8 @@ global with sharing class LeadConversionService {
                     Map<String, Object> grpMap = (Map<String, Object>) obj;
                     Opportunity existingOpp = existingOppByTag.get((String) grpMap.get('grptag'));
                     if (existingOpp == null) continue;
+                    // Modified By : Jitendra Varma | 27-Nov-2026 - fill a blank application number
+                    Boolean appNumberFilled = fillBlankApplicationNumber(existingOpp, grpMap);
 
                     List<Object> incomingProgObjs = getProgsList(grpMap);
                     if (incomingProgObjs.size() > maxPrograms) {
@@ -2519,7 +2650,10 @@ global with sharing class LeadConversionService {
                         newProgs.add(pn.trim());
                         newMajors.add(major != null ? major.trim() : '');
                     }
-                    if (newProgs.isEmpty()) continue;
+                    if (newProgs.isEmpty()) {
+                        if (appNumberFilled) oppsToRefresh.put(existingOpp.Id, existingOpp);
+                        continue;
+                    }
 
                     existingOpp.Primary_Preferred_Program__c      = null; existingOpp.Primary_Preferred_Major__c   = null;
                     existingOpp.Secondary_Preferred_Programme__c  = null; existingOpp.Secondary_Preferred_Major__c = null;
@@ -2603,16 +2737,18 @@ global with sharing class LeadConversionService {
         // Query ALL opportunities on this account whose group tag matches any processed tag
         // This ensures the response reflects full current state regardless of whether
         // the opp was just created or already existed
-        List<Opportunity> allRelatedOpps = [
+        // Modified By : Jitendra Varma | 27-Nov-2026 - only this admission year's opportunities
+        // are returned, so a returning student's earlier-year opportunity is not reported back.
+        List<Opportunity> allRelatedOpps = filterOppsByAdmissionYear([
             SELECT Id, Program_Group_Tag__c, Application_Number__c,
-                Registration_Number__c,
+                Registration_Number__c, Admission_Year__c,
                 Primary_Preferred_Program__c,   Primary_Preferred_Major__c,
                 Secondary_Preferred_Programme__c, Secondary_Preferred_Major__c,
                 Ternary_Preferred_Programme__c,  Ternary_Preferred_Major__c
             FROM   Opportunity
             WHERE  AccountId = :accountId
             AND    Program_Group_Tag__c IN :processedGroupTags
-        ];
+        ], resolveAdmissionYear(lead, payloadMap));
 
         for (Opportunity opp : allRelatedOpps) {
             Map<String, String> d = new Map<String, String>();

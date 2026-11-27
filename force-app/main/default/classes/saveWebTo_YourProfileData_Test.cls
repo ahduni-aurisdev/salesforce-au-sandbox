@@ -667,7 +667,7 @@ public class saveWebTo_YourProfileData_Test {
     }
 
     @IsTest
-    static void test_ugAdmission_applicationNumberGeneratedWhenAbsent() {
+    static void test_ugAdmission_applicationNumberBlankWhenAbsent() {
         if (ugRtId() == null) return;
         Map<String, Object> payload = new Map<String, Object>{
             'department'         => 'Undergraduation',
@@ -689,9 +689,50 @@ public class saveWebTo_YourProfileData_Test {
         Map<String, Object> resp = post(payload);
         Test.stopTest();
         Id leadId = Id.valueOf(String.valueOf(((List<Object>) resp.get('leadIds'))[0]));
-        String generated = (String) slotField(leadId, 'Group_1_Application_Number__c');
-        System.assert(generated != null && generated.startsWith('REG-GENAPP-001'),
-            'Generated appNumber should start with regNum. Got: ' + generated);
+        System.assertEquals('UG_Lateral', slotField(leadId, 'Group_1__c'),
+            'The group must still be written to the slot.');
+        System.assertEquals(null, slotField(leadId, 'Group_1_Application_Number__c'),
+            'No application number may be generated when the payload does not send one.');
+    }
+
+    @IsTest
+    static void test_ugAdmission_blankApplicationNumberFilledLater() {
+        if (ugRtId() == null) return;
+        Map<String, Object> payload = new Map<String, Object>{
+            'department'         => 'Undergraduation',
+            'typeOfForm'         => 'Auris_Admission_Form',
+            'registrationNumber' => 'REG-FILLAPP-001',
+            'firstName' => 'Test', 'lastName' => 'FillApp',
+            'email' => 'fillapp@test.com', 'phone' => '9876543212',
+            'grpPrograms'        => new List<Object>{
+                new Map<String, Object>{
+                    'grptag'     => 'UG_Lateral',
+                    'programmes' => new List<Object>{
+                        new Map<String, Object>{ 'programInterestedIn' => 'BTech CSE', 'major' => 'CSE' }
+                    }
+                }
+            }
+        };
+        Map<String, Object> firstResp = post(payload);
+        Id leadId = Id.valueOf(String.valueOf(((List<Object>) firstResp.get('leadIds'))[0]));
+        Map<String, Object> withNumber = new Map<String, Object>(payload);
+        withNumber.put('leadId', String.valueOf(leadId));
+        withNumber.put('grpPrograms', new List<Object>{
+            new Map<String, Object>{
+                'grptag'            => 'UG_Lateral',
+                'applicationNumber' => 'UG2027-42700001',
+                'programmes'        => new List<Object>{
+                    new Map<String, Object>{ 'programInterestedIn' => 'BTech CSE', 'major' => 'CSE' }
+                }
+            }
+        });
+
+        Test.startTest();
+        post(withNumber);
+        Test.stopTest();
+
+        System.assertEquals('UG2027-42700001', slotField(leadId, 'Group_1_Application_Number__c'),
+            'The real application number must fill the blank slot when it is sent later.');
     }
 
     @IsTest
@@ -1016,12 +1057,17 @@ public class saveWebTo_YourProfileData_Test {
         // System.assert(returned.Multi_Select_Lead_Source__c.contains('Referral'), 'Referral should be preserved');
     }
 
-    /** Build a UG Lead with Department__c set so the duplicate lookup can find it. */
+    /**
+     * Build a UG Lead with Department__c and the default Admission Year set so the duplicate
+     * lookup can find it (the Email + Phone match only returns Leads of the incoming admission
+     * year; a payload without 'admissionYear' uses the default Admission Year label).
+     */
     private static Lead buildUGDuplicateCandidate(String regNum, String email, String phone) {
         return new Lead(
             LastName = 'DupCandidate', FirstName = 'Test', Company = 'T',
             Status = 'Open - Not Contacted', RecordTypeId = ugRtId(),
             Department__c = 'Undergraduation',
+            Admission_Year__c = System.label.Admission_Year,
             Email = email, Phone = phone, Registration_Number__c = regNum
         );
     }
@@ -1193,7 +1239,7 @@ public class saveWebTo_YourProfileData_Test {
         Test.stopTest();
 
         Lead saved = [SELECT Phone FROM Lead WHERE Registration_Number__c = 'UG2027-NOPLUS-001' LIMIT 1];
-        System.assertEquals('919876543211', saved.Phone, 'Phone without + should keep the existing 91 prefix behaviour');
+        System.assertEquals('+919876543211', saved.Phone, 'Phone without + should be saved with the +91 prefix');
     }
 
     // =========================================================================

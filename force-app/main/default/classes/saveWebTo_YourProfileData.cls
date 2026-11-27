@@ -18,6 +18,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Author              Date            Description
 // ─────────────────────────────────────────────────────────────────────────────
+// Jitendra Varma      27-Nov-2026     UG Admission Form: when a group has no
+//                                     applicationNumber the slot stays blank - the
+//                                     '<registrationNumber>-G<slot>' number is no
+//                                     longer generated (it reached the Opportunity
+//                                     and the Auris response and was never replaced
+//                                     by the real number).
+// Jitendra Varma      27-Nov-2026     handleDuplicateLeadUndergraduation: the
+//                                     Email + Phone match only returns a Lead of
+//                                     the incoming admission year, so a returning
+//                                     student gets a new Lead for the new year
+//                                     instead of the old year's Lead being updated.
 // Jitendra Varma      29-Oct-2026     Fixed duplicate UG leads created when the
 //                                     phone in the payload has '+', spaces or
 //                                     dashes. handleDuplicateLeadUndergraduation
@@ -361,17 +372,11 @@ global class saveWebTo_YourProfileData {
                             normalisedProgrammes.add(updatedProg);
                         }
 
-                        // Resolve applicationNumber
                         String appNumber;
                         if (groupMap.containsKey('applicationNumber') && groupMap.get('applicationNumber') != null
                                 && String.isNotBlank((String) groupMap.get('applicationNumber'))) {
                             appNumber = (String) groupMap.get('applicationNumber');
                             System.debug('Preserved applicationNumber from payload: ' + appNumber);
-                        } else {
-                            Integer slotForNum = findGroupSlotOnLead(newLead, incomingTag, maxGroups);
-                            if (slotForNum == 0) slotForNum = nextEmptySlotOnLead(newLead, maxGroups);
-                            appNumber = registrationNumber + '-G' + slotForNum;
-                            System.debug('Generated applicationNumber: ' + appNumber);
                         }
 
                         // Parse applicationDate to Date type
@@ -967,6 +972,12 @@ global class saveWebTo_YourProfileData {
         //         fields) to the SELECT so the returned lead can be used immediately
         //         for slot read/write in processSingleRecord without a second query.
         //         Also added Department__c and LeadSource for completeness.
+        // Modified By : Jitendra Varma | 27-Nov-2026
+        // The Email + Phone match only returns a Lead from the incoming admission year (same rule
+        // as handleDuplicateLeadMasters). A returning student applying for a new admission year
+        // then gets a new Lead instead of the previous year's Lead being overwritten. The
+        // Registration Number match is unchanged: Auris issues a new Registration Number per year.
+        String matchingAdmissionYear = resolveIncomingAdmissionYear(payloadMap);
         List<Lead> matchingLead = [
             SELECT Id, Phone, Registration_Number__c, Email,
                 Multi_Select_Lead_Source__c, RecordTypeId,
@@ -987,7 +998,8 @@ global class saveWebTo_YourProfileData {
             FROM   Lead
             WHERE  Department__c IN :matchingDepartments
             AND    (Registration_Number__c IN :matchingRegistrationNumbers
-                    OR (Phone LIKE :matchingPhone AND Email = :matchingEmail))
+                    OR (Phone LIKE :matchingPhone AND Email = :matchingEmail
+                        AND Admission_Year__c = :matchingAdmissionYear))
             ORDER BY CreatedDate ASC
             LIMIT  :DUPLICATE_CANDIDATE_LIMIT
         ];
@@ -1034,6 +1046,15 @@ global class saveWebTo_YourProfileData {
 
     // Max leads returned by the UG duplicate lookup before picking the best match.
     private static final Integer DUPLICATE_CANDIDATE_LIMIT = 50;
+
+    // Added By : Jitendra Varma | 27-Nov-2026
+    // Admission year of an incoming payload: its 'admissionYear' value, or the default
+    // Admission Year label when it is not sent - the same value processSingleRecord saves.
+    private static String resolveIncomingAdmissionYear(Map<String, Object> payloadMap) {
+        return (payloadMap.containsKey('admissionYear') && payloadMap.get('admissionYear') != null)
+            ? String.valueOf(payloadMap.get('admissionYear'))
+            : System.label.Admission_Year;
+    }
     // Number of trailing phone digits compared when matching duplicates.
     private static final Integer PHONE_MATCH_DIGITS = 10;
     // A phone starting with this already carries its country code.

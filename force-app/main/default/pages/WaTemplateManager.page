@@ -1,0 +1,1717 @@
+<apex:page showHeader="false" sidebar="false" standardStylesheets="false" applyHtmlTag="false" applyBodyTag="false" docType="html-5.0" cache="false" title="WhatsApp Template Manager">
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<meta name="referrer" content="same-origin"/>
+<title>WhatsApp Template Manager</title>
+<style>
+/* No CDATA wrapper here: Visualforce splits a CDATA section inside a style block into fragments on every line,
+   which invalidates the whole stylesheet. This CSS uses no less-than or ampersand characters, so it is
+   well-formed XHTML without CDATA. Keep it that way when editing. */
+:root {
+  --accent: #0E6E58; --accent-hover: #0A5644; --accent-soft: #E2F1EC; --on-accent: #FFFFFF;
+  --bg: #F5F6F7; --surface: #FFFFFF; --surface-2: #F0F2F3; --surface-3: #E7EAEC;
+  --border: #D9DEE1; --border-strong: #B9C1C6;
+  --text: #1B2226; --text-2: #56626B; --text-3: #7A858D;
+  --ok: #1B7A43; --ok-soft: #E3F4E9; --warn: #8A5A00; --warn-soft: #FFF3D1;
+  --danger: #B42318; --danger-soft: #FDECEA; --neutral: #4B5560; --neutral-soft: #ECEFF1;
+  --info: #0B5CAD; --info-soft: #E6F0FB;
+  --focus: 0 0 0 3px rgba(14, 110, 88, 0.38);
+  --radius: 10px; --radius-sm: 7px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.10);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.18);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #2BA383; --accent-hover: #38B994; --accent-soft: #143A31; --on-accent: #06140F;
+    --bg: #101416; --surface: #171C1F; --surface-2: #1E2428; --surface-3: #262D32;
+    --border: #2E363B; --border-strong: #46525A;
+    --text: #E7ECEE; --text-2: #A4AFB6; --text-3: #7E8A92;
+    --ok: #5BCB8A; --ok-soft: #133524; --warn: #F0B94B; --warn-soft: #3A2E10;
+    --danger: #F28B82; --danger-soft: #3D1A17; --neutral: #B3BDC4; --neutral-soft: #262D32;
+    --info: #7CB6F2; --info-soft: #14283F;
+    --focus: 0 0 0 3px rgba(43, 163, 131, 0.5);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4); --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--font); font-size: 14px; line-height: 1.45; color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: none; box-shadow: var(--focus); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.icon { flex: none; vertical-align: middle; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.btn-icon { width: 36px; padding: 0; }
+.btn-sm.btn-icon { width: 30px; }
+.btn .spinner { display: none; }
+.btn.is-loading .spinner { display: inline-block; }
+.btn.is-loading .btn-label-idle { display: none; }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } .skeleton { animation: none !important; } }
+
+/* Form controls */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.label { font-weight: 600; font-size: 13px; }
+.optional { font-weight: 400; color: var(--text-3); }
+.hint { font-size: 12.5px; color: var(--text-2); margin: 0; }
+.counter { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.counter.over { color: var(--danger); font-weight: 600; }
+.input, .select, .textarea { width: 100%; min-height: 38px; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); transition: border-color .15s; }
+.input:hover, .select:hover, .textarea:hover { border-color: var(--text-3); }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus); }
+.textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
+.input[aria-invalid="true"], .textarea[aria-invalid="true"], .select[aria-invalid="true"] { border-color: var(--danger); }
+.field-error { font-size: 12.5px; color: var(--danger); margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+.field-warn { font-size: 12.5px; color: var(--warn); background: var(--warn-soft); border-radius: var(--radius-sm); padding: 8px 10px; margin: 0; display: flex; gap: 8px; align-items: flex-start; }
+.input-group { display: flex; gap: 8px; align-items: stretch; }
+.input-group .input { flex: 1; min-width: 0; }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* Sign in */
+.signin-page { min-height: 100vh; display: flex; flex-direction: column; }
+.signin-header { background: var(--surface); border-bottom: 1px solid var(--border); }
+.signin-header-inner { max-width: 1320px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+.signin-header .brand-mark { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+.signin-title { font-size: 17px; font-weight: 700; line-height: 1.2; margin: 0; }
+.signin-org { font-size: 12.5px; color: var(--text-2); margin: 2px 0 0; }
+.signin-wrap { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 68px 16px 24px; }
+.signin { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 32px 28px; box-shadow: var(--shadow); }
+.brand-mark { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.signin h1 { font-size: 20px; margin: 18px 0 4px; }
+.signin p.lead { color: var(--text-2); margin: 0 0 22px; }
+.signin .btn-primary { width: 100%; min-height: 40px; margin-top: 4px; }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; }
+.alert-error { background: var(--danger-soft); color: var(--danger); }
+.alert-info { background: var(--info-soft); color: var(--info); }
+.alert-warn { background: var(--warn-soft); color: var(--warn); }
+
+/* App shell */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand .brand-mark { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+.brand-text { min-width: 0; }
+.brand-text p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-spacer { flex: 1; }
+.switcher { position: relative; }
+.switcher-btn { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 12px 4px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); cursor: pointer; max-width: 360px; }
+.switcher-btn:hover { background: var(--surface-2); }
+.switcher-btn.is-empty { border-style: dashed; border-color: var(--accent); color: var(--accent); padding-left: 12px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; flex: none; }
+.switcher-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
+.switcher-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+.switcher-num { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.menu { position: absolute; top: calc(100% + 6px); left: 0; min-width: 300px; max-width: 90vw; max-height: 60vh; overflow: auto; margin: 0; padding: 6px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); z-index: 30; }
+.switcher .menu { left: auto; right: 0; }
+.menu-option { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; }
+.menu-option[aria-selected="true"] { background: var(--accent-soft); }
+.menu-option.is-active { box-shadow: inset 0 0 0 2px var(--accent); }
+.menu-option:hover { background: var(--surface-2); }
+.menu-option .tick { margin-left: auto; color: var(--accent); visibility: hidden; }
+.menu-option[aria-selected="true"] .tick { visibility: visible; }
+.container { max-width: 1320px; margin: 0 auto; padding: 20px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-head h1 { font-size: 22px; margin: 0; }
+.page-head .sub { color: var(--text-2); margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: var(--radius); }
+.tab { border: 0; background: transparent; padding: 7px 16px; border-radius: var(--radius-sm); font-weight: 600; color: var(--text-2); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.tab:disabled { cursor: not-allowed; opacity: .5; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.empty-state { text-align: center; padding: 56px 24px; }
+.empty-state .bubble-ill { width: 64px; height: 64px; border-radius: 18px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin: 0 auto 16px; }
+.empty-state h2 { font-size: 18px; margin: 0 0 6px; }
+.empty-state p { color: var(--text-2); margin: 0 auto 18px; max-width: 460px; }
+
+/* Templates list */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.search { position: relative; flex: 1 1 240px; min-width: 200px; max-width: 360px; }
+.search .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
+.search .input { padding-left: 34px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; color: var(--text-2); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.chip .count { font-variant-numeric: tabular-nums; font-weight: 500; opacity: .85; }
+.updated { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 12.5px; }
+.list { max-height: calc(100vh - 290px); min-height: 280px; overflow-y: auto; }
+.row { border-bottom: 1px solid var(--border); }
+.row:last-child { border-bottom: 0; }
+.row-btn { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto 120px 20px; gap: 14px; align-items: center; padding: 12px 16px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.row-btn:hover { background: var(--surface-2); }
+.row-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 13px; }
+.row-lang { color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.row-cat { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.row .chev { color: var(--text-3); transition: transform .15s; }
+.row-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.pill { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill-APPROVED { background: var(--ok-soft); color: var(--ok); }
+.pill-PENDING, .pill-IN_APPEAL { background: var(--warn-soft); color: var(--warn); }
+.pill-REJECTED { background: var(--danger-soft); color: var(--danger); }
+.pill-other { background: var(--neutral-soft); color: var(--neutral); }
+.row-detail { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 24px; padding: 4px 16px 20px; }
+.dl { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; margin: 0 0 16px; font-size: 13px; }
+.dl dt { color: var(--text-2); }
+.dl dd { margin: 0; word-break: break-word; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.skeleton-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px 100px; gap: 14px; padding: 16px; border-bottom: 1px solid var(--border); }
+.skeleton { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* Create form */
+.create-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+.section { padding: 20px; border-bottom: 1px solid var(--border); }
+.section:last-of-type { border-bottom: 0; }
+.section-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+.step { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; flex: none; font-size: 13px; }
+.section-head h2 { font-size: 16px; margin: 1px 0 2px; }
+.section-head p { margin: 0; color: var(--text-2); font-size: 13px; }
+.cat-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cat-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); cursor: pointer; background: var(--surface); }
+.cat-card:hover { border-color: var(--text-3); }
+.cat-card input { position: absolute; opacity: 0; pointer-events: none; }
+.cat-card .cat-title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.cat-card .cat-desc { font-size: 12.5px; color: var(--text-2); }
+.cat-card.is-checked { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.cat-card:focus-within { box-shadow: var(--focus); }
+.segmented { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { position: relative; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 13px; background: var(--surface); }
+.seg input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.seg input:focus-visible + span { box-shadow: var(--focus); }
+.fmt-bar { display: flex; gap: 4px; align-items: center; padding: 4px; border: 1px solid var(--border-strong); border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface-2); }
+.fmt-bar + .textarea { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.fmt-btn { min-width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 14px; }
+.fmt-btn:hover { background: var(--surface-3); }
+.fmt-sep { width: 1px; height: 18px; background: var(--border-strong); margin: 0 4px; }
+.vars { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.vars .field { margin: 0; }
+.var-tag { font-family: var(--mono); font-size: 12px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
+.dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius); text-align: center; color: var(--text-2); background: var(--surface); }
+.dropzone.is-over { border-color: var(--accent); background: var(--accent-soft); }
+.file-card { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.file-card .file-meta { flex: 1; min-width: 0; }
+.file-card .file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; margin-top: 6px; }
+.progress > div { height: 100%; background: var(--accent); transition: width .2s; }
+.btn-list { display: flex; flex-direction: column; gap: 10px; }
+.btn-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--surface); }
+.btn-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; }
+.btn-item-head .grow { flex: 1; }
+.btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.btn-grid .field { margin: 0; }
+.add-menu-wrap { position: relative; display: inline-block; }
+.add-menu { position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 260px; margin: 0; padding: 6px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); z-index: 15; }
+.add-menu button { width: 100%; display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; text-align: left; cursor: pointer; }
+.add-menu button:hover:not(:disabled) { background: var(--surface-2); }
+.add-menu button:disabled { opacity: .5; cursor: not-allowed; }
+.add-menu small { display: block; color: var(--text-3); font-size: 12px; }
+.submit-bar { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 var(--radius) var(--radius); }
+.submit-bar .grow { flex: 1; color: var(--text-2); font-size: 13px; }
+.preview-pane { position: sticky; top: 76px; }
+.preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.preview-head h2 { font-size: 15px; margin: 0; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+.error-summary { margin: 0 20px 0; }
+.error-summary ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* Dialog */
+dialog { border: 0; padding: 0; border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+dialog::backdrop { background: rgba(8, 12, 14, 0.55); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.dlg-head h2 { margin: 0; font-size: 17px; }
+.dlg-body { padding: 20px; display: grid; grid-template-columns: 1fr 340px; gap: 20px; overflow: auto; max-height: calc(100vh - 200px); }
+.dlg-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.summary-dl { grid-template-columns: 120px 1fr; }
+.summary-dl dd pre { margin: 0; white-space: pre-wrap; font-family: var(--font); }
+
+/* Toasts */
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 100; display: flex; flex-direction: column; gap: 8px; width: min(380px, calc(100vw - 32px)); }
+.toast { display: flex; gap: 10px; align-items: flex-start; padding: 12px 12px 12px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); box-shadow: var(--shadow-lg); }
+.toast.error { border-left-color: var(--danger); }
+.toast .toast-msg { flex: 1; white-space: pre-line; }
+.toast.error .icon { color: var(--danger); }
+.toast.success .icon { color: var(--ok); }
+
+/* WhatsApp preview (WhatsApp palettes) */
+.wa { --wa-bg: #EFEAE2; --wa-head: #F0F2F5; --wa-head-text: #111B21; --wa-bubble: #FFFFFF; --wa-text: #111B21; --wa-meta: #667781; --wa-link: #027EB5; --wa-divider: #E9EDEF; --wa-media: #D1D7DB; --wa-doodle: rgba(0, 0, 0, 0.035); --wa-badge: #1D9BF0;
+  border-radius: 22px; overflow: hidden; border: 1px solid var(--border); background: var(--wa-bg); font-family: var(--font); color: var(--wa-text); }
+.wa.wa-dark { --wa-bg: #0B141A; --wa-head: #202C33; --wa-head-text: #E9EDEF; --wa-bubble: #202C33; --wa-text: #E9EDEF; --wa-meta: #8696A0; --wa-link: #53BDEB; --wa-divider: #2A3942; --wa-media: #2A3942; --wa-doodle: rgba(255, 255, 255, 0.025); }
+.wa-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--wa-head); color: var(--wa-head-text); }
+.wa-head .wa-back { opacity: .8; }
+.wa-avatar { width: 36px; height: 36px; border-radius: 50%; background: #25D366; color: #FFFFFF; display: grid; place-items: center; font-weight: 700; flex: none; }
+.wa-title { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.wa-title b { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-title small { font-size: 12px; color: var(--wa-meta); }
+.wa-badge { color: var(--wa-badge); flex: none; }
+.wa-chat { padding: 14px 12px 18px; min-height: 260px; background-color: var(--wa-bg); background-image: radial-gradient(var(--wa-doodle) 1.2px, transparent 1.2px); background-size: 14px 14px; }
+.wa-day { display: table; margin: 0 auto 12px; padding: 4px 10px; border-radius: 7px; background: var(--wa-bubble); color: var(--wa-meta); font-size: 12px; box-shadow: 0 1px .5px rgba(11, 20, 26, .13); }
+.wa-msg { position: relative; margin-left: 8px; max-width: 92%; width: fit-content; min-width: 140px; }
+.wa-tail { position: absolute; left: -8px; top: 0; width: 8px; height: 13px; color: var(--wa-bubble); }
+.wa-bubble { background: var(--wa-bubble); border-radius: 0 7.5px 7.5px 7.5px; box-shadow: 0 1px .5px rgba(11, 20, 26, .13); overflow: hidden; }
+.wa-inner { padding: 6px 7px 8px 9px; }
+.wa-media { margin: 3px 3px 0; border-radius: 6px; overflow: hidden; background: var(--wa-media); position: relative; display: grid; place-items: center; min-height: 150px; color: var(--wa-meta); }
+.wa-media img, .wa-media video { display: block; width: 100%; max-height: 260px; object-fit: cover; }
+.wa-play { position: absolute; width: 48px; height: 48px; border-radius: 50%; background: rgba(11, 20, 26, .55); color: #FFFFFF; display: grid; place-items: center; }
+.wa-doc { margin: 3px 3px 0; border-radius: 6px; background: rgba(134, 150, 160, .14); display: flex; align-items: center; gap: 10px; padding: 12px 10px; font-size: 13.5px; }
+.wa-doc-icon { width: 30px; height: 36px; border-radius: 3px; background: #E5544B; color: #FFFFFF; display: grid; place-items: center; font-size: 9px; font-weight: 700; flex: none; }
+.wa-doc small { display: block; color: var(--wa-meta); font-size: 11.5px; }
+.wa-header-text { font-weight: 700; font-size: 15px; line-height: 20px; margin-bottom: 4px; word-wrap: break-word; }
+.wa-body { font-size: 14.2px; line-height: 19px; white-space: pre-wrap; word-wrap: break-word; }
+.wa-body code { font-family: var(--mono); font-size: 13px; }
+.wa-var { background: rgba(37, 211, 102, .18); border-radius: 3px; padding: 0 2px; font-family: var(--mono); font-size: 12.5px; }
+.wa-footer { font-size: 13px; line-height: 17px; color: var(--wa-meta); margin-top: 4px; }
+.wa-time { float: right; margin: 6px 0 -4px 12px; font-size: 11px; color: var(--wa-meta); line-height: 15px; }
+.wa-buttons { border-top: 1px solid var(--wa-divider); }
+.wa-button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 12px; color: var(--wa-link); font-size: 14.2px; font-weight: 500; text-align: center; }
+.wa-button + .wa-button { border-top: 1px solid var(--wa-divider); }
+.wa-placeholder { color: var(--wa-meta); font-style: italic; }
+
+/* Responsive */
+@media (max-width: 1080px) {
+  .create-grid { grid-template-columns: 1fr; }
+  .preview-pane { position: static; }
+  .dlg-body { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; padding: 10px 16px; }
+  .switcher { order: 3; flex-basis: 100%; }
+  .switcher-btn { max-width: none; width: 100%; }
+  .switcher .menu { left: 0; right: 0; min-width: 0; }
+  .container { padding: 16px; }
+  .cat-cards { grid-template-columns: 1fr; }
+  .row-btn { grid-template-columns: minmax(0, 1fr) auto 20px; }
+  .row-lang, .row-cat { display: none; }
+  .row-detail { grid-template-columns: minmax(0, 1fr); }
+  .search { max-width: none; min-width: 0; }
+  .dl { grid-template-columns: 110px 1fr; }
+  .updated { margin-left: 0; }
+  .list { max-height: none; }
+}
+</style>
+</head>
+<body>
+<div id="app" data-api-base="{!HTMLENCODE($Site.Prefix)}/services/apexrest/wa-template-api">
+
+  <!-- Sign in -->
+  <div id="signin-view" class="signin-page" hidden="hidden">
+    <header class="signin-header">
+      <div class="signin-header-inner">
+        <div class="brand-mark" data-icon="chat" data-size="18"></div>
+        <div>
+          <p class="signin-title">WhatsApp Template Manager</p>
+          <p class="signin-org">Ahmedabad University</p>
+        </div>
+      </div>
+    </header>
+    <main class="signin-wrap">
+    <form id="signin-form" class="signin" novalidate="novalidate" autocomplete="off">
+      <div class="brand-mark" data-icon="lock" data-size="22"></div>
+      <h1>Sign in</h1>
+      <p class="lead">Enter the admin key to view and create WhatsApp templates.</p>
+      <div class="field">
+        <label class="label" for="admin-key">Admin key</label>
+        <div class="input-group">
+          <input id="admin-key" class="input" type="password" autocomplete="off" spellcheck="false" required="required"/>
+          <button id="toggle-key" type="button" class="btn btn-icon" aria-label="Show admin key" aria-pressed="false" data-icon="eye"></button>
+        </div>
+      </div>
+      <button id="signin-btn" type="submit" class="btn btn-primary">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="btn-label">Sign in</span>
+      </button>
+    </form>
+    </main>
+  </div>
+
+  <!-- App -->
+  <div id="app-view" hidden="hidden">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark" data-icon="chat" data-size="18"></div><div class="brand-text"><p class="signin-title">WhatsApp Template Manager</p><p class="signin-org">Ahmedabad University</p></div></div>
+      <div class="topbar-spacer"></div>
+      <div class="switcher" id="switcher">
+        <button id="switcher-btn" type="button" class="switcher-btn is-empty" aria-haspopup="listbox" aria-expanded="false" aria-controls="switcher-menu" aria-label="Choose a WhatsApp number"></button>
+        <ul id="switcher-menu" class="menu" role="listbox" tabindex="-1" aria-label="WhatsApp numbers" hidden="hidden"></ul>
+      </div>
+      <button id="logout-btn" type="button" class="btn btn-ghost"><span data-icon="logout" data-size="16"></span><span>Log out</span></button>
+    </header>
+
+    <main class="container">
+      <div class="page-head">
+        <div>
+          <h1 id="page-title">Choose a WhatsApp number</h1>
+          <p id="page-sub" class="sub">Templates belong to a WhatsApp Business Account.</p>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Sections">
+          <button id="tab-list" class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-list" disabled="disabled">Templates</button>
+          <button id="tab-create" class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-create" tabindex="-1" disabled="disabled"><span data-icon="plus" data-size="15"></span>New template</button>
+        </div>
+      </div>
+
+      <section id="pick-prompt" class="card empty-state">
+        <div class="bubble-ill" data-icon="phone" data-size="30"></div>
+        <h2>Choose a WhatsApp number to start</h2>
+        <p>Templates are stored per WhatsApp Business Account. Pick the number you want to work with to see its templates or create a new one.</p>
+        <button id="pick-btn" type="button" class="btn btn-primary">Choose a number</button>
+      </section>
+
+      <section id="panel-list" class="card" role="tabpanel" aria-labelledby="tab-list" hidden="hidden">
+        <div class="toolbar">
+          <div class="search">
+            <span data-icon="search" data-size="16"></span>
+            <label class="sr-only" for="search-input">Search templates by name</label>
+            <input id="search-input" class="input" type="search" placeholder="Search by template name" autocomplete="off"/>
+          </div>
+          <div id="filter-chips" class="chips" role="group" aria-label="Filter by status"></div>
+          <div class="updated">
+            <span id="updated-at" aria-live="polite"></span>
+            <button id="refresh-btn" type="button" class="btn btn-sm">
+              <span class="spinner" aria-hidden="true"></span>
+              <span class="btn-label-idle" data-icon="refresh" data-size="14"></span>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div id="list-notice" class="alert alert-warn" style="margin:12px 16px 0" hidden="hidden"></div>
+        <div id="list-status" class="sr-only" aria-live="polite"></div>
+        <div id="template-list" class="list" role="list" aria-label="Templates" aria-busy="false"></div>
+      </section>
+
+      <section id="panel-create" role="tabpanel" aria-labelledby="tab-create" hidden="hidden">
+        <div class="create-grid">
+          <form id="create-form" class="card" novalidate="novalidate" autocomplete="off">
+            <div id="form-root"></div>
+            <div id="form-errors" class="alert alert-error error-summary" role="alert" tabindex="-1" hidden="hidden"></div>
+            <div class="submit-bar">
+              <span class="grow">Meta reviews every template. Most reviews finish within minutes; some take up to 24 hours.</span>
+              <button id="reset-btn" type="button" class="btn">Clear form</button>
+              <button id="review-btn" type="submit" class="btn btn-primary">Review and submit</button>
+            </div>
+          </form>
+          <aside class="preview-pane" aria-label="Template preview">
+            <div class="preview-head">
+              <h2>Preview</h2>
+              <div style="display:flex;gap:6px;align-items:center">
+                <label class="toggle"><input id="placeholder-toggle" type="checkbox"/>Show placeholders</label>
+                <button id="theme-toggle" type="button" class="btn btn-sm btn-icon" aria-label="Switch preview to dark WhatsApp theme" data-icon="moon" data-size="15"></button>
+              </div>
+            </div>
+            <div id="create-preview"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="review-dialog" aria-labelledby="review-title">
+    <div class="dlg-head">
+      <h2 id="review-title">Review before submitting</h2>
+      <button type="button" class="btn btn-ghost btn-icon" data-close="review" aria-label="Close review" data-icon="close"></button>
+    </div>
+    <div class="dlg-body">
+      <div>
+        <div id="review-summary"></div>
+        <div class="alert alert-info" style="margin-top:16px">
+          <span data-icon="info" data-size="16"></span>
+          <span>After you submit, Meta reviews the template and may change its category if the content doesn't match. A Messaging account can create at most 100 templates per hour.</span>
+        </div>
+        <div id="review-error" class="alert alert-error" role="alert" hidden="hidden"></div>
+      </div>
+      <div id="review-preview"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-close="review">Back to editing</button>
+      <button id="submit-btn" type="button" class="btn btn-primary">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="btn-label">Submit to Meta</span>
+      </button>
+    </div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite" aria-relevant="additions"></div>
+  <input id="file-input" type="file" class="sr-only" tabindex="-1" aria-hidden="true"/>
+</div>
+
+<script>
+//<![CDATA[
+(function () {
+  'use strict';
+
+  /* ---------- Constants (mirror WaTemplateValidator / WaTemplateService) ---------- */
+  var APP = document.getElementById('app');
+  var API = APP.getAttribute('data-api-base');
+  var KEY_STORE = 'waTemplateManager.adminKey';
+  var LIMITS = { name: 512, headerText: 60, body: 1024, footer: 60, buttonText: 25, url: 2000, phone: 20, copyCode: 20,
+    buttons: 10, QUICK_REPLY: 10, URL: 2, PHONE_NUMBER: 1, COPY_CODE: 1, upload: 4 * 1024 * 1024, apps: 5, packageName: 224 };
+  var MEDIA = {
+    IMAGE: { accept: 'image/jpeg,image/png', types: ['image/jpeg', 'image/png'], label: 'image', hint: 'JPG or PNG, up to 4 MB' },
+    VIDEO: { accept: 'video/mp4', types: ['video/mp4'], label: 'video', hint: 'MP4, up to 4 MB' },
+    DOCUMENT: { accept: 'application/pdf', types: ['application/pdf'], label: 'document', hint: 'PDF, up to 4 MB' }
+  };
+  var CATEGORIES = [
+    { id: 'MARKETING', name: 'Marketing', icon: 'megaphone', desc: 'Send promotions or information about your products, services or business.' },
+    { id: 'UTILITY', name: 'Utility', icon: 'bell', desc: 'Send messages about an existing order, application or account.' },
+    { id: 'AUTHENTICATION', name: 'Authentication', icon: 'key', desc: 'Send codes to verify a transaction or login.' }
+  ];
+  var COMMON_LANGS = [['en', 'English'], ['en_US', 'English (US)'], ['en_GB', 'English (UK)'], ['hi', 'Hindi'], ['gu', 'Gujarati'], ['mr', 'Marathi']];
+  var ALL_LANGS = [['af','Afrikaans'],['sq','Albanian'],['ar','Arabic'],['ar_EG','Arabic (EGY)'],['ar_AE','Arabic (UAE)'],['ar_LB','Arabic (LBN)'],['ar_MA','Arabic (MAR)'],['ar_QA','Arabic (QAT)'],['az','Azerbaijani'],['be_BY','Belarusian'],['bn','Bengali'],['bn_IN','Bengali (IND)'],['bg','Bulgarian'],['ca','Catalan'],['zh_CN','Chinese (CHN)'],['zh_HK','Chinese (HKG)'],['zh_TW','Chinese (TAI)'],['hr','Croatian'],['cs','Czech'],['da','Danish'],['prs_AF','Dari'],['nl','Dutch'],['nl_BE','Dutch (BEL)'],['en','English'],['en_GB','English (UK)'],['en_US','English (US)'],['en_AE','English (UAE)'],['en_AU','English (AUS)'],['en_CA','English (CAN)'],['en_GH','English (GHA)'],['en_IE','English (IRL)'],['en_IN','English (IND)'],['en_JM','English (JAM)'],['en_MY','English (MYS)'],['en_NZ','English (NZL)'],['en_QA','English (QAT)'],['en_SG','English (SGP)'],['en_UG','English (UGA)'],['en_ZA','English (ZAF)'],['et','Estonian'],['fil','Filipino'],['fi','Finnish'],['fr','French'],['fr_BE','French (BEL)'],['fr_CA','French (CAN)'],['fr_CH','French (CHE)'],['fr_CI','French (CIV)'],['fr_MA','French (MAR)'],['ka','Georgian'],['de','German'],['de_AT','German (AUT)'],['de_CH','German (CHE)'],['el','Greek'],['gu','Gujarati'],['ha','Hausa'],['he','Hebrew'],['hi','Hindi'],['hu','Hungarian'],['id','Indonesian'],['ga','Irish'],['it','Italian'],['ja','Japanese'],['kn','Kannada'],['kk','Kazakh'],['rw_RW','Kinyarwanda'],['ko','Korean'],['ky_KG','Kyrgyz (Kyrgyzstan)'],['lo','Lao'],['lv','Latvian'],['lt','Lithuanian'],['mk','Macedonian'],['ms','Malay'],['ml','Malayalam'],['mr','Marathi'],['nb','Norwegian'],['ps_AF','Pashto'],['fa','Persian'],['pl','Polish'],['pt_BR','Portuguese (BR)'],['pt_PT','Portuguese (POR)'],['pa','Punjabi'],['ro','Romanian'],['ru','Russian'],['sr','Serbian'],['si_LK','Sinhala'],['sk','Slovak'],['sl','Slovenian'],['es','Spanish'],['es_AR','Spanish (ARG)'],['es_CL','Spanish (CHL)'],['es_CO','Spanish (COL)'],['es_CR','Spanish (CRI)'],['es_DO','Spanish (DOM)'],['es_EC','Spanish (ECU)'],['es_HN','Spanish (HND)'],['es_MX','Spanish (MEX)'],['es_PA','Spanish (PAN)'],['es_PE','Spanish (PER)'],['es_ES','Spanish (SPA)'],['es_UY','Spanish (URY)'],['sw','Swahili'],['sv','Swedish'],['ta','Tamil'],['te','Telugu'],['th','Thai'],['tr','Turkish'],['uk','Ukrainian'],['ur','Urdu'],['uz','Uzbek'],['vi','Vietnamese'],['zu','Zulu']];
+  var LANG_NAMES = {};
+  ALL_LANGS.forEach(function (l) { LANG_NAMES[l[0]] = l[1]; });
+  var BUTTON_TYPES = {
+    QUICK_REPLY: { name: 'Quick reply', icon: 'reply', desc: 'Up to 10. Customers tap to reply.' },
+    URL: { name: 'Visit website', icon: 'external', desc: 'Up to 2. Static or dynamic URL.' },
+    PHONE_NUMBER: { name: 'Call phone number', icon: 'phone', desc: '1 per template.' },
+    COPY_CODE: { name: 'Copy offer code', icon: 'copy', desc: '1 per template. Marketing only.' }
+  };
+  var STATUS_FILTERS = [
+    { id: 'ALL', name: 'All' }, { id: 'APPROVED', name: 'Approved' }, { id: 'PENDING', name: 'Pending' },
+    { id: 'REJECTED', name: 'Rejected' }, { id: 'PAUSED_DISABLED', name: 'Paused/Disabled', onlyIfAny: true }
+  ];
+
+  /* ---------- Icons (inline SVG, no external assets) ---------- */
+  var ICONS = {
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="m3 3 18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2"/><path d="M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a10.6 10.6 0 0 0 5.4-1.6"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+    close: '<path d="M18 6 6 18M6 6l12 12"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6l-5 4H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    reply: '<path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+    external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+    pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+    video: '<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+    text: '<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>',
+    none: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+    back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+    play: '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
+    badge: '<path d="M12 1.8l2.4 1.8 3-.2.9 2.9 2.5 1.7-.9 2.9.9 2.9-2.5 1.7-.9 2.9-3-.2L12 22.2l-2.4-1.8-3 .2-.9-2.9-2.5-1.7.9-2.9-.9-2.9 2.5-1.7.9-2.9 3 .2z" fill="currentColor" stroke="none"/><path d="m8.5 12 2.4 2.4 4.6-4.8" stroke="#FFFFFF" stroke-width="2.2"/>'
+  };
+  function icon(name, size) {
+    var s = size || 18;
+    return '<svg class="icon" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (ICONS[name] || '') + '</svg>';
+  }
+  function hydrateIcons(scope) {
+    Array.prototype.forEach.call((scope || document).querySelectorAll('[data-icon]'), function (node) {
+      if (node.getAttribute('data-icon-done')) { return; }
+      node.insertAdjacentHTML('afterbegin', icon(node.getAttribute('data-icon'), Number(node.getAttribute('data-size')) || 18));
+      node.setAttribute('data-icon-done', '1');
+    });
+  }
+
+  /* ---------- Helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function store(action, value) {
+    try {
+      if (action === 'get') { return window.sessionStorage.getItem(KEY_STORE); }
+      if (action === 'set') { window.sessionStorage.setItem(KEY_STORE, value); }
+      if (action === 'clear') { window.sessionStorage.removeItem(KEY_STORE); }
+    } catch (e) { return null; }
+    return null;
+  }
+  function setLoading(button, loading) {
+    button.classList.toggle('is-loading', loading);
+    button.disabled = loading;
+    button.setAttribute('aria-busy', loading ? 'true' : 'false');
+  }
+  function parseLabel(label) {
+    var match = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(label || '');
+    return match ? { name: match[1] || label, number: match[2] } : { name: label || 'WhatsApp account', number: '' };
+  }
+  function initials(name) {
+    var parts = String(name || '?').trim().split(/\s+/);
+    return ((parts[0] || '?').charAt(0) + (parts.length > 1 ? parts[parts.length - 1].charAt(0) : '')).toUpperCase();
+  }
+  function langName(code) { return LANG_NAMES[code] ? LANG_NAMES[code] : code; }
+  function titleCase(value) { value = String(value || '').toLowerCase(); return value.charAt(0).toUpperCase() + value.slice(1); }
+  function fmtTime(date) { return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  function fmtSize(bytes) { return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB'; }
+  function varNumbers(text) {
+    var found = {}, list = [], re = /\{\{(\d+)\}\}/g, m;
+    while ((m = re.exec(text || '')) !== null) { if (!found[m[1]]) { found[m[1]] = true; list.push(Number(m[1])); } }
+    return list.sort(function (a, b) { return a - b; });
+  }
+
+  /* ---------- Toasts ---------- */
+  function toast(message, kind) {
+    var node = document.createElement('div');
+    node.className = 'toast ' + (kind || 'success');
+    node.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    node.innerHTML = icon(kind === 'error' ? 'alert' : 'checkCircle', 18) + '<div class="toast-msg">' + esc(message) + '</div>' +
+      '<button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label="Dismiss notification">' + icon('close', 14) + '</button>';
+    node.querySelector('button').addEventListener('click', function () { node.remove(); });
+    $('toasts').appendChild(node);
+    window.setTimeout(function () { node.remove(); }, kind === 'error' ? 9000 : 5000);
+  }
+
+  /* ---------- API ---------- */
+  function ApiError(message, status) { this.message = message; this.status = status; }
+  function query(params) {
+    return Object.keys(params).filter(function (k) { return params[k] != null; })
+      .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+  }
+  function api(method, params, body, keyOverride) {
+    var headers = { 'X-Admin-Key': keyOverride || state.key, 'Accept': 'application/json' };
+    if (body != null) { headers['Content-Type'] = 'application/json'; }
+    return fetch(API + '?' + query(params), { method: method, headers: headers, body: body == null ? undefined : JSON.stringify(body), credentials: 'same-origin', cache: 'no-store' })
+      .then(function (response) {
+        return response.text().then(function (text) {
+          var data = null;
+          try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+          if (!response.ok || !data || data.ok !== true) {
+            throw new ApiError(data && data.error ? data.error : 'The server returned an unexpected response (HTTP ' + response.status + '). Try again.', response.status);
+          }
+          return data;
+        });
+      }, function () { throw new ApiError('Could not reach Salesforce. Check your connection and try again.', 0); });
+  }
+  function handleAuthError(error) {
+    if (error && error.status === 401) {
+      signOut(error.message);
+      return true;
+    }
+    return false;
+  }
+
+  /* ---------- State ---------- */
+  var state = {
+    key: null, accounts: [], waba: null, cache: {}, filter: 'ALL', search: '', expanded: null,
+    tab: 'list', placeholders: false, waDark: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches,
+    form: null, uploadXhr: null, menuIndex: -1, lastFocus: null
+  };
+  function emptyForm() {
+    return {
+      category: 'MARKETING', name: '', language: 'en',
+      headerType: 'NONE', headerText: '', headerSample: '', media: null,
+      body: '', bodySamples: {}, footer: '', buttons: [],
+      auth: { security: true, expiry: false, minutes: 10, otpType: 'COPY_CODE', copyText: '', autofillText: '', apps: [{ package_name: '', signature_hash: '' }] },
+      touched: false
+    };
+  }
+  state.form = emptyForm();
+  function currentAccount() {
+    for (var i = 0; i < state.accounts.length; i++) { if (state.accounts[i].wabaId === state.waba) { return state.accounts[i]; } }
+    return null;
+  }
+
+  /* ---------- Sign in / out ---------- */
+  function showSignin(message) {
+    $('app-view').hidden = true;
+    $('signin-view').hidden = false;
+    if (message) { toast(message, 'error'); }
+    $('admin-key').value = '';
+    $('admin-key').focus();
+  }
+  function signOut(message) {
+    if (state.uploadXhr) { state.uploadXhr.abort(); }
+    store('clear');
+    state.key = null; state.accounts = []; state.waba = null; state.cache = {}; state.expanded = null;
+    state.form = emptyForm();
+    document.title = 'WhatsApp Template Manager';
+    showSignin(message);
+  }
+  function signIn(key, button) {
+    if (button) { setLoading(button, true); }
+    return api('GET', { action: 'wabas' }, null, key).then(function (data) {
+      state.key = key;
+      store('set', key);
+      state.accounts = data.accounts || [];
+      $('signin-view').hidden = true;
+      $('app-view').hidden = false;
+      renderSwitcher();
+      renderShell();
+      if (!state.accounts.length) {
+        toast('No WhatsApp numbers are enabled yet. Ask your Salesforce admin to add one in WA Account.', 'error');
+      }
+    }, function (error) {
+      store('clear');
+      showSignin(error.message);
+    }).then(function () { if (button) { setLoading(button, false); } });
+  }
+
+  /* ---------- Number switcher ---------- */
+  function renderSwitcher() {
+    var btn = $('switcher-btn');
+    var account = currentAccount();
+    if (account) {
+      var p = parseLabel(account.label);
+      btn.classList.remove('is-empty');
+      btn.innerHTML = '<span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><span class="switcher-text"><span class="switcher-name">' + esc(p.name) + '</span><span class="switcher-num">' + esc(p.number) + '</span></span>' + icon('chevron', 16);
+      btn.setAttribute('aria-label', 'WhatsApp number: ' + p.name + ' ' + p.number + '. Change number');
+    } else {
+      btn.classList.add('is-empty');
+      btn.innerHTML = icon('phone', 16) + '<span class="switcher-name">Choose a WhatsApp number</span>' + icon('chevron', 16);
+      btn.setAttribute('aria-label', 'Choose a WhatsApp number');
+    }
+    var menu = $('switcher-menu');
+    menu.innerHTML = state.accounts.length ? state.accounts.map(function (a, i) {
+      var p = parseLabel(a.label);
+      return '<li id="acct-' + i + '" class="menu-option" role="option" aria-selected="' + (a.wabaId === state.waba) + '" data-index="' + i + '">' +
+        '<span class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><span class="switcher-text"><span class="switcher-name">' + esc(p.name) + '</span><span class="switcher-num">' + esc(p.number) + '</span></span>' +
+        '<span class="tick">' + icon('check', 16) + '</span></li>';
+    }).join('') : '<li class="menu-option" role="option" aria-disabled="true" aria-selected="false">No numbers are enabled. Ask your Salesforce admin.</li>';
+  }
+  function openMenu() {
+    var menu = $('switcher-menu');
+    menu.hidden = false;
+    $('switcher-btn').setAttribute('aria-expanded', 'true');
+    var selected = -1;
+    state.accounts.forEach(function (a, i) { if (a.wabaId === state.waba) { selected = i; } });
+    setActiveOption(selected >= 0 ? selected : 0);
+    menu.focus();
+  }
+  function closeMenu(returnFocus) {
+    $('switcher-menu').hidden = true;
+    $('switcher-btn').setAttribute('aria-expanded', 'false');
+    if (returnFocus) { $('switcher-btn').focus(); }
+  }
+  function setActiveOption(index) {
+    var options = $('switcher-menu').querySelectorAll('[data-index]');
+    if (!options.length) { return; }
+    state.menuIndex = (index + options.length) % options.length;
+    Array.prototype.forEach.call(options, function (o, i) { o.classList.toggle('is-active', i === state.menuIndex); });
+    $('switcher-menu').setAttribute('aria-activedescendant', 'acct-' + state.menuIndex);
+    options[state.menuIndex].scrollIntoView({ block: 'nearest' });
+  }
+  function chooseAccount(index) {
+    var account = state.accounts[index];
+    if (!account) { return; }
+    closeMenu(true);
+    if (account.wabaId === state.waba) { return; }
+    state.waba = account.wabaId;
+    state.expanded = null; state.filter = 'ALL'; state.search = ''; $('search-input').value = '';
+    if (state.form.media) { clearMedia(); }
+    renderSwitcher();
+    renderShell();
+    selectTab('list');
+    loadTemplates(false);
+  }
+
+  /* ---------- Shell & tabs ---------- */
+  function renderShell() {
+    var account = currentAccount();
+    var has = !!account;
+    $('pick-prompt').hidden = has;
+    $('tab-list').disabled = !has;
+    $('tab-create').disabled = !has;
+    if (!has) {
+      $('panel-list').hidden = true; $('panel-create').hidden = true;
+      $('page-title').textContent = 'Choose a WhatsApp number';
+      $('page-sub').textContent = 'Templates belong to a WhatsApp Business Account.';
+      document.title = 'WhatsApp Template Manager';
+      return;
+    }
+    var p = parseLabel(account.label);
+    $('page-title').textContent = p.name;
+    $('page-sub').textContent = (p.number ? p.number + ' · ' : '') + 'WhatsApp Business Account ' + account.wabaId;
+    document.title = p.name + (p.number ? ' (' + p.number + ')' : '') + ' · WhatsApp Templates';
+    $('panel-list').hidden = state.tab !== 'list';
+    $('panel-create').hidden = state.tab !== 'create';
+  }
+  function selectTab(tab, focus) {
+    state.tab = tab;
+    var list = tab === 'list';
+    $('tab-list').setAttribute('aria-selected', String(list)); $('tab-list').tabIndex = list ? 0 : -1;
+    $('tab-create').setAttribute('aria-selected', String(!list)); $('tab-create').tabIndex = list ? -1 : 0;
+    renderShell();
+    if (!list) { renderForm(); }
+    if (focus) { $(list ? 'tab-list' : 'tab-create').focus(); }
+  }
+
+  /* ---------- Templates list ---------- */
+  function statusGroup(status) {
+    if (status === 'PAUSED' || status === 'DISABLED') { return 'PAUSED_DISABLED'; }
+    return status;
+  }
+  function loadTemplates(force) {
+    var waba = state.waba;
+    if (!waba) { return; }
+    if (!force && state.cache[waba]) { renderList(); return; }
+    var listNode = $('template-list');
+    listNode.setAttribute('aria-busy', 'true');
+    listNode.innerHTML = skeleton();
+    $('list-status').textContent = 'Loading templates';
+    setLoading($('refresh-btn'), true);
+    api('GET', { action: 'list', wabaId: waba }).then(function (data) {
+      state.cache[waba] = { templates: data.templates || [], truncated: !!data.truncated, updatedAt: new Date() };
+      if (state.waba === waba) { renderList(); $('list-status').textContent = (data.count || 0) + ' templates loaded'; }
+    }, function (error) {
+      if (handleAuthError(error)) { return; }
+      if (state.waba !== waba) { return; }
+      listNode.innerHTML = '<div class="empty-state" role="alert"><div class="bubble-ill" style="color:var(--danger);background:var(--danger-soft)">' + icon('alert', 28) +
+        '</div><h2>Couldn’t load templates</h2><p>' + esc(error.message) + '</p><button type="button" class="btn btn-primary" data-action="retry">Try again</button></div>';
+    }).then(function () { listNode.setAttribute('aria-busy', 'false'); setLoading($('refresh-btn'), false); });
+  }
+  function skeleton() {
+    var rows = '';
+    for (var i = 0; i < 7; i++) {
+      rows += '<div class="skeleton-row" aria-hidden="true"><div class="skeleton" style="width:' + (45 + (i * 13) % 40) + '%"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:70%"></div></div>';
+    }
+    return rows;
+  }
+  function renderList() {
+    var entry = state.cache[state.waba];
+    if (!entry) { return; }
+    var all = entry.templates;
+    var counts = { ALL: all.length, APPROVED: 0, PENDING: 0, REJECTED: 0, PAUSED_DISABLED: 0 };
+    all.forEach(function (t) { var g = statusGroup(t.status); if (counts[g] != null) { counts[g]++; } });
+    if (state.filter === 'PAUSED_DISABLED' && !counts.PAUSED_DISABLED) { state.filter = 'ALL'; }
+    $('filter-chips').innerHTML = STATUS_FILTERS.filter(function (f) { return !f.onlyIfAny || counts[f.id] > 0; }).map(function (f) {
+      return '<button type="button" class="chip" aria-pressed="' + (state.filter === f.id) + '" data-filter="' + f.id + '">' + esc(f.name) + ' <span class="count">' + counts[f.id] + '</span></button>';
+    }).join('');
+    $('updated-at').textContent = 'Updated ' + fmtTime(entry.updatedAt);
+    var notice = $('list-notice');
+    notice.hidden = !entry.truncated;
+    if (entry.truncated) { notice.innerHTML = icon('info', 16) + '<span>Showing the first ' + all.length + ' templates. This account has more than the page can load at once; search narrows only the loaded ones.</span>'; }
+
+    var term = state.search.trim().toLowerCase();
+    var shown = all.filter(function (t) {
+      return (state.filter === 'ALL' || statusGroup(t.status) === state.filter) && (!term || String(t.name).toLowerCase().indexOf(term) >= 0);
+    }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)) || String(a.language).localeCompare(String(b.language)); });
+
+    var listNode = $('template-list');
+    if (!all.length) {
+      listNode.innerHTML = '<div class="empty-state"><div class="bubble-ill">' + icon('chat', 30) + '</div><h2>No templates yet</h2><p>This WhatsApp account has no message templates. Create the first one to send it from Marketing Cloud once Meta approves it.</p><button type="button" class="btn btn-primary" data-action="new">' + icon('plus', 16) + 'New template</button></div>';
+      return;
+    }
+    if (!shown.length) {
+      listNode.innerHTML = '<div class="empty-state"><div class="bubble-ill">' + icon('search', 28) + '</div><h2>No matching templates</h2><p>No templates match this search and filter. Clear them to see all templates.</p><button type="button" class="btn" data-action="clear-filters">Clear search and filter</button></div>';
+      return;
+    }
+    listNode.innerHTML = shown.map(rowHtml).join('');
+    $('list-status').textContent = shown.length + ' of ' + all.length + ' templates shown';
+  }
+  function categoryInfo(category) {
+    for (var i = 0; i < CATEGORIES.length; i++) { if (CATEGORIES[i].id === category) { return CATEGORIES[i]; } }
+    return { id: category, name: titleCase(category), icon: 'chat' };
+  }
+  function pill(status) {
+    var known = { APPROVED: 1, PENDING: 1, REJECTED: 1, IN_APPEAL: 1 };
+    return '<span class="pill ' + (known[status] ? 'pill-' + status : 'pill-other') + '">' + esc(titleCase(String(status || 'Unknown').replace(/_/g, ' '))) + '</span>';
+  }
+  function rowHtml(t) {
+    var open = state.expanded === t.id;
+    var cat = categoryInfo(t.category);
+    var html = '<div class="row" role="listitem"><button type="button" class="row-btn" aria-expanded="' + open + '" aria-controls="detail-' + esc(t.id) + '" data-row="' + esc(t.id) + '">' +
+      '<span class="row-name" title="' + esc(t.name) + '">' + esc(t.name) + '</span>' +
+      '<span class="row-lang">' + esc(langName(t.language)) + '</span>' +
+      '<span class="row-cat" title="' + esc(cat.name) + '">' + icon(cat.icon, 15) + '<span>' + esc(cat.name) + '</span></span>' +
+      pill(t.status) + '<span class="chev">' + icon('chevron', 18) + '</span></button>';
+    if (open) {
+      var quality = t.quality_score && t.quality_score.score ? titleCase(t.quality_score.score) : 'Not available yet';
+      html += '<div id="detail-' + esc(t.id) + '" class="row-detail"><div>' + renderPhone(modelFromMeta(t), { placeholders: false }) + '</div><div>' +
+        '<dl class="dl"><dt>Template name</dt><dd class="mono">' + esc(t.name) + '</dd><dt>Template ID</dt><dd class="mono">' + esc(t.id) + '</dd>' +
+        '<dt>Language</dt><dd>' + esc(langName(t.language)) + ' <span class="mono">(' + esc(t.language) + ')</span></dd>' +
+        '<dt>Category</dt><dd>' + esc(cat.name) + '</dd><dt>Status</dt><dd>' + pill(t.status) + '</dd>' +
+        (t.rejected_reason && t.rejected_reason !== 'NONE' ? '<dt>Rejection reason</dt><dd>' + esc(titleCase(t.rejected_reason.replace(/_/g, ' '))) + '</dd>' : '') +
+        '<dt>Quality</dt><dd>' + esc(quality) + '</dd></dl>' +
+        '<div class="actions"><button type="button" class="btn btn-sm" data-copy="' + esc(t.name) + '">' + icon('copy', 15) + 'Copy name</button>' +
+        '<button type="button" class="btn btn-sm" data-duplicate="' + esc(t.id) + '">' + icon('plus', 15) + 'Duplicate as new</button></div>' +
+        '<p class="hint" style="margin-top:12px">Templates can be deleted in WhatsApp Manager only. A deleted approved name can’t be reused for 30 days.</p></div></div>';
+    }
+    return html + '</div>';
+  }
+  function findTemplate(id) {
+    var entry = state.cache[state.waba];
+    if (!entry) { return null; }
+    for (var i = 0; i < entry.templates.length; i++) { if (entry.templates[i].id === id) { return entry.templates[i]; } }
+    return null;
+  }
+  function copyText(text) {
+    var done = function () { toast('Copied "' + text + '".'); };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, function () { toast('Couldn’t copy. Select the name and copy it manually.', 'error'); });
+      return;
+    }
+    var area = document.createElement('textarea');
+    area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
+    document.body.appendChild(area); area.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Couldn’t copy. Select the name and copy it manually.', 'error'); }
+    area.remove();
+  }
+
+  /* ---------- Preview model ---------- */
+  function component(components, type) {
+    for (var i = 0; i < (components || []).length; i++) { if (String(components[i].type).toUpperCase() === type) { return components[i]; } }
+    return null;
+  }
+  function modelFromMeta(t) {
+    var c = t.components || [];
+    var header = component(c, 'HEADER'), body = component(c, 'BODY'), footer = component(c, 'FOOTER'), buttons = component(c, 'BUTTONS');
+    var model = { headerType: 'NONE', headerText: '', headerSamples: [], mediaUrl: null, mediaName: null, body: body ? body.text || '' : '', bodySamples: [], footer: footer ? footer.text || '' : '', buttons: [] };
+    if (header) {
+      model.headerType = String(header.format || 'TEXT').toUpperCase();
+      model.headerText = header.text || '';
+      var hex = header.example || {};
+      model.headerSamples = hex.header_text || [];
+      if (hex.header_handle && hex.header_handle.length && /^https:\/\//.test(hex.header_handle[0])) { model.mediaUrl = hex.header_handle[0]; }
+    }
+    if (body && body.example && body.example.body_text && body.example.body_text.length) { model.bodySamples = body.example.body_text[0] || []; }
+    if (buttons && buttons.buttons) {
+      model.buttons = buttons.buttons.map(function (b) {
+        var type = String(b.type).toUpperCase();
+        if (type === 'OTP') { return { type: 'COPY_CODE', text: b.text || 'Copy code' }; }
+        if (type === 'COPY_CODE') { return { type: 'COPY_CODE', text: 'Copy offer code' }; }
+        return { type: type, text: b.text || titleCase(type) };
+      });
+    }
+    return model;
+  }
+  function modelFromForm(f) {
+    if (f.category === 'AUTHENTICATION') {
+      var a = f.auth;
+      var otpText = a.otpType === 'ONE_TAP' ? (a.autofillText || 'Autofill') : (a.copyText || 'Copy code');
+      return {
+        headerType: 'NONE', body: '*{{1}}* is your verification code.' + (a.security ? ' For your security, do not share this code.' : ''),
+        bodySamples: ['123456'], footer: a.expiry ? 'This code expires in ' + (a.minutes || '?') + ' minutes.' : '',
+        buttons: [{ type: 'COPY_CODE', text: otpText }], authPreview: true
+      };
+    }
+    var samples = [];
+    varNumbers(f.body).forEach(function (n) { samples[n - 1] = f.bodySamples[n] || ''; });
+    return {
+      headerType: f.headerType, headerText: f.headerText, headerSamples: [f.headerSample],
+      mediaUrl: f.media && f.media.url, mediaName: f.media && f.media.name, mediaSize: f.media && f.media.size,
+      body: f.body, bodySamples: samples, footer: f.footer,
+      buttons: f.buttons.map(function (b) { return { type: b.type, text: b.type === 'COPY_CODE' ? 'Copy offer code' : b.text }; })
+    };
+  }
+
+  /* ---------- WhatsApp formatting & preview ---------- */
+  function fillVariables(text, samples, placeholders) {
+    return esc(text).replace(/\{\{(\d+)\}\}/g, function (all, n) {
+      var sample = samples && samples[Number(n) - 1];
+      if (placeholders || !sample) { return '<span class="wa-var">{{' + n + '}}</span>'; }
+      return esc(sample);
+    });
+  }
+  function waFormat(html) {
+    var codes = [];
+    html = html.replace(/```([\s\S]+?)```/g, function (all, inner) { codes.push(inner); return '\u0000' + (codes.length - 1) + '\u0000'; });
+    html = html.replace(/(^|[\s>(])\*(?!\s)([^*\n]+?)\*(?=$|[\s<.,!?:;)])/g, '$1<b>$2</b>');
+    html = html.replace(/(^|[\s>(])_(?!\s)([^_\n]+?)_(?=$|[\s<.,!?:;)])/g, '$1<i>$2</i>');
+    html = html.replace(/(^|[\s>(])~(?!\s)([^~\n]+?)~(?=$|[\s<.,!?:;)])/g, '$1<s>$2</s>');
+    return html.replace(/\u0000(\d+)\u0000/g, function (all, i) { return '<code>' + codes[Number(i)] + '</code>'; });
+  }
+  var BUTTON_ICONS = { QUICK_REPLY: 'reply', URL: 'external', PHONE_NUMBER: 'phone', COPY_CODE: 'copy', OTP: 'copy' };
+  function renderPhone(model, opts) {
+    opts = opts || {};
+    var account = currentAccount();
+    var p = parseLabel(account ? account.label : '');
+    var placeholders = !!opts.placeholders;
+    var media = '';
+    if (model.headerType === 'IMAGE') {
+      media = '<div class="wa-media">' + (model.mediaUrl ? '<img src="' + esc(model.mediaUrl) + '" alt="Header image sample"/>' : icon('image', 40)) + '</div>';
+    } else if (model.headerType === 'VIDEO') {
+      media = '<div class="wa-media">' + (model.mediaUrl ? '<video src="' + esc(model.mediaUrl) + '" muted="muted" playsinline="playsinline" preload="metadata" aria-label="Header video sample"></video>' : icon('video', 40)) + '<span class="wa-play">' + icon('play', 22) + '</span></div>';
+    } else if (model.headerType === 'DOCUMENT') {
+      media = '<div class="wa-doc"><span class="wa-doc-icon">PDF</span><span>' + esc(model.mediaName || 'Document.pdf') + '<small>' + (model.mediaSize ? esc(fmtSize(model.mediaSize)) + ' · ' : '') + 'PDF</small></span></div>';
+    } else if (model.headerType === 'LOCATION') {
+      media = '<div class="wa-media" style="min-height:120px">' + icon('pin', 36) + '</div>';
+    }
+    var headerText = model.headerType === 'TEXT' && model.headerText ? '<div class="wa-header-text">' + fillVariables(model.headerText, model.headerSamples, placeholders) + '</div>' : '';
+    var body = model.body ? waFormat(fillVariables(model.body, model.bodySamples, placeholders)) : '<span class="wa-placeholder">Your message body appears here</span>';
+    var footer = model.footer ? '<div class="wa-footer">' + esc(model.footer) + '</div>' : '';
+    var buttons = model.buttons || [];
+    var visible = buttons.length > 3 ? buttons.slice(0, 2) : buttons;
+    var buttonsHtml = visible.map(function (b) {
+      return '<div class="wa-button">' + icon(BUTTON_ICONS[b.type] || 'reply', 16) + '<span>' + esc(b.text || BUTTON_TYPES[b.type] && BUTTON_TYPES[b.type].name || '') + '</span></div>';
+    }).join('');
+    if (buttons.length > 3) { buttonsHtml += '<div class="wa-button">' + icon('list', 16) + '<span>See all options</span></div>'; }
+    var dark = opts.dark != null ? opts.dark : state.waDark;
+    return '<div class="wa' + (dark ? ' wa-dark' : '') + '" aria-label="WhatsApp message preview">' +
+      '<div class="wa-head"><span class="wa-back">' + icon('back', 20) + '</span><span class="wa-avatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+      '<span class="wa-title"><b>' + esc(p.name) + '<span class="wa-badge" title="Verified business">' + icon('badge', 15) + '</span></b><small>' + esc(p.number || 'Business account') + '</small></span></div>' +
+      '<div class="wa-chat"><div class="wa-day">Today</div><div class="wa-msg"><svg class="wa-tail" viewBox="0 0 8 13" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1.533 3.568 8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568Z"/></svg>' +
+      '<div class="wa-bubble">' + media + '<div class="wa-inner">' + headerText + '<div class="wa-body">' + body + '</div>' + footer + '<span class="wa-time">10:24</span><div style="clear:both"></div></div>' +
+      (buttonsHtml ? '<div class="wa-buttons">' + buttonsHtml + '</div>' : '') + '</div></div></div></div>';
+  }
+  function updatePreview() {
+    $('create-preview').innerHTML = renderPhone(modelFromForm(state.form), { placeholders: state.placeholders });
+  }
+
+  /* ---------- Create form rendering ---------- */
+  function counter(id, value, max) {
+    var len = (value || '').length;
+    return '<span class="counter' + (len > max ? ' over' : '') + '" id="' + id + '-count">' + len + '/' + max + '</span>';
+  }
+  function fieldError(id) { return '<p class="field-error" id="' + id + '-error" hidden="hidden"></p>'; }
+  function languageOptions(selected) {
+    var html = '<option value=""' + (selected ? '' : ' selected="selected"') + ' disabled="disabled">Choose a language</option><optgroup label="Common">';
+    html += COMMON_LANGS.map(function (l) { return '<option value="' + l[0] + '"' + (selected === l[0] ? ' selected="selected"' : '') + '>' + esc(l[1]) + '</option>'; }).join('');
+    var common = {}; COMMON_LANGS.forEach(function (l) { common[l[0]] = true; });
+    var rest = ALL_LANGS.filter(function (l) { return !common[l[0]]; }).sort(function (a, b) { return a[1].localeCompare(b[1]); });
+    html += '</optgroup><optgroup label="All languages">' + rest.map(function (l) { return '<option value="' + l[0] + '">' + esc(l[1]) + '</option>'; }).join('') + '</optgroup>';
+    return html;
+  }
+  function renderForm() {
+    var f = state.form;
+    var auth = f.category === 'AUTHENTICATION';
+    var html = '<section class="section" aria-labelledby="s1-title"><div class="section-head"><span class="step">1</span><div><h2 id="s1-title">Basics</h2><p>Choose what the template is for, then name it and pick its language.</p></div></div>' +
+      '<fieldset class="field" style="border:0;padding:0;margin:0 0 16px"><legend class="label" style="margin-bottom:8px">Category</legend><div class="cat-cards">' +
+      CATEGORIES.map(function (c) {
+        return '<label class="cat-card' + (f.category === c.id ? ' is-checked' : '') + '"><input type="radio" name="category" value="' + c.id + '"' + (f.category === c.id ? ' checked="checked"' : '') + '/>' +
+          '<span class="cat-title">' + icon(c.icon, 18) + esc(c.name) + '</span><span class="cat-desc">' + esc(c.desc) + '</span></label>';
+      }).join('') + '</div><p class="hint" style="margin-top:8px">Meta reviews the content and may change the category if it doesn’t match.</p></fieldset>' +
+      '<div class="field"><div class="label-row"><label class="label" for="f-name">Template name</label>' + counter('f-name', f.name, LIMITS.name) + '</div>' +
+      '<input id="f-name" class="input mono" data-field="name" value="' + esc(f.name) + '" maxlength="' + LIMITS.name + '" placeholder="e.g. admission_open_2027" aria-describedby="f-name-hint f-name-error" spellcheck="false"/>' +
+      '<p class="hint" id="f-name-hint">Lowercase letters, numbers and underscores only. Spaces become underscores as you type. If an approved template is deleted, its name can’t be reused for 30 days.</p>' + fieldError('f-name') + '</div>' +
+      '<div class="field"><label class="label" for="f-language">Language</label><select id="f-language" class="select" data-field="language" aria-describedby="f-language-error">' + languageOptions(f.language) + '</select>' + fieldError('f-language') + '</div></section>';
+
+    html += '<section class="section" aria-labelledby="s2-title"><div class="section-head"><span class="step">2</span><div><h2 id="s2-title">Content</h2><p>' +
+      (auth ? 'Authentication templates use WhatsApp’s fixed one-time-code message. You choose the options below.' : 'Add a header, the message body and a footer. Use variables for details that change per customer.') + '</p></div></div>' +
+      (auth ? authContentHtml(f) : standardContentHtml(f)) + '</section>';
+
+    html += '<section class="section" aria-labelledby="s3-title"><div class="section-head"><span class="step">3</span><div><h2 id="s3-title">Buttons</h2><p>' +
+      (auth ? 'Choose how customers get the code.' : 'Optional. Add up to 10 buttons. Quick replies stay grouped together.') + '</p></div></div>' +
+      (auth ? authButtonHtml(f) : buttonsHtml(f)) + '</section>';
+
+    $('form-root').innerHTML = html;
+    renderSamples();
+    updateAllCounters();
+    updatePreview();
+  }
+  function standardContentHtml(f) {
+    var types = [['NONE', 'None', 'none'], ['TEXT', 'Text', 'text'], ['IMAGE', 'Image', 'image'], ['VIDEO', 'Video', 'video'], ['DOCUMENT', 'Document', 'doc'], ['LOCATION', 'Location', 'pin']];
+    var html = '<fieldset class="field" style="border:0;padding:0;margin:0 0 16px"><legend class="label" style="margin-bottom:8px">Header <span class="optional">(optional)</span></legend><div class="segmented">' +
+      types.map(function (t) {
+        return '<label class="seg"><input type="radio" name="headerType" value="' + t[0] + '"' + (f.headerType === t[0] ? ' checked="checked"' : '') + '/><span>' + icon(t[2], 15) + t[1] + '</span></label>';
+      }).join('') + '</div></fieldset>';
+    if (f.headerType === 'TEXT') {
+      html += '<div class="field"><div class="label-row"><label class="label" for="f-headerText">Header text</label>' + counter('f-headerText', f.headerText, LIMITS.headerText) + '</div>' +
+        '<div class="input-group"><input id="f-headerText" class="input" data-field="headerText" value="' + esc(f.headerText) + '" aria-describedby="f-headerText-hint f-headerText-error"/>' +
+        '<button type="button" class="btn" data-action="header-var"' + (varNumbers(f.headerText).length ? ' disabled="disabled"' : '') + '>' + icon('plus', 15) + 'Add variable</button></div>' +
+        '<p class="hint" id="f-headerText-hint">One line, up to 60 characters, no formatting. One variable allowed: <span class="var-tag">{{1}}</span>.</p>' + fieldError('f-headerText') +
+        '<div id="header-sample"></div></div>';
+    } else if (MEDIA[f.headerType]) {
+      html += '<div class="field"><span class="label" id="media-label">Sample ' + MEDIA[f.headerType].label + '</span><div id="media-box" aria-labelledby="media-label">' + mediaBoxHtml(f) + '</div>' + fieldError('f-media') +
+        '<p class="hint">Meta uses this sample only to review the template. You choose the real ' + MEDIA[f.headerType].label + ' when sending from Marketing Cloud.</p></div>';
+    } else if (f.headerType === 'LOCATION') {
+      html += '<p class="hint" style="margin:-6px 0 16px">The location (map pin) is chosen when the message is sent.</p>';
+    }
+    html += '<div class="field"><div class="label-row"><label class="label" for="f-body">Body</label>' + counter('f-body', f.body, LIMITS.body) + '</div>' +
+      '<div><div class="fmt-bar" role="toolbar" aria-label="Formatting" aria-controls="f-body">' +
+      '<button type="button" class="fmt-btn" data-wrap="*" aria-label="Bold" title="Bold"><b>B</b></button>' +
+      '<button type="button" class="fmt-btn" data-wrap="_" aria-label="Italic" title="Italic"><i>I</i></button>' +
+      '<button type="button" class="fmt-btn" data-wrap="~" aria-label="Strikethrough" title="Strikethrough"><s>S</s></button>' +
+      '<button type="button" class="fmt-btn mono" data-wrap="```" aria-label="Monospace" title="Monospace">{ }</button><span class="fmt-sep"></span>' +
+      '<button type="button" class="btn btn-sm btn-ghost" data-action="body-var">' + icon('plus', 14) + 'Add variable</button></div>' +
+      '<textarea id="f-body" class="textarea" data-field="body" aria-describedby="f-body-hint f-body-error f-body-warn" placeholder="Hi {{1}}, thank you for applying to Ahmedabad University.">' + esc(f.body) + '</textarea></div>' +
+      '<p class="hint" id="f-body-hint">Up to 1024 characters. Variables are numbered {{1}}, {{2}}… in order, and can’t be the first or last thing in the message. Formatting: *bold* _italic_ ~strike~ ```mono```.</p>' +
+      fieldError('f-body') + '<p class="field-warn" id="f-body-warn" hidden="hidden"></p><div id="body-samples"></div></div>';
+    html += '<div class="field"><div class="label-row"><label class="label" for="f-footer">Footer <span class="optional">(optional)</span></label>' + counter('f-footer', f.footer, LIMITS.footer) + '</div>' +
+      '<input id="f-footer" class="input" data-field="footer" value="' + esc(f.footer) + '" aria-describedby="f-footer-hint f-footer-error" placeholder="e.g. Ahmedabad University Admissions"/>' +
+      '<p class="hint" id="f-footer-hint">One line, up to 60 characters. No variables.</p>' + fieldError('f-footer') + '</div>';
+    return html;
+  }
+  function mediaBoxHtml(f) {
+    var spec = MEDIA[f.headerType];
+    var m = f.media;
+    if (!m) {
+      return '<div class="dropzone" id="dropzone">' + icon('upload', 26) + '<div><strong>Drag and drop a ' + spec.label + ' here</strong> or</div>' +
+        '<button type="button" class="btn btn-sm" data-action="pick-file">Choose file</button><span class="hint">' + spec.hint + '</span></div>';
+    }
+    var status = m.status === 'uploading' ? 'Uploading… ' + m.progress + '%' : m.status === 'error' ? esc(m.error) : 'Uploaded to Meta';
+    return '<div class="file-card">' + icon(f.headerType === 'IMAGE' ? 'image' : f.headerType === 'VIDEO' ? 'video' : 'doc', 26) +
+      '<div class="file-meta"><div class="file-name">' + esc(m.name) + '</div><div class="hint" role="status">' + esc(fmtSize(m.size)) + ' · ' + status + '</div>' +
+      (m.status === 'uploading' ? '<div class="progress" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + m.progress + '"><div style="width:' + m.progress + '%"></div></div>' : '') + '</div>' +
+      (m.status === 'error' ? '<button type="button" class="btn btn-sm" data-action="pick-file">Try another file</button>' : '') +
+      '<button type="button" class="btn btn-sm" data-action="remove-file">' + icon('trash', 14) + 'Remove</button></div>';
+  }
+  function authContentHtml(f) {
+    var a = f.auth;
+    return '<div class="field"><label class="check"><input type="checkbox" data-auth="security"' + (a.security ? ' checked="checked"' : '') + '/><span><strong>Add security recommendation</strong><br/><span class="hint">Adds “For your security, do not share this code.”</span></span></label></div>' +
+      '<div class="field"><label class="check"><input type="checkbox" data-auth="expiry"' + (a.expiry ? ' checked="checked"' : '') + '/><span><strong>Add expiry time for the code</strong><br/><span class="hint">Shows “This code expires in N minutes.” in the footer.</span></span></label></div>' +
+      (a.expiry ? '<div class="field" style="max-width:220px"><label class="label" for="f-minutes">Expires in (minutes)</label><input id="f-minutes" class="input" type="number" min="1" max="90" step="1" data-auth="minutes" value="' + esc(a.minutes) + '" aria-describedby="f-minutes-error"/>' + fieldError('f-minutes') + '</div>' : '') +
+      '<p class="hint">WhatsApp translates the fixed text into the template’s language. The preview shows English.</p>';
+  }
+  function authButtonHtml(f) {
+    var a = f.auth;
+    var html = '<fieldset class="field" style="border:0;padding:0;margin:0 0 16px"><legend class="label" style="margin-bottom:8px">Code delivery</legend><div class="segmented">' +
+      '<label class="seg"><input type="radio" name="otpType" value="COPY_CODE"' + (a.otpType === 'COPY_CODE' ? ' checked="checked"' : '') + '/><span>' + icon('copy', 15) + 'Copy code</span></label>' +
+      '<label class="seg"><input type="radio" name="otpType" value="ONE_TAP"' + (a.otpType === 'ONE_TAP' ? ' checked="checked"' : '') + '/><span>' + icon('check', 15) + 'One-tap autofill</span></label></div>' +
+      '<p class="hint" style="margin-top:8px">' + (a.otpType === 'ONE_TAP' ? 'One-tap fills the code in your Android app. Other devices get a Copy code button.' : 'Customers copy the code and paste it into your app or website.') + '</p></fieldset>' +
+      '<div class="btn-grid"><div class="field"><div class="label-row"><label class="label" for="f-copyText">Copy code button text <span class="optional">(optional)</span></label>' + counter('f-copyText', a.copyText, LIMITS.buttonText) + '</div>' +
+      '<input id="f-copyText" class="input" data-auth="copyText" value="' + esc(a.copyText) + '" placeholder="Copy code"/></div>';
+    if (a.otpType === 'ONE_TAP') {
+      html += '<div class="field"><div class="label-row"><label class="label" for="f-autofillText">Autofill button text <span class="optional">(optional)</span></label>' + counter('f-autofillText', a.autofillText, LIMITS.buttonText) + '</div>' +
+        '<input id="f-autofillText" class="input" data-auth="autofillText" value="' + esc(a.autofillText) + '" placeholder="Autofill"/></div></div>';
+      html += '<div class="btn-list" style="margin-top:14px">' + a.apps.map(function (app, i) {
+        return '<div class="btn-item"><div class="btn-item-head"><span class="grow">Android app ' + (i + 1) + '</span>' +
+          (a.apps.length > 1 ? '<button type="button" class="btn btn-sm btn-ghost" data-remove-app="' + i + '" aria-label="Remove Android app ' + (i + 1) + '">' + icon('trash', 14) + '</button>' : '') + '</div>' +
+          '<div class="btn-grid"><div class="field"><label class="label" for="app-pkg-' + i + '">Package name</label><input id="app-pkg-' + i + '" class="input mono" data-app="' + i + '" data-app-field="package_name" value="' + esc(app.package_name) + '" placeholder="com.example.app" spellcheck="false"/></div>' +
+          '<div class="field"><label class="label" for="app-hash-' + i + '">App signature hash</label><input id="app-hash-' + i + '" class="input mono" data-app="' + i + '" data-app-field="signature_hash" value="' + esc(app.signature_hash) + '" placeholder="11 characters" maxlength="11" spellcheck="false"/></div></div></div>';
+      }).join('') + '</div>' + fieldError('f-apps') +
+        (a.apps.length < LIMITS.apps ? '<button type="button" class="btn btn-sm" style="margin-top:10px" data-action="add-app">' + icon('plus', 14) + 'Add another app</button>' : '');
+    } else {
+      html += '</div>';
+    }
+    return html;
+  }
+  function buttonsHtml(f) {
+    var html = '<div class="btn-list" id="button-list">' + f.buttons.map(function (b, i) {
+      var t = BUTTON_TYPES[b.type];
+      var item = '<div class="btn-item" data-button="' + i + '"><div class="btn-item-head">' + icon(t.icon, 16) + '<span class="grow">' + esc(t.name) + '</span>' +
+        '<button type="button" class="btn btn-sm btn-ghost" data-remove-button="' + i + '" aria-label="Remove ' + esc(t.name) + ' button ' + (i + 1) + '">' + icon('trash', 14) + '</button></div><div class="btn-grid">';
+      if (b.type !== 'COPY_CODE') {
+        item += '<div class="field"><div class="label-row"><label class="label" for="b-text-' + i + '">Button text</label>' + counter('b-text-' + i, b.text, LIMITS.buttonText) + '</div>' +
+          '<input id="b-text-' + i + '" class="input" data-b="' + i + '" data-b-field="text" value="' + esc(b.text) + '" aria-describedby="b-' + i + '-error"/></div>';
+      }
+      if (b.type === 'URL') {
+        item += '<div class="field"><label class="label" for="b-urltype-' + i + '">URL type</label><select id="b-urltype-' + i + '" class="select" data-b="' + i + '" data-b-field="dynamic">' +
+          '<option value="static"' + (!b.dynamic ? ' selected="selected"' : '') + '>Static</option><option value="dynamic"' + (b.dynamic ? ' selected="selected"' : '') + '>Dynamic (ends with {{1}})</option></select></div>' +
+          '<div class="field" style="grid-column:1/-1"><label class="label" for="b-url-' + i + '">Website URL</label><div class="input-group"><input id="b-url-' + i + '" class="input" data-b="' + i + '" data-b-field="url" value="' + esc(b.url) + '" placeholder="https://ahduni.edu.in/apply/" inputmode="url" spellcheck="false"/>' +
+          (b.dynamic ? '<span class="var-tag" style="align-self:center">{{1}}</span>' : '') + '</div></div>';
+        if (b.dynamic) {
+          item += '<div class="field" style="grid-column:1/-1"><label class="label" for="b-sample-' + i + '">Sample value for {{1}}</label><input id="b-sample-' + i + '" class="input" data-b="' + i + '" data-b-field="sample" value="' + esc(b.sample) + '" placeholder="btech"/>' +
+            '<p class="hint">Meta sees the full sample URL: <span class="mono">' + esc((b.url || '') + (b.sample || '')) + '</span></p></div>';
+        }
+      } else if (b.type === 'PHONE_NUMBER') {
+        item += '<div class="field"><label class="label" for="b-phone-' + i + '">Phone number</label><input id="b-phone-' + i + '" class="input" data-b="' + i + '" data-b-field="phone" value="' + esc(b.phone) + '" placeholder="+91 79 0000 0000" inputmode="tel"/></div>';
+      } else if (b.type === 'COPY_CODE') {
+        item += '<div class="field"><div class="label-row"><label class="label" for="b-code-' + i + '">Sample offer code</label>' + counter('b-code-' + i, b.code, LIMITS.copyCode) + '</div><input id="b-code-' + i + '" class="input mono" data-b="' + i + '" data-b-field="code" value="' + esc(b.code) + '" placeholder="AU2027"/>' +
+          '<p class="hint">The button always reads “Copy offer code”.</p></div>';
+      }
+      return item + '</div><p class="field-error" id="b-' + i + '-error" hidden="hidden"></p></div>';
+    }).join('') + '</div>';
+    var counts = buttonCounts(f.buttons);
+    html += '<div style="display:flex;align-items:center;gap:12px;margin-top:' + (f.buttons.length ? '12' : '0') + 'px"><div class="add-menu-wrap"><button type="button" class="btn" id="add-button-btn" aria-haspopup="true" aria-expanded="false"' + (f.buttons.length >= LIMITS.buttons ? ' disabled="disabled"' : '') + '>' + icon('plus', 15) + 'Add button</button>' +
+      '<ul class="add-menu" id="add-menu" role="menu" hidden="hidden">' + Object.keys(BUTTON_TYPES).map(function (type) {
+        var t = BUTTON_TYPES[type];
+        var disabled = counts[type] >= LIMITS[type] || (type === 'COPY_CODE' && f.category !== 'MARKETING');
+        return '<li role="none"><button type="button" role="menuitem" data-add-button="' + type + '"' + (disabled ? ' disabled="disabled"' : '') + '>' + icon(t.icon, 16) + '<span>' + esc(t.name) + '<small>' + esc(t.desc) + '</small></span></button></li>';
+      }).join('') + '</ul></div><span class="hint">' + f.buttons.length + ' of ' + LIMITS.buttons + ' buttons</span></div>' + fieldError('f-buttons');
+    return html;
+  }
+  function buttonCounts(buttons) {
+    var counts = { QUICK_REPLY: 0, URL: 0, PHONE_NUMBER: 0, COPY_CODE: 0 };
+    buttons.forEach(function (b) { counts[b.type]++; });
+    return counts;
+  }
+  function renderSamples() {
+    var f = state.form;
+    var headerBox = $('header-sample');
+    if (headerBox) {
+      headerBox.innerHTML = varNumbers(f.headerText).length ? '<div class="vars" style="margin-top:8px"><div class="field"><label class="label" for="s-header">Sample for <span class="var-tag">{{1}}</span></label><input id="s-header" class="input" data-sample="header" value="' + esc(f.headerSample) + '" placeholder="e.g. Asha"/></div></div>' : '';
+    }
+    var bodyBox = $('body-samples');
+    if (bodyBox) {
+      var nums = varNumbers(f.body);
+      bodyBox.innerHTML = nums.length ? '<div class="vars" style="margin-top:8px">' + nums.map(function (n) {
+        return '<div class="field"><label class="label" for="s-body-' + n + '">Sample for <span class="var-tag">{{' + n + '}}</span></label><input id="s-body-' + n + '" class="input" data-sample="body" data-n="' + n + '" value="' + esc(f.bodySamples[n] || '') + '"/></div>';
+      }).join('') + '</div><p class="hint" style="margin-top:6px">Sample values help Meta review the template. Don’t use real customer data.</p>' : '';
+    }
+  }
+  function updateAllCounters() {
+    var f = state.form;
+    setCounter('f-name', f.name, LIMITS.name);
+    setCounter('f-headerText', f.headerText, LIMITS.headerText);
+    setCounter('f-body', f.body, LIMITS.body);
+    setCounter('f-footer', f.footer, LIMITS.footer);
+    setCounter('f-copyText', f.auth.copyText, LIMITS.buttonText);
+    setCounter('f-autofillText', f.auth.autofillText, LIMITS.buttonText);
+    f.buttons.forEach(function (b, i) { setCounter('b-text-' + i, b.text, LIMITS.buttonText); setCounter('b-code-' + i, b.code, LIMITS.copyCode); });
+    var warn = $('f-body-warn');
+    if (warn) {
+      var ratio = ratioWarning(f.body);
+      warn.hidden = !ratio;
+      warn.innerHTML = ratio ? icon('alert', 15) + '<span>' + esc(ratio) + '</span>' : '';
+    }
+  }
+  function setCounter(id, value, max) {
+    var node = $(id + '-count');
+    if (!node) { return; }
+    var len = (value || '').length;
+    node.textContent = len + '/' + max;
+    node.classList.toggle('over', len > max);
+  }
+  function ratioWarning(body) {
+    var vars = (String(body || '').match(/\{\{\d+\}\}/g) || []).length;
+    if (!vars) { return ''; }
+    var words = String(body).replace(/\{\{\d+\}\}/g, ' ').split(/\s+/).filter(function (w) { return /[\p{L}\p{N}]/u.test(w); }).length;
+    return words < vars * 3 ? 'This message has a lot of variables for its length. Meta often rejects these — add more fixed text around the variables.' : '';
+  }
+
+  /* ---------- Variables & formatting ---------- */
+  function insertAtCursor(input, text) {
+    var start = input.selectionStart == null ? input.value.length : input.selectionStart;
+    var end = input.selectionEnd == null ? input.value.length : input.selectionEnd;
+    input.value = input.value.slice(0, start) + text + input.value.slice(end);
+    input.focus();
+    input.setSelectionRange(start + text.length, start + text.length);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function wrapSelection(input, marker) {
+    var start = input.selectionStart, end = input.selectionEnd, value = input.value;
+    var selected = value.slice(start, end);
+    input.value = value.slice(0, start) + marker + selected + marker + value.slice(end);
+    input.focus();
+    if (selected) { input.setSelectionRange(start, end + marker.length * 2); } else { input.setSelectionRange(start + marker.length, start + marker.length); }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /* ---------- Validation (mirrors WaTemplateValidator) ---------- */
+  function validate() {
+    var f = state.form, errors = {}, list = [];
+    function add(key, message) { if (!errors[key]) { errors[key] = message; } list.push(message); }
+    if (!f.name) { add('f-name', 'Enter a template name.'); }
+    else if (!/^[a-z0-9_]+$/.test(f.name)) { add('f-name', 'The name can only contain lowercase letters, numbers and underscores.'); }
+    else if (f.name.length > LIMITS.name) { add('f-name', 'The name can be at most 512 characters.'); }
+    if (!f.language) { add('f-language', 'Choose a language.'); }
+    if (f.category === 'AUTHENTICATION') {
+      var a = f.auth;
+      if (a.expiry && (!/^\d+$/.test(String(a.minutes)) || Number(a.minutes) < 1 || Number(a.minutes) > 90)) { add('f-minutes', 'Code expiry must be a whole number from 1 to 90 minutes.'); }
+      if (a.copyText.length > LIMITS.buttonText || a.autofillText.length > LIMITS.buttonText) { add('f-apps', 'Button text can be at most 25 characters.'); }
+      if (a.otpType === 'ONE_TAP') {
+        a.apps.forEach(function (app, i) {
+          if (!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(app.package_name) || app.package_name.length > LIMITS.packageName) { add('f-apps', 'Android app ' + (i + 1) + ': enter a valid package name, for example com.example.app.'); }
+          if (!/^[a-zA-Z0-9+\/=]{11}$/.test(app.signature_hash)) { add('f-apps', 'Android app ' + (i + 1) + ': the signature hash must be exactly 11 characters.'); }
+        });
+      }
+      return { errors: errors, list: list };
+    }
+    if (f.headerType === 'TEXT') {
+      var hv = (f.headerText.match(/\{\{[^{}]*\}\}/g) || []);
+      if (!f.headerText.trim()) { add('f-headerText', 'Enter the header text, or choose None.'); }
+      else if (f.headerText.length > LIMITS.headerText) { add('f-headerText', 'The header can be at most 60 characters.'); }
+      else if (/[*_~`]/.test(f.headerText)) { add('f-headerText', 'The header can’t contain formatting characters (* _ ~ `).'); }
+      else if (hv.length > 1 || (hv.length === 1 && hv[0] !== '{{1}}')) { add('f-headerText', 'The header can have only one variable, {{1}}.'); }
+      else if (hv.length === 1 && !f.headerSample.trim()) { add('f-headerText', 'Enter a sample value for {{1}} in the header.'); }
+    } else if (MEDIA[f.headerType]) {
+      if (!f.media || f.media.status !== 'done') { add('f-media', f.media && f.media.status === 'uploading' ? 'Wait for the upload to finish.' : 'Upload a sample ' + MEDIA[f.headerType].label + ' for the header.'); }
+    }
+    var body = f.body;
+    if (!body.trim()) { add('f-body', 'Enter the message body.'); }
+    else {
+      if (body.length > LIMITS.body) { add('f-body', 'The body can be at most 1024 characters.'); }
+      var bad = (body.match(/\{\{[^{}]*\}\}/g) || []).filter(function (t) { return !/^\{\{[1-9]\d{0,2}\}\}$/.test(t); });
+      if (bad.length) { add('f-body', 'Variables must be numbers in double braces, like {{1}}. Found ' + bad[0] + '.'); }
+      if (/\{\{|\}\}/.test(body.replace(/\{\{[^{}]*\}\}/g, ''))) { add('f-body', 'The body has unmatched braces. Variables look like {{1}}.'); }
+      var nums = varNumbers(body);
+      for (var i = 0; i < nums.length; i++) { if (nums[i] !== i + 1) { add('f-body', 'Variables must be numbered in order with no gaps: {{1}}, {{2}}, {{3}}…'); break; } }
+      var trimmed = body.trim();
+      if (/^\{\{[^{}]*\}\}/.test(trimmed) || /\{\{[^{}]*\}\}$/.test(trimmed)) { add('f-body', 'The body can’t start or end with a variable. Add text before and after it.'); }
+      if (nums.some(function (n) { return !String(f.bodySamples[n] || '').trim(); })) { add('f-body', 'Enter a sample value for every body variable.'); }
+    }
+    if (f.footer) {
+      if (f.footer.length > LIMITS.footer) { add('f-footer', 'The footer can be at most 60 characters.'); }
+      if (/\{\{|\}\}/.test(f.footer)) { add('f-footer', 'The footer can’t contain variables.'); }
+    }
+    var changes = 0, prev = null;
+    f.buttons.forEach(function (b, i) {
+      var key = 'b-' + i, label = 'Button ' + (i + 1) + ': ';
+      var isQr = b.type === 'QUICK_REPLY';
+      if (prev !== null && prev !== isQr) { changes++; }
+      prev = isQr;
+      if (b.type !== 'COPY_CODE' && (!b.text.trim() || b.text.length > LIMITS.buttonText)) { add(key, label + 'enter button text of up to 25 characters.'); }
+      if (b.type === 'URL') {
+        if (!/^https?:\/\/\S+$/.test(b.url) || /\{\{|\}\}/.test(b.url) || (b.url.length + (b.dynamic ? 5 : 0)) > LIMITS.url) { add(key, label + 'enter a website address starting with https://' + (b.dynamic ? ' (without {{1}}; it is added at the end)' : '') + '.'); }
+        if (b.dynamic && (!b.sample.trim() || /\s/.test(b.sample))) { add(key, label + 'enter a sample value for {{1}} with no spaces.'); }
+      }
+      if (b.type === 'PHONE_NUMBER') {
+        var phone = b.phone.replace(/[\s\-()]/g, '');
+        if (!/^\+?\d{6,19}$/.test(phone) || phone.length > LIMITS.phone) { add(key, label + 'enter the phone number with country code, for example +91 79 0000 0000.'); }
+      }
+      if (b.type === 'COPY_CODE') {
+        if (f.category !== 'MARKETING') { add(key, label + 'copy offer code buttons are only available for Marketing templates.'); }
+        if (!b.code.trim() || b.code.length > LIMITS.copyCode || /\s/.test(b.code)) { add(key, label + 'enter a sample offer code of up to 20 characters with no spaces.'); }
+      }
+    });
+    if (changes > 1) { add('f-buttons', 'Quick reply buttons must be grouped together, before or after the other buttons.'); }
+    return { errors: errors, list: list };
+  }
+  function showErrors(result) {
+    Array.prototype.forEach.call($('form-root').querySelectorAll('.field-error'), function (n) { n.hidden = true; n.textContent = ''; });
+    Array.prototype.forEach.call($('form-root').querySelectorAll('[aria-invalid]'), function (n) { n.removeAttribute('aria-invalid'); });
+    Object.keys(result.errors).forEach(function (key) {
+      var node = $(key + '-error');
+      if (node) { node.hidden = false; node.innerHTML = icon('alert', 14) + '<span>' + esc(result.errors[key]) + '</span>'; }
+      var input = $(key);
+      if (input) { input.setAttribute('aria-invalid', 'true'); }
+    });
+    var summary = $('form-errors');
+    if (result.list.length) {
+      summary.hidden = false;
+      summary.innerHTML = icon('alert', 16) + '<div><strong>Fix ' + result.list.length + ' ' + (result.list.length === 1 ? 'problem' : 'problems') + ' before submitting:</strong><ul>' + result.list.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul></div>';
+    } else { summary.hidden = true; summary.innerHTML = ''; }
+  }
+
+  /* ---------- Payload (Meta format) ---------- */
+  function buildPayload() {
+    var f = state.form;
+    var payload = { name: f.name, language: f.language, category: f.category, components: [] };
+    if (f.category === 'AUTHENTICATION') {
+      var a = f.auth;
+      payload.components.push({ type: 'BODY', add_security_recommendation: !!a.security });
+      if (a.expiry) { payload.components.push({ type: 'FOOTER', code_expiration_minutes: Number(a.minutes) }); }
+      var otp = { type: 'OTP', otp_type: a.otpType };
+      if (a.copyText.trim()) { otp.text = a.copyText.trim(); }
+      if (a.otpType === 'ONE_TAP') {
+        if (a.autofillText.trim()) { otp.autofill_text = a.autofillText.trim(); }
+        otp.supported_apps = a.apps.map(function (app) { return { package_name: app.package_name.trim(), signature_hash: app.signature_hash.trim() }; });
+      }
+      payload.components.push({ type: 'BUTTONS', buttons: [otp] });
+      return payload;
+    }
+    if (f.headerType === 'TEXT') {
+      var header = { type: 'HEADER', format: 'TEXT', text: f.headerText };
+      if (varNumbers(f.headerText).length) { header.example = { header_text: [f.headerSample] }; }
+      payload.components.push(header);
+    } else if (MEDIA[f.headerType]) {
+      payload.components.push({ type: 'HEADER', format: f.headerType, example: { header_handle: [f.media ? f.media.handle : ''] } });
+    } else if (f.headerType === 'LOCATION') {
+      payload.components.push({ type: 'HEADER', format: 'LOCATION' });
+    }
+    var body = { type: 'BODY', text: f.body };
+    var nums = varNumbers(f.body);
+    if (nums.length) { body.example = { body_text: [nums.map(function (n) { return f.bodySamples[n] || ''; })] }; }
+    payload.components.push(body);
+    if (f.footer.trim()) { payload.components.push({ type: 'FOOTER', text: f.footer }); }
+    if (f.buttons.length) {
+      payload.components.push({ type: 'BUTTONS', buttons: f.buttons.map(function (b) {
+        if (b.type === 'QUICK_REPLY') { return { type: 'QUICK_REPLY', text: b.text.trim() }; }
+        if (b.type === 'PHONE_NUMBER') { return { type: 'PHONE_NUMBER', text: b.text.trim(), phone_number: b.phone.replace(/[\s\-()]/g, '') }; }
+        if (b.type === 'COPY_CODE') { return { type: 'COPY_CODE', example: b.code.trim() }; }
+        var url = { type: 'URL', text: b.text.trim(), url: b.url.trim() + (b.dynamic ? '{{1}}' : '') };
+        if (b.dynamic) { url.example = [b.url.trim() + b.sample.trim()]; }
+        return url;
+      }) });
+    }
+    return payload;
+  }
+
+  /* ---------- Review & submit ---------- */
+  function openReview() {
+    var result = validate();
+    showErrors(result);
+    if (result.list.length) { $('form-errors').focus(); return; }
+    var f = state.form, account = currentAccount(), p = parseLabel(account.label);
+    var cat = categoryInfo(f.category);
+    var rows = [['WhatsApp number', esc(p.name + (p.number ? ' (' + p.number + ')' : ''))], ['Name', '<span class="mono">' + esc(f.name) + '</span>'], ['Language', esc(langName(f.language))], ['Category', esc(cat.name)]];
+    if (f.category === 'AUTHENTICATION') {
+      rows.push(['Security note', f.auth.security ? 'Included' : 'Not included']);
+      rows.push(['Code expiry', f.auth.expiry ? esc(f.auth.minutes) + ' minutes' : 'Not shown']);
+      rows.push(['Button', f.auth.otpType === 'ONE_TAP' ? 'One-tap autofill (' + f.auth.apps.length + ' app' + (f.auth.apps.length > 1 ? 's' : '') + ')' : 'Copy code']);
+    } else {
+      rows.push(['Header', f.headerType === 'NONE' ? 'None' : f.headerType === 'TEXT' ? esc(f.headerText) : esc(titleCase(f.headerType)) + (f.media ? ' — ' + esc(f.media.name) : '')]);
+      rows.push(['Body', '<pre>' + esc(f.body) + '</pre>']);
+      var nums = varNumbers(f.body);
+      if (nums.length) { rows.push(['Samples', nums.map(function (n) { return '<span class="var-tag">{{' + n + '}}</span> ' + esc(f.bodySamples[n]); }).join('<br/>')]); }
+      rows.push(['Footer', f.footer ? esc(f.footer) : 'None']);
+      rows.push(['Buttons', f.buttons.length ? f.buttons.map(function (b) { return esc(BUTTON_TYPES[b.type].name) + (b.text ? ': ' + esc(b.text) : ''); }).join('<br/>') : 'None']);
+    }
+    $('review-summary').innerHTML = '<dl class="dl summary-dl">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+    $('review-preview').innerHTML = renderPhone(modelFromForm(f), { placeholders: false });
+    $('review-error').hidden = true;
+    state.lastFocus = document.activeElement;
+    var dialog = $('review-dialog');
+    if (typeof dialog.showModal === 'function') { dialog.showModal(); } else { dialog.setAttribute('open', 'open'); }
+    $('submit-btn').focus();
+  }
+  function closeReview() {
+    var dialog = $('review-dialog');
+    if (dialog.open) { if (typeof dialog.close === 'function') { dialog.close(); } else { dialog.removeAttribute('open'); } }
+  }
+  function submitTemplate() {
+    var button = $('submit-btn');
+    if (!state.key || !state.waba || !$('review-dialog').open || button.disabled) { return; }
+    var payload = buildPayload();
+    var waba = state.waba;
+    setLoading(button, true);
+    $('review-error').hidden = true;
+    api('POST', { action: 'create', wabaId: waba }, payload).then(function (data) {
+      closeReview();
+      var status = String(data.status || 'PENDING').toUpperCase();
+      toast('Template "' + data.name + '" submitted. Meta status: ' + titleCase(status) + '.' + (data.category && data.category !== payload.category ? ' Meta set the category to ' + titleCase(data.category) + '.' : ''));
+      state.form = emptyForm();
+      state.filter = { APPROVED: 1, REJECTED: 1 }[status] ? status : 'PENDING';
+      state.search = data.name; $('search-input').value = data.name;
+      state.expanded = null;
+      selectTab('list');
+      loadTemplates(true);
+    }, function (error) {
+      if (handleAuthError(error)) { closeReview(); return; }
+      var box = $('review-error');
+      box.hidden = false;
+      box.innerHTML = icon('alert', 16) + '<span>' + esc(error.message) + '</span>';
+      box.focus();
+    }).then(function () { setLoading(button, false); });
+  }
+
+  /* ---------- Upload ---------- */
+  function clearMedia() {
+    if (state.uploadXhr) { state.uploadXhr.abort(); state.uploadXhr = null; }
+    if (state.form.media && state.form.media.url) { URL.revokeObjectURL(state.form.media.url); }
+    state.form.media = null;
+  }
+  function refreshMedia() {
+    var box = $('media-box');
+    if (box) { box.innerHTML = mediaBoxHtml(state.form); bindDropzone(); }
+    updatePreview();
+  }
+  function handleFile(file) {
+    var f = state.form, spec = MEDIA[f.headerType];
+    if (!file || !spec) { return; }
+    var type = file.type === 'image/jpg' ? 'image/jpeg' : file.type;
+    if (spec.types.indexOf(type) < 0) { toast('This header needs ' + spec.hint.split(',')[0] + '. "' + file.name + '" is a different type.', 'error'); return; }
+    if (file.size > LIMITS.upload) { toast('"' + file.name + '" is ' + fmtSize(file.size) + '. The limit here is 4 MB. Compress it and try again.', 'error'); return; }
+    if (!file.size) { toast('"' + file.name + '" is empty. Choose another file.', 'error'); return; }
+    clearMedia();
+    f.media = { name: file.name, size: file.size, type: type, url: URL.createObjectURL(file), status: 'uploading', progress: 0, handle: null };
+    refreshMedia();
+    var xhr = new XMLHttpRequest();
+    state.uploadXhr = xhr;
+    xhr.open('POST', API + '?' + query({ action: 'upload', fileName: file.name, fileType: type }));
+    xhr.setRequestHeader('X-Admin-Key', state.key);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.upload.onprogress = function (e) {
+      if (!e.lengthComputable || f.media == null) { return; }
+      f.media.progress = Math.min(99, Math.round((e.loaded / e.total) * 100));
+      var bar = $('media-box') && $('media-box').querySelector('.progress');
+      if (bar) { bar.setAttribute('aria-valuenow', f.media.progress); bar.firstChild.style.width = f.media.progress + '%'; bar.previousSibling.textContent = fmtSize(f.media.size) + ' · Uploading… ' + f.media.progress + '%'; }
+    };
+    xhr.onload = function () {
+      state.uploadXhr = null;
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (e) { data = null; }
+      if (!f.media) { return; }
+      if (xhr.status === 401) { signOut(data && data.error); return; }
+      if (xhr.status >= 200 && xhr.status < 300 && data && data.ok && data.header_handle) {
+        f.media.status = 'done'; f.media.progress = 100; f.media.handle = data.header_handle;
+        toast('Sample ' + spec.label + ' uploaded.');
+      } else {
+        f.media.status = 'error';
+        f.media.error = data && data.error ? data.error : 'Upload failed (HTTP ' + xhr.status + '). Try again.';
+        toast(f.media.error, 'error');
+      }
+      refreshMedia();
+    };
+    xhr.onerror = function () {
+      state.uploadXhr = null;
+      if (!f.media) { return; }
+      f.media.status = 'error'; f.media.error = 'Upload failed. Check your connection and try again.';
+      toast(f.media.error, 'error');
+      refreshMedia();
+    };
+    xhr.send(file);
+  }
+  function bindDropzone() {
+    var zone = $('dropzone');
+    if (!zone) { return; }
+    ['dragenter', 'dragover'].forEach(function (name) { zone.addEventListener(name, function (e) { e.preventDefault(); zone.classList.add('is-over'); }); });
+    ['dragleave', 'drop'].forEach(function (name) { zone.addEventListener(name, function (e) { e.preventDefault(); zone.classList.remove('is-over'); }); });
+    zone.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files.length) { handleFile(e.dataTransfer.files[0]); } });
+  }
+
+  /* ---------- Duplicate ---------- */
+  function duplicate(t) {
+    var f = emptyForm();
+    var c = t.components || [];
+    f.category = CATEGORIES.some(function (x) { return x.id === t.category; }) ? t.category : 'MARKETING';
+    var suffix = '_copy';
+    f.name = String(t.name || '').slice(0, LIMITS.name - suffix.length) + suffix;
+    f.language = LANG_NAMES[t.language] ? t.language : '';
+    var header = component(c, 'HEADER'), body = component(c, 'BODY'), footer = component(c, 'FOOTER'), buttons = component(c, 'BUTTONS');
+    var mediaNote = false;
+    if (f.category === 'AUTHENTICATION') {
+      f.auth.security = !!(body && /do not share/i.test(body.text || ''));
+      var minutes = footer && /(\d+)/.exec(footer.text || '');
+      f.auth.expiry = !!minutes; if (minutes) { f.auth.minutes = Number(minutes[1]); }
+      var otp = buttons && buttons.buttons && buttons.buttons[0];
+      if (otp && String(otp.otp_type || '').toUpperCase() === 'ONE_TAP') { f.auth.otpType = 'ONE_TAP'; }
+    } else {
+      if (header) {
+        var format = String(header.format || 'TEXT').toUpperCase();
+        f.headerType = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'].indexOf(format) >= 0 ? format : 'NONE';
+        if (format === 'TEXT') { f.headerText = header.text || ''; f.headerSample = (header.example && header.example.header_text && header.example.header_text[0]) || ''; }
+        if (MEDIA[format]) { mediaNote = true; }
+      }
+      if (body) {
+        f.body = body.text || '';
+        var samples = body.example && body.example.body_text && body.example.body_text[0] || [];
+        samples.forEach(function (s, i) { f.bodySamples[i + 1] = s; });
+      }
+      f.footer = footer ? footer.text || '' : '';
+      if (buttons && buttons.buttons) {
+        buttons.buttons.forEach(function (b) {
+          var type = String(b.type).toUpperCase();
+          if (!BUTTON_TYPES[type]) { return; }
+          var item = newButton(type);
+          item.text = b.text || '';
+          if (type === 'URL') {
+            var url = b.url || '';
+            item.dynamic = /\{\{1\}\}$/.test(url);
+            item.url = url.replace(/\{\{1\}\}$/, '');
+            var ex = b.example && b.example[0];
+            if (item.dynamic && ex && ex.indexOf(item.url) === 0) { item.sample = ex.slice(item.url.length); }
+          }
+          if (type === 'PHONE_NUMBER') { item.phone = b.phone_number || ''; }
+          if (type === 'COPY_CODE') { item.code = Array.isArray(b.example) ? b.example[0] || '' : b.example || ''; }
+          f.buttons.push(item);
+        });
+      }
+    }
+    state.form = f;
+    selectTab('create');
+    window.scrollTo(0, 0);
+    $('f-name').focus();
+    toast('Copied "' + t.name + '" into a new template. Change the name before submitting.' + (mediaNote ? ' Upload the header sample again.' : ''));
+  }
+  function newButton(type) { return { type: type, text: '', url: '', dynamic: false, sample: '', phone: '', code: '' }; }
+  function addButton(type) {
+    var list = state.form.buttons, item = newButton(type);
+    var isQr = type === 'QUICK_REPLY', lastSame = -1;
+    list.forEach(function (b, i) { if ((b.type === 'QUICK_REPLY') === isQr) { lastSame = i; } });
+    if (lastSame >= 0) { list.splice(lastSame + 1, 0, item); } else { list.push(item); }
+    renderForm();
+    var index = list.indexOf(item);
+    var focusTarget = $('b-text-' + index) || $('b-code-' + index);
+    if (focusTarget) { focusTarget.focus(); }
+  }
+
+  /* ---------- Events ---------- */
+  function bind() {
+    hydrateIcons(document);
+
+    $('signin-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var key = $('admin-key').value;
+      if (!key) { showSignin('Enter the admin key to continue.'); return; }
+      signIn(key, $('signin-btn'));
+    });
+    $('toggle-key').addEventListener('click', function () {
+      var input = $('admin-key'), show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      this.setAttribute('aria-pressed', String(show));
+      this.setAttribute('aria-label', show ? 'Hide admin key' : 'Show admin key');
+      this.innerHTML = icon(show ? 'eyeOff' : 'eye', 18);
+      input.focus();
+    });
+    $('logout-btn').addEventListener('click', function () { signOut(); toast('Signed out.'); });
+
+    var switcherBtn = $('switcher-btn'), menu = $('switcher-menu');
+    switcherBtn.addEventListener('click', function () { if (menu.hidden) { openMenu(); } else { closeMenu(true); } });
+    switcherBtn.addEventListener('keydown', function (e) { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(); } });
+    $('pick-btn').addEventListener('click', function () { openMenu(); });
+    menu.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActiveOption(state.menuIndex + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveOption(state.menuIndex - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); setActiveOption(0); }
+      else if (e.key === 'End') { e.preventDefault(); setActiveOption(-1); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseAccount(state.menuIndex); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); }
+      else if (e.key === 'Tab') { closeMenu(false); }
+    });
+    menu.addEventListener('click', function (e) { var option = e.target.closest('[data-index]'); if (option) { chooseAccount(Number(option.getAttribute('data-index'))); } });
+    document.addEventListener('click', function (e) {
+      if (!menu.hidden && !e.target.closest('#switcher') && !e.target.closest('#pick-btn')) { closeMenu(false); }
+      var addMenu = $('add-menu');
+      if (addMenu && !addMenu.hidden && !e.target.closest('.add-menu-wrap')) { addMenu.hidden = true; $('add-button-btn').setAttribute('aria-expanded', 'false'); }
+    });
+
+    $('tab-list').addEventListener('click', function () { selectTab('list'); loadTemplates(false); });
+    $('tab-create').addEventListener('click', function () { selectTab('create'); });
+    [$('tab-list'), $('tab-create')].forEach(function (tab) {
+      tab.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); selectTab(state.tab === 'list' ? 'create' : 'list', true); if (state.tab === 'list') { loadTemplates(false); } }
+      });
+    });
+
+    $('search-input').addEventListener('input', function () { state.search = this.value; renderList(); });
+    $('refresh-btn').addEventListener('click', function () { loadTemplates(true); });
+    $('filter-chips').addEventListener('click', function (e) { var chip = e.target.closest('[data-filter]'); if (chip) { state.filter = chip.getAttribute('data-filter'); renderList(); var again = $('filter-chips').querySelector('[data-filter="' + state.filter + '"]'); if (again) { again.focus(); } } });
+    $('template-list').addEventListener('click', function (e) {
+      var row = e.target.closest('[data-row]');
+      if (row) { var id = row.getAttribute('data-row'); state.expanded = state.expanded === id ? null : id; renderList(); var again = $('template-list').querySelector('[data-row="' + id + '"]'); if (again) { again.focus(); } return; }
+      var copy = e.target.closest('[data-copy]');
+      if (copy) { copyText(copy.getAttribute('data-copy')); return; }
+      var dup = e.target.closest('[data-duplicate]');
+      if (dup) { var t = findTemplate(dup.getAttribute('data-duplicate')); if (t) { duplicate(t); } return; }
+      var action = e.target.closest('[data-action]');
+      if (!action) { return; }
+      var name = action.getAttribute('data-action');
+      if (name === 'retry') { loadTemplates(true); }
+      if (name === 'new') { selectTab('create'); }
+      if (name === 'clear-filters') { state.filter = 'ALL'; state.search = ''; $('search-input').value = ''; renderList(); }
+    });
+
+    var formRoot = $('form-root');
+    formRoot.addEventListener('input', function (e) {
+      var t = e.target, f = state.form;
+      var field = t.getAttribute('data-field');
+      if (field === 'name') {
+        var pos = t.selectionStart, before = t.value;
+        var cleaned = before.toLowerCase().replace(/\s/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, LIMITS.name);
+        if (cleaned !== before) { t.value = cleaned; var shift = before.slice(0, pos).toLowerCase().replace(/\s/g, '_').replace(/[^a-z0-9_]/g, '').length; t.setSelectionRange(shift, shift); }
+        f.name = cleaned;
+      } else if (field === 'body' || field === 'headerText') {
+        var beforeVars = varNumbers(f[field]).join(',');
+        f[field] = t.value;
+        if (varNumbers(t.value).join(',') !== beforeVars) {
+          renderSamples();
+          var headerVarBtn = formRoot.querySelector('[data-action="header-var"]');
+          if (headerVarBtn) { headerVarBtn.disabled = varNumbers(f.headerText).length > 0; }
+        }
+      } else if (field) {
+        f[field] = t.value;
+      }
+      var sample = t.getAttribute('data-sample');
+      if (sample === 'header') { f.headerSample = t.value; }
+      if (sample === 'body') { f.bodySamples[t.getAttribute('data-n')] = t.value; }
+      var authField = t.getAttribute('data-auth');
+      if (authField === 'copyText' || authField === 'autofillText' || authField === 'minutes') { f.auth[authField] = t.value; }
+      if (t.hasAttribute('data-app')) { f.auth.apps[Number(t.getAttribute('data-app'))][t.getAttribute('data-app-field')] = t.value.trim(); }
+      if (t.hasAttribute('data-b')) {
+        var b = f.buttons[Number(t.getAttribute('data-b'))], bf = t.getAttribute('data-b-field');
+        if (bf !== 'dynamic') { b[bf] = t.value; }
+        if (bf === 'url' || bf === 'sample') {
+          var hint = t.closest('.btn-item').querySelector('.hint .mono');
+          if (hint) { hint.textContent = (b.url || '') + (b.sample || ''); }
+        }
+      }
+      f.touched = true;
+      updateAllCounters();
+      updatePreview();
+    });
+    formRoot.addEventListener('change', function (e) {
+      var t = e.target, f = state.form;
+      if (t.name === 'category') {
+        if (f.category !== t.value && f.media) { clearMedia(); }
+        f.category = t.value;
+        if (f.category !== 'MARKETING') { f.buttons = f.buttons.filter(function (b) { return b.type !== 'COPY_CODE'; }); }
+        if (f.category !== 'AUTHENTICATION' && f.headerType === 'NONE') { f.headerType = 'NONE'; }
+        renderForm();
+        var checked = formRoot.querySelector('input[name="category"]:checked'); if (checked) { checked.focus(); }
+      } else if (t.name === 'headerType') {
+        if (f.media) { clearMedia(); }
+        f.headerType = t.value;
+        renderForm();
+        var hc = formRoot.querySelector('input[name="headerType"]:checked'); if (hc) { hc.focus(); }
+      } else if (t.name === 'otpType') {
+        f.auth.otpType = t.value;
+        renderForm();
+        var oc = formRoot.querySelector('input[name="otpType"]:checked'); if (oc) { oc.focus(); }
+      } else if (t.getAttribute('data-auth') === 'security' || t.getAttribute('data-auth') === 'expiry') {
+        f.auth[t.getAttribute('data-auth')] = t.checked;
+        if (t.getAttribute('data-auth') === 'expiry') { renderForm(); var ec = formRoot.querySelector('[data-auth="expiry"]'); if (ec) { ec.focus(); } } else { updatePreview(); }
+      } else if (t.getAttribute('data-b-field') === 'dynamic') {
+        var b = f.buttons[Number(t.getAttribute('data-b'))];
+        b.dynamic = t.value === 'dynamic';
+        b.url = b.url.replace(/\{\{1\}\}$/, '');
+        renderForm();
+        var sel = $(t.id); if (sel) { sel.focus(); }
+      } else if (t.getAttribute('data-field') === 'language') {
+        f.language = t.value; t.removeAttribute('aria-invalid');
+      }
+    });
+    formRoot.addEventListener('click', function (e) {
+      var f = state.form;
+      var wrap = e.target.closest('[data-wrap]');
+      if (wrap) { wrapSelection($('f-body'), wrap.getAttribute('data-wrap')); return; }
+      var action = e.target.closest('[data-action]');
+      var name = action && action.getAttribute('data-action');
+      if (name === 'body-var') { var next = (varNumbers(f.body).slice(-1)[0] || 0) + 1; insertAtCursor($('f-body'), '{{' + next + '}}'); return; }
+      if (name === 'header-var') { insertAtCursor($('f-headerText'), '{{1}}'); return; }
+      if (name === 'pick-file') { var input = $('file-input'); input.value = ''; input.setAttribute('accept', MEDIA[f.headerType].accept); input.click(); return; }
+      if (name === 'remove-file') { clearMedia(); refreshMedia(); var zoneBtn = formRoot.querySelector('[data-action="pick-file"]'); if (zoneBtn) { zoneBtn.focus(); } return; }
+      if (name === 'add-app') { f.auth.apps.push({ package_name: '', signature_hash: '' }); renderForm(); $('app-pkg-' + (f.auth.apps.length - 1)).focus(); return; }
+      var removeApp = e.target.closest('[data-remove-app]');
+      if (removeApp) { f.auth.apps.splice(Number(removeApp.getAttribute('data-remove-app')), 1); renderForm(); return; }
+      var removeButton = e.target.closest('[data-remove-button]');
+      if (removeButton) { f.buttons.splice(Number(removeButton.getAttribute('data-remove-button')), 1); renderForm(); var addBtn = $('add-button-btn'); if (addBtn) { addBtn.focus(); } return; }
+      if (e.target.closest('#add-button-btn')) {
+        var addMenu = $('add-menu'), open = addMenu.hidden;
+        addMenu.hidden = !open;
+        $('add-button-btn').setAttribute('aria-expanded', String(open));
+        if (open) { var first = addMenu.querySelector('button:not(:disabled)'); if (first) { first.focus(); } }
+        return;
+      }
+      var add = e.target.closest('[data-add-button]');
+      if (add && !add.disabled) { addButton(add.getAttribute('data-add-button')); }
+    });
+    formRoot.addEventListener('keydown', function (e) {
+      var addMenu = $('add-menu');
+      if (!addMenu || addMenu.hidden || !e.target.closest('#add-menu')) { return; }
+      var items = Array.prototype.slice.call(addMenu.querySelectorAll('button:not(:disabled)'));
+      var index = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); addMenu.hidden = true; $('add-button-btn').setAttribute('aria-expanded', 'false'); $('add-button-btn').focus(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[(index + 1) % items.length].focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); items[(index - 1 + items.length) % items.length].focus(); }
+    });
+    $('file-input').addEventListener('change', function () { if (this.files && this.files[0]) { handleFile(this.files[0]); } });
+
+    $('create-form').addEventListener('submit', function (e) { e.preventDefault(); openReview(); });
+    $('reset-btn').addEventListener('click', function () { clearMedia(); state.form = emptyForm(); $('form-errors').hidden = true; renderForm(); toast('Form cleared.'); });
+    $('placeholder-toggle').addEventListener('change', function () { state.placeholders = this.checked; updatePreview(); });
+    $('theme-toggle').addEventListener('click', function () {
+      state.waDark = !state.waDark;
+      this.innerHTML = icon(state.waDark ? 'sun' : 'moon', 15);
+      this.setAttribute('aria-label', state.waDark ? 'Switch preview to light WhatsApp theme' : 'Switch preview to dark WhatsApp theme');
+      updatePreview();
+      if (state.expanded) { renderList(); }
+    });
+    if (state.waDark) { $('theme-toggle').innerHTML = icon('sun', 15); $('theme-toggle').setAttribute('aria-label', 'Switch preview to light WhatsApp theme'); }
+
+    var dialog = $('review-dialog');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-close="review"]'), function (b) { b.addEventListener('click', closeReview); });
+    dialog.addEventListener('close', function () { if (state.lastFocus && document.body.contains(state.lastFocus)) { state.lastFocus.focus(); } });
+    $('submit-btn').addEventListener('click', submitTemplate);
+  }
+
+  /* ---------- Start ---------- */
+  bind();
+  var savedKey = store('get');
+  if (savedKey) { signIn(savedKey, null); } else { showSignin(); }
+})();
+//]]>
+</script>
+</body>
+</html>
+</apex:page>
